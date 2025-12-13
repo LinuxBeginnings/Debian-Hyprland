@@ -159,6 +159,78 @@ clean_existing_hyprland() {
     echo "${OK} Cleanup completed" | tee -a "$LOG"
 }
 
+# Compare two version strings using dpkg --compare-versions
+version_ge() { # $1: actual, $2: required
+    dpkg --compare-versions "$1" ge "$2"
+}
+
+# Detect minimal compatible versions for prebuilt package install
+check_prebuilt_compat() {
+    echo "${INFO} Checking system compatibility for pre-built packages..." | tee -a "$LOG"
+
+    local ok=true
+    local report=""
+
+    # Requirements derived from built artifacts
+    # - libstdc++6 >= 15 (GCC 15 runtime)
+    # - libxkbcommon0 >= 1.12.3
+    # - Qt6 base >= 6.9.1 (core/gui/qml) and private ABI >= 6.9.2 where needed
+
+    # helper to check package version if installed
+    pkg_ver() { dpkg-query -W -f='${Version}' "$1" 2>/dev/null || echo ""; }
+
+    # libstdc++6
+    local v_libstd=$(pkg_ver libstdc++6)
+    if [ -z "$v_libstd" ] || ! version_ge "$v_libstd" "15~"; then
+        ok=false
+        report+="$NL - libstdc++6 >= 15 required; found '${v_libstd:-not installed}'"
+    fi
+
+    # libxkbcommon0
+    local v_xkb=$(pkg_ver libxkbcommon0)
+    if [ -z "$v_xkb" ] || ! version_ge "$v_xkb" "1.12.3"; then
+        ok=false
+        report+="$NL - libxkbcommon0 >= 1.12.3 required; found '${v_xkb:-not installed}'"
+    fi
+
+    # Qt6 core/gui/qml
+    local v_qtcore=$(pkg_ver libqt6core6t64 || true); [ -z "$v_qtcore" ] && v_qtcore=$(pkg_ver libqt6core6 || true)
+    local v_qtgui=$(pkg_ver libqt6gui6 || true)
+    local v_qtqml=$(pkg_ver libqt6qml6 || true)
+    for req in core:$v_qtcore gui:$v_qtgui qml:$v_qtqml; do
+        local name=${req%%:*}; local ver=${req#*:}
+        if [ -z "$ver" ] || ! version_ge "$ver" "6.9.1"; then
+            ok=false
+            report+="$NL - Qt6 ${name} >= 6.9.1 required; found '${ver:-not installed}'"
+        fi
+    done
+
+    # Qt6 private ABI (optional; warn if present and too low)
+    local v_qtpriv=$(pkg_ver qt6-base-private-dev || true)
+    if [ -n "$v_qtpriv" ] && ! version_ge "$v_qtpriv" "6.9.2"; then
+        ok=false
+        report+="$NL - qt6-base-private-abi >= 6.9.2 required; found '$v_qtpriv'"
+    fi
+
+    if [ "$ok" = true ]; then
+        echo "${OK} System meets minimum requirements for pre-built packages." | tee -a "$LOG"
+        return 0
+    fi
+
+    echo "${WARN} Pre-built install blocked due to incompatible base libraries:" | tee -a "$LOG"
+    echo -e "$report" | tee -a "$LOG"
+
+    # Offer fallback to source build
+    if whiptail --title "Pre-built install incompatible" --yesno "Your system is missing required base libraries for pre-built packages:\n\n${report}\n\nWould you like to fall back to building from source now?\n(Choose No to exit and upgrade your system first.)" 18 78; then
+        echo "${INFO} Falling back to source build at user request." | tee -a "$LOG"
+        echo "fallback_to_source=1" > Install-Logs/prebuilt_fallback.flag
+        return 2
+    else
+        echo "${ERROR} Exiting: please upgrade the listed libraries (e.g., enable backports/Sid) and retry pre-built install." | tee -a "$LOG"
+        return 1
+    fi
+}
+
 # Function to install packages from pre-built .deb files
 install_from_packages() {
     echo "${INFO} Installing from pre-built packages at: ${SKY_BLUE}$DEB_PACKAGES_SOURCE${RESET}" | tee -a "$LOG"
@@ -494,11 +566,29 @@ execute_script "fonts.sh"
 if [ "$build_method" = "packages" ]; then
     echo "${INFO} Installing from ${SKY_BLUE}pre-built packages${RESET}..." | tee -a "$LOG"
     sleep 1
-    if install_from_packages; then
-        echo "${OK} Pre-built packages installed successfully!" | tee -a "$LOG"
+
+    # Run compatibility check before attempting install
+    if check_prebuilt_compat; then
+        : # ok
     else
-        echo "${ERROR} Failed to install pre-built packages. Exiting..." | tee -a "$LOG"
-        exit 1
+        rc=$?
+        if [ "$rc" -eq 2 ]; then
+            # Fallback to source requested
+            build_method="source"
+            echo "${NOTE} Switching to ${SKY_BLUE}build from source${RESET} due to compatibility." | tee -a "$LOG"
+        else
+            # Hard failure
+            exit 1
+        fi
+    fi
+
+    if [ "$build_method" = "packages" ]; then
+        if install_from_packages; then
+            echo "${OK} Pre-built packages installed successfully!" | tee -a "$LOG"
+        else
+            echo "${ERROR} Failed to install pre-built packages. Exiting..." | tee -a "$LOG"
+            exit 1
+        fi
     fi
 else
     # Build from source (original method)
