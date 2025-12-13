@@ -180,30 +180,14 @@ install_from_packages() {
     echo "${CAT} Removing existing Hyprland installations to avoid conflicts..." | tee -a "$LOG"
     clean_existing_hyprland
     
-    # Create a local package repository (Packages.gz index)
-    echo "${INFO} Creating local package repository..." | tee -a "$LOG"
-    if command -v dpkg-scanpackages >/dev/null; then
-        cd "$DEB_PACKAGES_SOURCE" || return 1
-        sudo dpkg-scanpackages -m . /dev/null > Packages 2>/dev/null || true
-        gzip -c Packages > Packages.gz 2>/dev/null || true
-        cd - >/dev/null || return 1
-        
-        # Add local repository to APT sources
-        echo "${INFO} Configuring APT to use local package repository..." | tee -a "$LOG"
-        sudo tee /etc/apt/sources.list.d/local-hyprland.list >/dev/null <<< "deb [trusted=yes] file://$DEB_PACKAGES_SOURCE ./"
-        
-        # Update package cache with local repository
-        echo "${INFO} Updating package cache (including local repository)..." | tee -a "$LOG"
-        sudo apt-get update 2>&1 | tail -5 | tee -a "$LOG"
-    else
-        echo "${WARN} dpkg-scanpackages not available. Using direct dpkg installation." | tee -a "$LOG"
-    fi
+    # Update package cache after cleanup
+    echo "${INFO} Updating package cache..." | tee -a "$LOG"
+    sudo apt-get update 2>&1 | tail -3 | tee -a "$LOG"
     
     # Install core packages only (skip plugins and debug symbols)
     echo "${INFO} Installing core Hyprland packages (excluding plugins and debug symbols)..." | tee -a "$LOG"
     
-    # Build list of packages to install (excluding dbgsym and plugins)
-    local packages_to_install=()
+    # Install only essential packages, skip plugins and dbgsym
     for deb in "$DEB_PACKAGES_SOURCE"/*.deb; do
         filename=$(basename "$deb")
         
@@ -215,23 +199,13 @@ install_from_packages() {
             continue
         fi
         
-        # Extract package name from filename
-        pkg_name=$(echo "$filename" | sed 's/_.*//g')
-        packages_to_install+=("$pkg_name")
+        echo "${INFO} Installing: $filename" | tee -a "$LOG"
+        sudo dpkg -i "$deb" 2>&1 | tee -a "$LOG" || true
     done
     
-    if [ ${#packages_to_install[@]} -gt 0 ]; then
-        echo "${INFO} Installing ${#packages_to_install[@]} packages with dependency resolution..." | tee -a "$LOG"
-        sudo apt-get install -y "${packages_to_install[@]}" 2>&1 | tail -20 | tee -a "$LOG"
-    else
-        echo "${WARN} No packages to install after filtering" | tee -a "$LOG"
-        return 1
-    fi
-    
-    # Clean up APT sources
-    echo "${INFO} Cleaning up temporary APT configuration..." | tee -a "$LOG"
-    sudo rm -f /etc/apt/sources.list.d/local-hyprland.list
-    sudo apt-get update 2>&1 | tail -1 | tee -a "$LOG"
+    # Fix any dependency issues
+    echo "${INFO} Fixing any dependency issues..." | tee -a "$LOG"
+    sudo apt-get install -f -y 2>&1 | tail -5 | tee -a "$LOG"
     
     echo "${OK} Core package installation completed!" | tee -a "$LOG"
     echo "${NOTE} To install plugins, run: sudo dpkg -i $DEB_PACKAGES_SOURCE/hyprland-plugin-*.deb" | tee -a "$LOG"
