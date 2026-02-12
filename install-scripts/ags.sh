@@ -1,5 +1,5 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # Aylur's GTK Shell #
 
 ags=(
@@ -109,7 +109,7 @@ printf "${INFO} Kindly Standby...cloning and compiling ${SKY_BLUE}Aylur's GTK sh
 printf "\n%.0s" {1..1}
 # Clone repository with the specified tag and capture git output into MLOG
 SRC_DIR="$SRC_ROOT/ags_v1.9.0"
-if git clone --depth=1 https://github.com/JaKooLit/ags_v1.9.0.git "$SRC_DIR"; then
+if git clone --depth=1 https://github.com/LinuxBeginnings/ags_v1.9.0.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/ags_v1.9.0"
     mkdir -p "$BUILD_DIR"

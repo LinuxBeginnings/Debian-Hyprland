@@ -1,5 +1,5 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # hyprwire-protocols (XML bundle consumed by hyprwire-scanner users like hyprtavern)
 
 #specific branch or release (fallback)

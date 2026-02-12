@@ -1,5 +1,5 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # GTK Themes & ICONS and  Sourcing from a different Repo #
 
 # Base utilities needed regardless of Debian branch
@@ -162,7 +162,7 @@ if [ -d "$SRC_DIR" ]; then
 fi
 
 echo "$NOTE Cloning ${SKY_BLUE}GTK themes and Icons${RESET} repository..." 2>&1 | tee -a "$LOG"
-if git clone --depth=1 https://github.com/JaKooLit/GTK-themes-icons.git "$SRC_DIR"; then
+if git clone --depth=1 https://github.com/LinuxBeginnings/GTK-themes-icons.git "$SRC_DIR"; then
     cd "$SRC_DIR"
     chmod +x auto-extract.sh
     ./auto-extract.sh

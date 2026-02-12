@@ -1,5 +1,5 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # Hyprland-Dots to download from main #
 
 #specific branch or release
@@ -32,7 +32,7 @@ if [ -d "$SRC_DIR" ]; then
     chmod +x copy.sh
     ./copy.sh
 else
-    if git clone --depth=1 https://github.com/JaKooLit/Hyprland-Dots "$SRC_DIR"; then
+    if git clone --depth=1 https://github.com/LinuxBeginnings/Hyprland-Dots "$SRC_DIR"; then
         cd "$SRC_DIR" || exit 1
         chmod +x copy.sh
         ./copy.sh
