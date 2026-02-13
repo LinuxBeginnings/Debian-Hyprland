@@ -5,10 +5,10 @@
 #### For Debian 13 (Trixie) and above (testing, SID)
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/JaKooLit/Hyprland-Dots/main/assets/latte.png" width="400" />
+  <img src="https://raw.githubusercontent.com/LinuxBeginnings/Hyprland-Dots/main/assets/latte.png" width="400" />
 </p>
 
-![GitHub Repo stars](https://img.shields.io/github/stars/JaKooLit/Debian-Hyprland?style=for-the-badge&color=cba6f7) ![GitHub last commit](https://img.shields.io/github/last-commit/JaKooLit/Debian-Hyprland?style=for-the-badge&color=b4befe) ![GitHub repo size](https://img.shields.io/github/repo-size/JaKooLit/Debian-Hyprland?style=for-the-badge&color=cba6f7) <a href="https://discord.gg/kool-tech-world"> <img src="https://img.shields.io/discord/1151869464405606400?style=for-the-badge&logo=discord&color=cba6f7&link=https%3A%2F%2Fdiscord.gg%kool-tech-world"> </a>
+![GitHub Repo stars](https://img.shields.io/github/stars/LinuxBeginnings/Debian-Hyprland?style=for-the-badge&color=cba6f7) ![GitHub last commit](https://img.shields.io/github/last-commit/LinuxBeginnings/Debian-Hyprland?style=for-the-badge&color=b4befe) ![GitHub repo size](https://img.shields.io/github/repo-size/LinuxBeginnings/Debian-Hyprland?style=for-the-badge&color=cba6f7) <a href="https://discord.gg/kool-tech-world"> <img src="https://img.shields.io/discord/1151869464405606400?style=for-the-badge&logo=discord&color=cba6f7&link=https%3A%2F%2Fdiscord.gg%kool-tech-world"> </a>
 
 <br/>
 </div>
@@ -29,7 +29,7 @@
  </div><br>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/JaKooLit/Hyprland-Dots/main/assets/latte.png" width="200" />
+  <img src="https://raw.githubusercontent.com/LinuxBeginnings/Hyprland-Dots/main/assets/latte.png" width="200" />
 </p>
 
 <div align="center">
@@ -38,16 +38,16 @@
 </div>
 <div align="center">
 <br>
-  <a href="https://github.com/JaKooLit/Hyprland-Dots/tree/Debian-Dots"><kbd> <br> Hyprland-Dots Debian repo <br> </kbd></a>&ensp;&ensp;
+<a href="https://github.com/LinuxBeginnings/Hyprland-Dots/tree/Debian-Dots"><kbd> <br> Hyprland-Dots Debian repo <br> </kbd></a>
   <a href="https://www.youtube.com/playlist?list=PLDtGd5Fw5_GjXCznR0BzCJJDIQSZJRbxx"><kbd> <br> Youtube <br> </kbd></a>&ensp;&ensp;
-  <a href="https://github.com/JaKooLit/Hyprland-Dots/wiki"><kbd> <br> Wiki <br> </kbd></a>&ensp;&ensp;
-  <a href="https://github.com/JaKooLit/Hyprland-Dots/wiki/Keybinds"><kbd> <br> Keybinds <br> </kbd></a>&ensp;&ensp;
-  <a href="https://github.com/JaKooLit/Hyprland-Dots/wiki/FAQ"><kbd> <br> FAQ <br> </kbd></a>&ensp;&ensp;
+  <a href="https://github.com/LinuxBeginnings/Hyprland-Dots/wiki"><kbd> <br> Wiki <br> </kbd></a>&ensp;&ensp;
+  <a href="https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Keybinds"><kbd> <br> Keybinds <br> </kbd></a>&ensp;&ensp;
+  <a href="https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/FAQ"><kbd> <br> FAQ <br> </kbd></a>&ensp;&ensp;
   <a href="https://discord.gg/RZJgC7KAKm"><kbd> <br> Discord <br> </kbd></a>
 </div><br>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/JaKooLit/Hyprland-Dots/main/assets/latte.png" width="200" />
+  <img src="https://raw.githubusercontent.com/LinuxBeginnings/Hyprland-Dots/main/assets/latte.png" width="200" />
 </p>
 
 <h3 align="center">
@@ -99,7 +99,7 @@ sudo nano /etc/apt/sources.list
 
 ### 🪧🪧🪧 ANNOUNCEMENT 🪧🪧🪧
 
-[Debian-Hyprland Changelogs](https://github.com/JaKooLit/Debian-Hyprland/blob/main/CHANGELOGS.md)
+[Debian-Hyprland Changelogs](https://github.com/LinuxBeginnings/Debian-Hyprland/blob/main/CHANGELOGS.md)
 
 - 10 January 2026 Update!
 - Debian now builds Hyprland v0.53.2!
@@ -143,8 +143,8 @@ sudo apt install --no-install-recommends -y sddm
 
 #### 💫 SDDM and GTK Themes offered
 
-- If you opted to install SDDM theme, here's the [LINK](https://github.com/JaKooLit/simple-sddm-2) which is a modified fork of [LINK](https://github.com/Keyitdev/sddm-astronaut-theme)
-- If you opted to install GTK Themes, Icons, here's the [LINK](https://github.com/JaKooLit/GTK-themes-icons). This also includes Bibata Modern Ice cursor.
+- If you opted to install SDDM theme, here's the [LINK](https://github.com/LinuxBeginnings/simple-sddm-2) which is a modified fork of [LINK](https://github.com/Keyitdev/sddm-astronaut-theme)
+- If you opted to install GTK Themes, Icons, here's the [LINK](https://github.com/LinuxBeginnings/GTK-themes-icons). This also includes Bibata Modern Ice cursor.
 
 #### 🔔 NOTICE TO NVIDIA OWNERS
 
@@ -156,7 +156,7 @@ sudo apt install --no-install-recommends -y sddm
 
 > Install those first, before installing Hyprland
 
-- NVIDIA users / owners, after installation, check [`THIS`](https://github.com/JaKooLit/Hyprland-Dots/wiki/Notes_to_remember#--for-nvidia-gpu-users)
+- NVIDIA users / owners, after installation, check [`THIS`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Notes_to_remember#--for-nvidia-gpu-users)
 
 > [!IMPORTANT]
 > If you wish to use the nouveau driver (installed by default in Debian), be sure to not select "NVIDIA" in the installation options.
@@ -173,7 +173,7 @@ sudo apt install --no-install-recommends -y sddm
 - NOTE: `curl` package is required before running this command
 
 ```bash
-sh <(curl -L https://raw.githubusercontent.com/JaKooLit/Debian-Hyprland/main/auto-install.sh)
+sh <(curl -L https://raw.githubusercontent.com/LinuxBeginnings/Debian-Hyprland/main/auto-install.sh)
 ```
 
 ## ✨ to use this script
@@ -181,7 +181,7 @@ sh <(curl -L https://raw.githubusercontent.com/JaKooLit/Debian-Hyprland/main/aut
 clone this repo, change directory, make executable and run the script:
 
 ```bash
-git clone --depth=1 https://github.com/JaKooLit/Debian-Hyprland.git ~/Debian-Hyprland
+git clone --depth=1 https://github.com/LinuxBeginnings/Debian-Hyprland.git ~/Debian-Hyprland
 cd ~/Debian-Hyprland
 chmod +x install.sh
 ./install.sh
@@ -190,8 +190,8 @@ chmod +x install.sh
 #### ✨ TO DO once installation done and dotfiles copied
 
 - SUPER H for HINT or click on the waybar HINT! Button
-- Head over to [`FAQ`](https://github.com/JaKooLit/Hyprland-Dots/wiki/FAQ) and [`TIPS`](https://github.com/JaKooLit/Hyprland-Dots/wiki/TIPS)
-- Head over to [KooL Hyprland WIKI](https://github.com/JaKooLit/Hyprland-Dots/wiki)
+- Head over to [`FAQ`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/FAQ) and [`TIPS`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/TIPS)
+- Head over to [KooL Hyprland WIKI](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki)
 
 - if you installed in your laptop and Brightness and Keyboard brightness does not work you can execute this command `sudo chmod +s $(which brightnessctl)`
 
@@ -230,11 +230,11 @@ chmod +x install.sh
 
 #### 🙋 Got a questions regarding the Hyprland Dots or configurations? 🙋
 
-Head over to wiki Link [`WIKI`](https://github.com/JaKooLit/Hyprland-Dots/wiki)
+Head over to wiki Link [`WIKI`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki)
 
 #### ⌨ Keybinds
 
-Keybinds [`CLICK`](https://github.com/JaKooLit/Hyprland-Dots/wiki/Keybinds)
+Keybinds [`CLICK`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Keybinds)
 
 > [!TIP]
 > KooL Hyprland has a searchable keybind rofi menu. (`SUPER SHIFT K`) or right click the `HINTS` waybar button
@@ -242,7 +242,7 @@ Keybinds [`CLICK`](https://github.com/JaKooLit/Hyprland-Dots/wiki/Keybinds)
 #### 🙋 👋 Having issues or questions?
 
 - for the install part, kindly open issue on this repo
-- for the Pre-configured Hyprland dots / configuration, submit issue [`here`](https://github.com/JaKooLit/Hyprland-Dots/issues)
+- for the Pre-configured Hyprland dots / configuration, submit issue [`here`](https://github.com/LinuxBeginnings/Hyprland-Dots/issues)
 
 #### 🔧 Proper way to re-installing a particular script from install-scripts directory
 
@@ -307,7 +307,7 @@ cd ~/Debian-Hyprland
 
 - [ ] Does not work in Debian Bookworm
 - [ ] sddm blackscreen when log-out
-- [ ] Installing SDDM if or any other Login Manager installed. See [`Issue 2 - SDDM`](https://github.com/JaKooLit/Debian-Hyprland/issues/2)
+- [ ] Installing SDDM if or any other Login Manager installed. See [`Issue 2 - SDDM`](https://github.com/LinuxBeginnings/Debian-Hyprland/issues/2)
 - [ ] network is down or become unmanaged [`This`](https://askubuntu.com/questions/71159/network-manager-says-device-not-managed) might help
 
 #### 📒 Final Notes
@@ -318,9 +318,9 @@ cd ~/Debian-Hyprland
 #### ✍️ Contributing
 
 - As stated above, these script does not contain actual config files. These are only the installer of packages
-- If you want to contribute and/or test the Hyprland-Dotfiles (development branch), [`Hyprland-Dots-Development`](https://github.com/JaKooLit/Hyprland-Dots/tree/development)
-- Want to contribute on KooL-Hyprland-Dots Click [`HERE`](https://github.com/JaKooLit/Hyprland-Dots/blob/main/CONTRIBUTING.md) for a guide how to contribute
-- Want to contribute on This Installer? Click [`HERE`](https://github.com/JaKooLit/Debian-Hyprland/blob/main/CONTRIBUTING.md) for a guide how to contribute
+- If you want to contribute and/or test the Hyprland-Dotfiles (development branch), [`Hyprland-Dots-Development`](https://github.com/LinuxBeginnings/Hyprland-Dots/tree/development)
+- Want to contribute on KooL-Hyprland-Dots Click [`HERE`](https://github.com/LinuxBeginnings/Hyprland-Dots/blob/main/CONTRIBUTING.md) for a guide how to contribute
+- Want to contribute on This Installer? Click [`HERE`](https://github.com/LinuxBeginnings/Debian-Hyprland/blob/main/CONTRIBUTING.md) for a guide how to contribute
 
 #### 👍👍👍 Thanks and Credits
 
@@ -352,4 +352,4 @@ Or you can donate cryto on my btc wallet :)
 
 ## 🥰🥰 💖💖 👍👍👍
 
-[![Stargazers over time](https://starchart.cc/JaKooLit/Debian-Hyprland.svg?variant=adaptive)](https://starchart.cc/JaKooLit/Debian-Hyprland)
+[![Stargazers over time](https://starchart.cc/LinuxBeginnings/Debian-Hyprland.svg?variant=adaptive)](https://starchart.cc/LinuxBeginnings/Debian-Hyprland)
