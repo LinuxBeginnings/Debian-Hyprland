@@ -1,5 +1,13 @@
 ## CHANGELOG
 
+## 13 February 2026
+
+- Updated Discord Link
+- Removed JakooLit ko-fi, wallet, etc
+- Removed stargazer star graph
+- Updated `uninstall.sh` to remove compiled pkgs as well as deb pkgs
+- Updated hyprwire to v0.3.0
+
 ## 11 February 2026
 
 - Moved hyprland dependencies to 00-dependencies script
