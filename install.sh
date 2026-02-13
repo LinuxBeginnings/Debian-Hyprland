@@ -1,6 +1,5 @@
 #!/bin/bash
-# https://github.com/JaKooLit
-
+# https://github.com/LinuxBeginnings
 
 clear
 
@@ -91,7 +90,7 @@ _enable_deb_src_conservatively() {
             }
             { print $0 }
             END { if (added==0) {} }
-        ' "$f" > "$tmp" && sudo cp "$tmp" "$f" && rm -f "$tmp"
+        ' "$f" >"$tmp" && sudo cp "$tmp" "$f" && rm -f "$tmp"
     fi
 }
 
@@ -253,31 +252,31 @@ PRESET_FILE=""
 args=("$@")
 FORCE_REINSTALL=0
 TTY_MODE=0
-for ((i=0; i<${#args[@]}; i++)); do
+for ((i = 0; i < ${#args[@]}; i++)); do
     case "${args[$i]}" in
-        --build-trixie)
-            TRIXIE_MODE="on"
-            ;;
-        --no-trixie)
-            TRIXIE_MODE="off"
-            ;;
-        --force-reinstall)
-            FORCE_REINSTALL=1
-            ;;
-        --tty)
-            TTY_MODE=1
-            ;;
-        -h|--help)
-            print_help
-            exit 0
-            ;;
-        --preset)
-            if [ $((i+1)) -lt ${#args[@]} ]; then
-                PRESET_FILE="${args[$((i+1))]}"
-            fi
-            ;;
+    --build-trixie)
+        TRIXIE_MODE="on"
+        ;;
+    --no-trixie)
+        TRIXIE_MODE="off"
+        ;;
+    --force-reinstall)
+        FORCE_REINSTALL=1
+        ;;
+    --tty)
+        TTY_MODE=1
+        ;;
+    -h | --help)
+        print_help
+        exit 0
+        ;;
+    --preset)
+        if [ $((i + 1)) -lt ${#args[@]} ]; then
+            PRESET_FILE="${args[$((i + 1))]}"
+        fi
+        ;;
     esac
- done
+done
 
 # If env explicitly sets HYPR_BUILD_TRIXIE, honor it.
 if [ -n "${HYPR_BUILD_TRIXIE+x}" ]; then
@@ -323,11 +322,11 @@ printf "\n%.0s" {1..1}
 # Function to clean up existing Hyprland installations
 clean_existing_hyprland() {
     echo "${INFO} Checking for existing Hyprland installations..." | tee -a "$LOG"
-    
+
     # List of Hyprland-related packages and binaries to check
     local hyprland_packages=("hyprland" "hyprutils" "hyprgraphics" "hyprcursor" "hyprtoolkit" "hyprland-guiutils" "hyprwire" "aquamarine" "hypridle" "hyprlock" "hyprpolkitagent" "hyprpicker" "xdg-desktop-portal-hyprland" "hyprland-plugins")
     local hyprland_binaries=("/usr/local/bin/Hyprland" "/usr/local/bin/hyprland" "/usr/bin/Hyprland" "/usr/bin/hyprland")
-    
+
     # Remove installed .deb packages
     echo "${INFO} Removing any previously installed .deb packages..." | tee -a "$LOG"
     for pkg in "${hyprland_packages[@]}"; do
@@ -336,7 +335,7 @@ clean_existing_hyprland() {
             sudo apt-get remove -y "$pkg" 2>&1 | grep -E "(Setting up|Removing)" | tee -a "$LOG" || true
         fi
     done
-    
+
     # Remove binaries built from source
     echo "${INFO} Checking for binaries built from source..." | tee -a "$LOG"
     for binary in "${hyprland_binaries[@]}"; do
@@ -345,7 +344,7 @@ clean_existing_hyprland() {
             sudo rm -f "$binary"
         fi
     done
-    
+
     # Remove development files from /usr/local
     if [ -d "/usr/local/include/hyprland" ] || [ -d "/usr/local/lib/libhypr" ]; then
         echo "${INFO} Removing development files from /usr/local..." | tee -a "$LOG"
@@ -355,10 +354,9 @@ clean_existing_hyprland() {
         sudo rm -rf /usr/local/lib/libypr* 2>/dev/null || true
         sudo ldconfig 2>/dev/null || true
     fi
-    
+
     echo "${OK} Cleanup completed" | tee -a "$LOG"
 }
-
 
 # Welcome / proceed (TTY or whiptail)
 if [ "$TTY_MODE" -eq 1 ]; then
@@ -372,8 +370,11 @@ if [ "$TTY_MODE" -eq 1 ]; then
     echo "IMPORTANT: Ensure deb-src is enabled in /etc/apt/sources.list."
     read -r -p "Proceed with installation? [y/N]: " _ans
     case "${_ans,,}" in
-      y|yes) : ;;
-      *) echo "${NOTE} You chose not to continue. Exiting..." | tee -a "$LOG"; exit 1 ;;
+    y | yes) : ;;
+    *)
+        echo "${NOTE} You chose not to continue. Exiting..." | tee -a "$LOG"
+        exit 1
+        ;;
     esac
 else
     # Welcome message using whiptail (for displaying information)
@@ -408,7 +409,8 @@ script_directory=install-scripts
 
 # Function to execute a script if it exists and make it executable
 execute_script() {
-    local script="$1"; shift || true
+    local script="$1"
+    shift || true
     local script_path="$script_directory/$script"
     local args=("$@")
     if [ -f "$script_path" ]; then
@@ -447,10 +449,11 @@ if [ -f "./hypr-tags.env" ]; then
     while IFS='=' read -r _k _v; do
         [ -z "${_k:-}" ] && continue
         case "$_k" in
-          *"_TAG"|WAYLAND_PROTOCOLS_TAG)
-            export "$_k" ;;
+        *"_TAG" | WAYLAND_PROTOCOLS_TAG)
+            export "$_k"
+            ;;
         esac
-    done < "./hypr-tags.env"
+    done <"./hypr-tags.env"
 fi
 
 #################
@@ -508,7 +511,7 @@ if check_services_running; then
     active_list=$(printf "%s\n" "${active_services[@]}")
 
     if [ "$TTY_MODE" -eq 1 ]; then
-        echo "${WARN} Active non-SDDM login manager(s) detected:" 
+        echo "${WARN} Active non-SDDM login manager(s) detected:"
         echo "$active_list"
         echo "NOTE: SDDM and SDDM theme options will be hidden."
     else
@@ -594,8 +597,8 @@ if [ "$TTY_MODE" -eq 1 ]; then
         echo "You selected: ${options[*]}"
         read -r -p "Proceed with these choices? [y/N]: " yn
         case "${yn,,}" in
-          y|yes) break ;;
-          *) echo "Returning to selection..." ;;
+        y | yes) break ;;
+        *) echo "Returning to selection..." ;;
         esac
     done
 else
@@ -615,7 +618,8 @@ else
         dots_selected="OFF"
         for option in "${options[@]}"; do
             if [[ "$option" == "dots" ]]; then
-                dots_selected="ON"; break
+                dots_selected="ON"
+                break
             fi
         done
         if [[ "$dots_selected" == "OFF" ]]; then
@@ -764,20 +768,20 @@ prompt_nvidia_mode() {
         echo "  o) NVIDIA CUDA repo (nvidia-open, open kernel modules)"
         read -r -p "Select [d/N/o] (default d): " ans
         case "${ans,,}" in
-          o|open) mode="open" ;;
-          n|nv|nvidia) mode="nvidia" ;;
-          d|""|*) mode="debian" ;;
+        o | open) mode="open" ;;
+        n | nv | nvidia) mode="nvidia" ;;
+        d | "" | *) mode="debian" ;;
         esac
     else
         local choice
         choice=$(whiptail --title "NVIDIA driver source" --menu "Select installation source" 15 68 5 \
-                 d "Debian repo (nvidia-driver)" \
-                 n "NVIDIA CUDA repo (cuda-drivers, proprietary)" \
-                 o "NVIDIA CUDA repo (nvidia-open, open kernel modules)" 3>&1 1>&2 2>&3) || true
+            d "Debian repo (nvidia-driver)" \
+            n "NVIDIA CUDA repo (cuda-drivers, proprietary)" \
+            o "NVIDIA CUDA repo (nvidia-open, open kernel modules)" 3>&1 1>&2 2>&3) || true
         case "$choice" in
-          o) mode="open" ;;
-          n) mode="nvidia" ;;
-          d|*) mode="debian" ;;
+        o) mode="open" ;;
+        n) mode="nvidia" ;;
+        d | *) mode="debian" ;;
         esac
     fi
     printf '%s' "$mode"

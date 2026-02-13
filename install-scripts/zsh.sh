@@ -1,5 +1,5 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # Zsh and Oh my Zsh + Optional Pokemon ColorScripts#
 
 zsh=(

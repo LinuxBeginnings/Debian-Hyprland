@@ -1,65 +1,70 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # Hyprland-Dots to download a specific release #
 
-# Define the specific release version to download
-specific_version="v2.3.16"
-#specific_version="v2.3.3-Deb-Untu-Hyprland-0.41.2"
+# Resolve reference: prefer $DOTFILES_REF, else latest release tag, else 'main'
+DOTFILES_REF="${DOTFILES_REF:-}"
+RESOLVED_REF=""
+if [ -n "$DOTFILES_REF" ]; then
+  RESOLVED_REF="$DOTFILES_REF"
+else
+  latest_status=$(curl -s -o /dev/null -w "%{http_code}" "https://api.github.com/repos/LinuxBeginnings/Hyprland-Dots/releases/latest")
+  if [ "$latest_status" = "200" ]; then
+    latest_json=$(curl -s "https://api.github.com/repos/LinuxBeginnings/Hyprland-Dots/releases/latest")
+    RESOLVED_REF=$(echo "$latest_json" | grep -m1 '"tag_name"' | cut -d '"' -f 4)
+  fi
+  [ -z "$RESOLVED_REF" ] && RESOLVED_REF="main"
+fi
+# Use filesystem-safe filename fragment for the tarball
+safe_ref=$(echo "$RESOLVED_REF" | tr '/:' '__')
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
 
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
-printf "${NOTE} Downloading / Checking for existing Hyprland-Dots-${specific_version}.tar.gz...\n"
+printf "${NOTE} Downloading / Checking for existing Hyprland-Dots-${safe_ref}.tar.gz...\n"
 
 # Check if the specific release tarball exists
-if [ -f "Hyprland-Dots-${specific_version}.tar.gz" ]; then
-    printf "${NOTE} Hyprland-Dots-${specific_version}.tar.gz found.\n"
-    echo -e "${OK} Hyprland-Dots-${specific_version}.tar.gz is already downloaded."
+if [ -f "Hyprland-Dots-${safe_ref}.tar.gz" ]; then
+    printf "${NOTE} Hyprland-Dots-${safe_ref}.tar.gz found.\n"
+    echo -e "${OK} Hyprland-Dots-${safe_ref}.tar.gz is already downloaded."
     exit 0
 fi
 
-printf "${NOTE} Downloading the Hyprland-Dots-${specific_version} source code release...\n"
+printf "${NOTE} Downloading Hyprland-Dots (${RESOLVED_REF}) source...\n"
 
-# Fetch the tag name for the specific release using the GitHub API
-release_info=$(curl -s "https://api.github.com/repos/JaKooLit/Hyprland-Dots/releases/tags/${specific_version}")
-if [ -z "$release_info" ]; then
-    echo -e "${ERROR} Unable to fetch information for release ${specific_version}." 2>&1 | tee -a "../Install-Logs/install-$(date +'%d-%H%M%S')_dotfiles.log"
-    exit 1
-fi
-
-# Get the tarball URL for the specific release
-tarball_url=$(echo "$release_info" | grep "tarball_url" | cut -d '"' -f 4)
-
-# Check if the URL is obtained successfully
-if [ -z "$tarball_url" ]; then
-    echo -e "${ERROR} Unable to fetch the tarball URL for release ${specific_version}." 2>&1 | tee -a "../Install-Logs/install-$(date +'%d-%H%M%S')_dotfiles.log"
+# Determine tarball URL for resolved ref (works for tags and branches)
+tarball_url="https://api.github.com/repos/LinuxBeginnings/Hyprland-Dots/tarball/${RESOLVED_REF}"
+# Quick reachability check
+tar_status=$(curl -s -o /dev/null -w "%{http_code}" -L "$tarball_url")
+if [ "$tar_status" != "200" ]; then
+    echo -e "${ERROR} Unable to download tarball for ref ${RESOLVED_REF} (HTTP $tar_status)." 2>&1 | tee -a "../Install-Logs/install-$(date +'%d-%H%M%S')_dotfiles.log"
     exit 1
 fi
 
 # Download the specific release source code tarball to the current directory
-if curl -L "$tarball_url" -o "Hyprland-Dots-${specific_version}.tar.gz"; then
+if curl -L "$tarball_url" -o "Hyprland-Dots-${safe_ref}.tar.gz"; then
     # Extract the contents of the tarball
-    tar -xzf "Hyprland-Dots-${specific_version}.tar.gz" || exit 1
+    tar -xzf "Hyprland-Dots-${safe_ref}.tar.gz" || exit 1
 
-    # Delete existing Hyprland-Dots
-    rm -rf JaKooLit-Hyprland-Dots
+# Delete existing Hyprland-Dots
+rm -rf LinuxBeginnings-Hyprland-Dots
 
-    # Identify the extracted directory
-    extracted_directory=$(tar -tf "Hyprland-Dots-${specific_version}.tar.gz" | grep -o '^[^/]\+' | uniq)
+# Identify the extracted directory
+extracted_directory=$(tar -tf "Hyprland-Dots-${safe_ref}.tar.gz" | grep -o '^[^/]\+' | uniq)
 
-    # Rename the extracted directory to JaKooLit-Hyprland-Dots
-    mv "$extracted_directory" JaKooLit-Hyprland-Dots || exit 1
+# Rename the extracted directory to LinuxBeginnings-Hyprland-Dots
+mv "$extracted_directory" LinuxBeginnings-Hyprland-Dots || exit 1
 
-    cd "JaKooLit-Hyprland-Dots" || exit 1
+cd "LinuxBeginnings-Hyprland-Dots" || exit 1
 
     # Set execute permission for copy.sh and execute it
     chmod +x copy.sh
     ./copy.sh
 
-    echo -e "${OK} Hyprland-Dots-${specific_version} release downloaded, extracted, and processed successfully. Check JaKooLit-Hyprland-Dots directory for more detailed install logs" 2>&1 | tee -a "../Install-Logs/install-$(date +'%d-%H%M%S')_dotfiles.log"
+echo -e "${OK} Hyprland-Dots (${RESOLVED_REF}) downloaded, extracted, and processed successfully. Check LinuxBeginnings-Hyprland-Dots directory for more detailed install logs" 2>&1 | tee -a "../Install-Logs/install-$(date +"%d-%H%M%S")_dotfiles.log"
 else
-    echo -e "${ERROR} Failed to download Hyprland-Dots-${specific_version} release." 2>&1 | tee -a "../Install-Logs/install-$(date +'%d-%H%M%S')_dotfiles.log"
+echo -e "${ERROR} Failed to download Hyprland-Dots (${RESOLVED_REF})." 2>&1 | tee -a "../Install-Logs/install-$(date +"%d-%H%M%S")_dotfiles.log"
     exit 1
 fi
 

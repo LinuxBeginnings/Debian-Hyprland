@@ -1,5 +1,5 @@
 #!/bin/bash
-# 💫 https://github.com/JaKooLit 💫 #
+# 💫 https://github.com/LinuxBeginnings 💫 #
 # Quickshell (QtQuick-based shell toolkit) - Debian builder
 
 set -Eeuo pipefail

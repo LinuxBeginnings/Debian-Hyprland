@@ -1,5 +1,5 @@
 #!/bin/bash
-# https://github.com/JaKooLit
+# https://github.com/LinuxBeginnings
 
 # Set some colors for output messages
 OK="$(tput setaf 2)[OK]$(tput sgr0)"
@@ -19,13 +19,12 @@ RESET="$(tput sgr0)"
 
 # Variables
 Distro="Debian-Hyprland"
-Github_URL="https://github.com/JaKooLit/$Distro.git"
+Github_URL="https://github.com/LinuxBeginnings/$Distro.git"
 Distro_DIR="$HOME/$Distro"
 
 printf "\n%.0s" {1..1}
 
-if ! command -v git &> /dev/null
-then
+if ! command -v git &>/dev/null; then
     echo "${INFO} Git not found! ${SKY_BLUE}Installing Git...${RESET}"
     if ! sudo apt install -y git; then
         echo "${ERROR} Failed to install Git. Exiting."
@@ -48,3 +47,4 @@ else
     chmod +x install.sh
     ./install.sh
 fi
+
