@@ -53,6 +53,7 @@ Flags clave:
 - --force-update: sobrescribe valores fijados en hypr-tags.env (equivalente a FORCE=1)
 - --dry-run / --install: solo compilar o compilar+instalar
 - --only / --skip: limitar qué módulos se ejecutan
+- --package-cleanup: purga el stack Hyprland de Debian antes de compilar
 - --build-trixie / --no-trixie: habilita/deshabilita el modo de compatibilidad Debian 13 (auto-detectado por defecto)
 
 #### dry-run-build.sh
@@ -78,10 +79,12 @@ Este repo incluye varios "flags de control" que afectan cómo se compila/instala
 - `--only <lista>` / `--skip <lista>`: ejecutar solo un subconjunto de módulos
 - `--fetch-latest`: consulta GitHub Releases y refresca etiquetas
 - `--force-update`: sobrescribe valores fijados en `hypr-tags.env` (equivalente a `FORCE=1`)
+- `--package-cleanup`: purga paquetes Hyprland de Debian antes de compilar
 - `--build-trixie` / `--no-trixie`: habilita/deshabilita modo de compatibilidad Debian 13
 
 Notas:
 - Cuando el modo trixie está habilitado, `update-hyprland.sh` exporta `HYPR_BUILD_TRIXIE=1` y reenvía `--build-trixie` a los scripts de módulos.
+- `--package-cleanup` elimina paquetes Hyprland de Debian para evitar versiones mezcladas (Hyprland, hyprutils/lang/graphics/cursor/wire, aquamarine, soporte Qt, guiutils, apps como hypridle/lock/picker/paper/sunset/launcher/systeminfo, hyprpm/hyprctl y xdg-desktop-portal-hyprland).
 
 ### Flags de install.sh
 
@@ -184,6 +187,12 @@ Ahora, este método automáticamente:
 ```bash
 # Instala solo Hyprland y componentes esenciales
 ./update-hyprland.sh --install
+```
+
+Si antes instalaste Hyprland desde los repos de Debian, usa limpieza de paquetes primero:
+
+```bash
+./update-hyprland.sh --package-cleanup --install
 ```
 
 ### Método 3: Instalación Nueva con Últimas Versiones

@@ -19,14 +19,45 @@ PACKAGES=(
 # List of packages installed from Debian-Hyprland repo
 uninstall=(
   hyprland
-  xdg-desktop-portal-hyprland
-  libhhyprland-dev
+  hyprland-plugins
+  hyprland-session
+  hyprland-protocols
+  hyprland-guiutils
+  hyprland-qt-support
+  hyprland-qtutils
+  hyprutils
   libhyprutils-dev
   libhyprutils0
+  hyprlang
+  libhyprlang-dev
+  libhyprlang0
+  hyprgraphics
+  libhyprgraphics-dev
+  libhyprgraphics0
+  hyprcursor
+  libhyprcursor-dev
+  libhyprcursor0
   hyprwayland-scanner
-  hyprland-protocols
+  hyprtoolkit
+  hyprwire
+  hyprwire-protocols
+  libhyprwire-dev
+  libhyprwire0
+  aquamarine
+  libaquamarine-dev
+  libaquamarine0
+  hypridle
+  hyprlock
+  hyprpicker
+  hyprpaper
+  hyprsunset
+  hyprlauncher
+  hyprsysteminfo
+  hyprpolkitagent
   hyprctl
   hyprpm
+  xdg-desktop-portal-hyprland
+  libhhyprland-dev
   Hyprland
 )
 
