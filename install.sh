@@ -323,18 +323,33 @@ printf "\n%.0s" {1..1}
 clean_existing_hyprland() {
     echo "${INFO} Checking for existing Hyprland installations..." | tee -a "$LOG"
 
-    # List of Hyprland-related packages and binaries to check
-    local hyprland_packages=("hyprland" "hyprutils" "hyprgraphics" "hyprcursor" "hyprtoolkit" "hyprland-guiutils" "hyprwire" "aquamarine" "hypridle" "hyprlock" "hyprpolkitagent" "hyprpicker" "xdg-desktop-portal-hyprland" "hyprland-plugins")
+    # List of Hyprland-related packages to remove if installed via Debian repos
+    local hyprland_packages=(
+        hyprland hyprland-plugins hyprland-session
+        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils
+        hyprutils libhyprutils0 libhyprutils-dev
+        hyprlang libhyprlang0 libhyprlang-dev
+        hyprgraphics libhyprgraphics0 libhyprgraphics-dev
+        hyprcursor libhyprcursor0 libhyprcursor-dev
+        hyprwayland-scanner
+        hyprtoolkit
+        hyprwire hyprwire-protocols libhyprwire0 libhyprwire-dev
+        aquamarine libaquamarine0 libaquamarine-dev
+        hypridle hyprlock hyprpicker hyprpaper hyprsunset hyprlauncher hyprsysteminfo
+        hyprpolkitagent hyprpm hyprctl
+        xdg-desktop-portal-hyprland
+    )
     local hyprland_binaries=("/usr/local/bin/Hyprland" "/usr/local/bin/hyprland" "/usr/bin/Hyprland" "/usr/bin/hyprland")
 
     # Remove installed .deb packages
     echo "${INFO} Removing any previously installed .deb packages..." | tee -a "$LOG"
     for pkg in "${hyprland_packages[@]}"; do
-        if dpkg -l | grep -q "^ii.*$pkg"; then
-            echo "${NOTE} Removing package: $pkg" | tee -a "$LOG"
-            sudo apt-get remove -y "$pkg" 2>&1 | grep -E "(Setting up|Removing)" | tee -a "$LOG" || true
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+            echo "${NOTE} Purging package: $pkg" | tee -a "$LOG"
+            sudo apt-get purge -y "$pkg" 2>&1 | grep -E "(Setting up|Removing|Purging)" | tee -a "$LOG" || true
         fi
     done
+    sudo apt-get autoremove -y >/dev/null 2>&1 || true
 
     # Remove binaries built from source
     echo "${INFO} Checking for binaries built from source..." | tee -a "$LOG"
@@ -658,6 +673,8 @@ echo "${INFO} Running a ${SKY_BLUE}full system update...${RESET}" | tee -a "$LOG
 sudo apt update
 
 sleep 1
+# Remove any Debian-provided Hyprland stack packages before source builds
+clean_existing_hyprland
 # execute pre clean up
 execute_script "02-pre-cleanup.sh"
 

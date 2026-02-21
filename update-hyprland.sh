@@ -18,6 +18,7 @@
 #   ./update-hyprland.sh --with-deps --dry-run
 #   ./update-hyprland.sh --fetch-latest --via-helper   # use dry-run-build.sh for a summary-only run
 #   ./update-hyprland.sh --force-update --install      # override pinned versions (equivalent to FORCE=1)
+#   ./update-hyprland.sh --package-cleanup --install   # purge Debian Hyprland packages before building
 #   ./update-hyprland.sh --help                        # show this help
 #
 # Notes:
@@ -32,6 +33,37 @@ LOG_DIR="$REPO_ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
+# Remove Debian-provided Hyprland stack packages before source builds (install only)
+remove_deb_hypr_packages() {
+    local pkgs=(
+        hyprland hyprland-plugins hyprland-session
+        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils
+        hyprutils libhyprutils0 libhyprutils-dev
+        hyprlang libhyprlang0 libhyprlang-dev
+        hyprgraphics libhyprgraphics0 libhyprgraphics-dev
+        hyprcursor libhyprcursor0 libhyprcursor-dev
+        hyprwayland-scanner
+        hyprtoolkit
+        hyprwire hyprwire-protocols libhyprwire0 libhyprwire-dev
+        aquamarine libaquamarine0 libaquamarine-dev
+        hypridle hyprlock hyprpicker hyprpaper hyprsunset hyprlauncher hyprsysteminfo
+        hyprpolkitagent hyprpm hyprctl
+        xdg-desktop-portal-hyprland
+    )
+    local found=()
+    for p in "${pkgs[@]}"; do
+        if dpkg -s "$p" >/dev/null 2>&1; then
+            found+=("$p")
+        fi
+    done
+    if [[ ${#found[@]} -eq 0 ]]; then
+        echo "[INFO] No Debian Hyprland packages detected." | tee -a "$SUMMARY_LOG"
+        return 0
+    fi
+    echo "[INFO] Purging Debian Hyprland packages: ${found[*]}" | tee -a "$SUMMARY_LOG"
+    sudo apt-get purge -y "${found[@]}" | tee -a "$SUMMARY_LOG" || true
+    sudo apt-get autoremove -y >/dev/null 2>&1 || true
+}
 
 # Default module order (core first, then Hyprland)
 DEFAULT_MODULES=(
@@ -72,6 +104,7 @@ USE_SYSTEM_LIBS=1
 AUTO_FALLBACK=0
 MINIMAL=0
 FORCE_UPDATE=0
+PACKAGE_CLEANUP=0
 ONLY_LIST=""
 SKIP_LIST=""
 SET_ARGS=()
@@ -101,6 +134,7 @@ Options:
       --system          Prefer system-installed hypr* libraries (default)
       --via-helper      Use dry-run-build.sh to summarize a dry-run
       --minimal         Build minimal stack before hyprland
+      --package-cleanup Purge Debian Hyprland packages before building
       --no-fetch        Do not auto-fetch tags on install
       --build-trixie    Force Debian 13 (trixie) compatibility mode (enables needed shims)
       --no-trixie       Disable trixie compatibility mode
@@ -641,6 +675,10 @@ while [[ $# -gt 0 ]]; do
         VIA_HELPER=1
         shift
         ;;
+    --package-cleanup)
+        PACKAGE_CLEANUP=1
+        shift
+        ;;
     --no-fetch)
         NO_FETCH=1
         shift
@@ -716,9 +754,18 @@ if [[ $FETCH_LATEST -eq 1 ]]; then
 fi
 
 # Run the stack
+# If only cleanup was requested, perform it and exit (no build).
+if [[ $PACKAGE_CLEANUP -eq 1 && $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 ]]; then
+    remove_deb_hypr_packages
+    exit 0
+fi
 if [[ $DO_DRY_RUN -eq 0 && $DO_INSTALL -eq 0 ]]; then
     echo "[INFO] No build option specified. Defaulting to --dry-run." | tee -a "$SUMMARY_LOG"
     DO_DRY_RUN=1
+fi
+# Before install builds, optionally remove Debian-provided Hyprland stack to avoid mixed versions
+if [[ $DO_INSTALL -eq 1 && $PACKAGE_CLEANUP -eq 1 ]]; then
+    remove_deb_hypr_packages
 fi
 
 # If using helper, delegate to dry-run-build.sh for summary-only output
