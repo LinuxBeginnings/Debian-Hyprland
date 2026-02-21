@@ -21,6 +21,7 @@ hypr_package=(
     kitty
     nano
     pavucontrol
+    pulseaudio-utils
     playerctl
     polkit-kde-agent-1
     python3-requests
