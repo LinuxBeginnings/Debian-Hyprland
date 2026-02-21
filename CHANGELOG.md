@@ -1,5 +1,16 @@
 ## CHANGELOG
 
+## 21 February 2026
+
+- Enhanced Hyprland debian package cleanup in `install.sh`
+  - Some Hyprland packages weren't getting removed 
+- Added `--pacakge-cleanup` option to `update-hyprland.sh`
+  - Source building is the supported method because:
+    - deb packages could be removed from testing/unstable at anytime w/o notice
+    - The packages might not updated for some time
+    - Not currently available for debian 13 stable branch
+- Updated documentation
+
 ## 13 February 2026
 
 - Updated Discord Link
