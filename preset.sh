@@ -1,3 +1,9 @@
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # 💫 https://github.com/LinuxBeginnings 💫 #
 
 # Define the options you want to preselect (either ON or OFF)

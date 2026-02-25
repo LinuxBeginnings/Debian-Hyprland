@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # update-hyprland.sh
 # Manage and build just the Hyprland stack (Hyprland + companion apps/libs)
 # - Maintains a central tag file (hypr-tags.env) with versions

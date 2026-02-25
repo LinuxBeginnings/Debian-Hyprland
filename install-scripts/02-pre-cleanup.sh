@@ -1,5 +1,10 @@
 #!/bin/bash
-
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # This script is cleaning up previous manual installation files / directories
 
 # 22 Aug 2024
