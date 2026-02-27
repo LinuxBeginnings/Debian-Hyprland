@@ -346,8 +346,7 @@ declare -A repos=(
     echo "[INFO] Refreshed tags written to $TAGS_FILE" | tee -a "$SUMMARY_LOG"
 }
 
-# Build runner using module scripts. Uses env vars from TAGS_FILE.
-run_stack() {
+export_tags() {
     # shellcheck disable=SC1090
     source "$TAGS_FILE"
     # Export all tag keys found in the tags file so child scripts inherit them
@@ -358,6 +357,11 @@ run_stack() {
             export "$_k"
         fi
     done < "$TAGS_FILE"
+}
+
+# Build runner using module scripts. Uses env vars from TAGS_FILE.
+run_stack() {
+    export_tags
 
     # Ensure toolchain paths prefer /usr/local for pkg-config and cmake finds
     export PATH="/usr/local/bin:${PATH}"
@@ -444,6 +448,8 @@ run_stack() {
             if [[ $need_fetch -eq 1 ]]; then
                 echo "[INFO] Auto-fetching latest tags for Hyprland stack" | tee -a "$SUMMARY_LOG"
                 fetch_latest_tags
+                # Re-source tags after fetch so installs use updated versions
+                export_tags
             fi
         fi
         local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_hlprot=0
