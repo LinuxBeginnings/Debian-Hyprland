@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # Dry-run orchestrator for Hyprland and companion modules
 # - Compiles components but skips installation (uses DRY_RUN=1)
 # - Summarizes PASS/FAIL per module to Install-Logs/

@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # Refresh hypr-tags.env with latest release tags from upstream
 # Safe to run multiple times; creates timestamped backups
 

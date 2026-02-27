@@ -1,4 +1,10 @@
 #!/bin/bash
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # 💫 https://github.com/LinuxBeginnings 💫 #
 # Build and install wayland-protocols from source
 # Provides a newer wayland-protocols.pc for pkg-config when distro version is too old

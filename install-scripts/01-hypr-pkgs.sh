@@ -1,4 +1,10 @@
 #!/bin/bash
+# ==================================================
+#  KoolDots (2026)
+#  Project URL: https://github.com/LinuxBeginnings
+#  License: GNU GPLv3
+#  SPDX-License-Identifier: GPL-3.0-or-later
+# ==================================================
 # 💫 https://github.com/LinuxBeginnings 💫 #
 # Hyprland-Dots Packages #
 # edit your packages desired here.
@@ -21,6 +27,7 @@ hypr_package=(
     kitty
     nano
     pavucontrol
+    pulseaudio-utils
     playerctl
     polkit-kde-agent-1
     python3-requests
