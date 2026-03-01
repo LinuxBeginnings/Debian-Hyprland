@@ -177,9 +177,11 @@ preflight_checks() {
         echo "${ERROR} Missing /usr/include/GL/gl.h (OpenGL headers). Install: mesa-common-dev libgl1-mesa-dev libglvnd-dev libopengl-dev libglx-dev" | tee -a "$LOG"
         exit 1
     fi
-    if [[ ! -f /usr/lib/x86_64-linux-gnu/cmake/OpenGL/OpenGLConfig.cmake ]]; then
-        echo "${ERROR} Missing OpenGL CMake config. Install: libopengl-dev libglvnd-dev" | tee -a "$LOG"
-        exit 1
+    if ! dpkg -L libopengl-dev 2>/dev/null | grep -q 'OpenGLConfig\.cmake'; then
+        if ! cmake --find-package -DNAME=OpenGL -DCOMPILER_ID=GNU -DLANGUAGE=C -DMODE=EXIST >/dev/null 2>&1; then
+            echo "${ERROR} OpenGL CMake package not found by CMake. Install: libopengl-dev libglvnd-dev" | tee -a "$LOG"
+            exit 1
+        fi
     fi
     if ! ldconfig -p 2>/dev/null | grep -q 'libGL\.so'; then
         echo "${ERROR} libGL.so not found in ldconfig cache. Reinstall: libgl1-mesa-dev libglvnd-dev" | tee -a "$LOG"
