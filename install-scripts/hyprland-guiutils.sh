@@ -10,16 +10,9 @@
 # hypland-guiutils #
 
 guiutils=(
-	libqt6core5compat6
-    qt6-base-dev
-	qt6-wayland-dev
-    qt6-wayland
-	qt6-declarative-dev
-	qml6-module-qtcore
-	qt6-3d-dev
-	qt6-5compat-dev
-    libqt6waylandclient6
-    qml6-module-qtwayland-client-texturesharing
+    pixman-1
+    libdrm-dev
+    libxkbcommon-dev
 )
 
 #specific branch or release
@@ -85,6 +78,9 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprland-guiutils.git
     export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
     export LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath-link,/usr/local/lib ${LDFLAGS:-}"
     export CPPFLAGS="-I/usr/local/include ${CPPFLAGS:-}"
+
+    # Workaround for missing Requires in hyprtoolkit.pc
+    export LDFLAGS="-lhyprutils -laquamarine -lhyprlang -lhyprgraphics ${LDFLAGS:-}"
 
     BUILD_DIR="$BUILD_ROOT/hyprland-guiutils"
     mkdir -p "$BUILD_DIR"

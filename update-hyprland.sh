@@ -71,11 +71,42 @@ remove_deb_hypr_packages() {
     sudo apt-get autoremove -y >/dev/null 2>&1 || true
 }
 
+# Remove orphaned (non-package) Hyprland stack files from /usr to avoid shadowing /usr/local
+remove_orphaned_hypr_files() {
+    echo "[INFO] Checking for orphaned Hyprland stack files in /usr..." | tee -a "$SUMMARY_LOG"
+    local patterns=(
+        "/usr/lib/x86_64-linux-gnu/libhypr*.so*"
+        "/usr/lib/x86_64-linux-gnu/libaquamarine.so*"
+        "/usr/lib/x86_64-linux-gnu/pkgconfig/hypr*.pc"
+        "/usr/lib/x86_64-linux-gnu/pkgconfig/aquamarine.pc"
+        "/usr/include/hypr*"
+        "/usr/include/aquamarine"
+    )
+    local to_remove=()
+    for p in "${patterns[@]}"; do
+        # Use compgen or find to expand globs safely
+        for f in $p; do
+            [[ -e "$f" ]] || continue
+            # Check if owned by a package
+            if ! dpkg -S "$f" >/dev/null 2>&1; then
+                to_remove+=("$f")
+            fi
+        done
+    done
+    if [[ ${#to_remove[@]} -gt 0 ]]; then
+        echo "[INFO] Removing orphaned files: ${to_remove[*]}" | tee -a "$SUMMARY_LOG"
+        sudo rm -rf "${to_remove[@]}"
+    else
+        echo "[INFO] No orphaned Hyprland stack files detected in /usr." | tee -a "$SUMMARY_LOG"
+    fi
+}
+
 # Default module order (core first, then Hyprland)
 DEFAULT_MODULES=(
     xkbcommon
     hyprutils
     hyprlang
+    hyprcursor
     hyprtoolkit
     wayland-protocols-src
     aquamarine
@@ -102,6 +133,7 @@ DEFAULT_MODULES=(
 WITH_DEPS=0
 DO_INSTALL=0
 DO_DRY_RUN=0
+DO_CLEAN=0
 FETCH_LATEST=0
 RESTORE=0
 VIA_HELPER=0
@@ -141,6 +173,7 @@ Options:
       --via-helper      Use dry-run-build.sh to summarize a dry-run
       --minimal         Build minimal stack before hyprland
       --package-cleanup Purge Debian Hyprland packages before building
+      --clean           Remove build/ directory before starting
       --no-fetch        Do not auto-fetch tags on install
       --build-trixie    Force Debian 13 (trixie) compatibility mode (enables needed shims)
       --no-trixie       Disable trixie compatibility mode
@@ -158,6 +191,7 @@ HYPRLAND_TAG=v0.53.3
 AQUAMARINE_TAG=v0.10.0
 HYPRUTILS_TAG=v0.11.0
 HYPRLANG_TAG=v0.6.8
+HYPRCURSOR_TAG=v0.1.13
 HYPRGRAPHICS_TAG=v0.5.0
 HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
@@ -201,6 +235,7 @@ set_tags_from_args() {
         AQUAMARINE | aquamarine) key=AQUAMARINE_TAG ;;
         HYPRUTILS | hyprutils) key=HYPRUTILS_TAG ;;
         HYPRLANG | hyprlang) key=HYPRLANG_TAG ;;
+        HYPRCURSOR | hyprcursor) key=HYPRCURSOR_TAG ;;
         HYPRGRAPHICS | hyprgraphics) key=HYPRGRAPHICS_TAG ;;
         HYPRWAYLAND_SCANNER | hyprwayland-scanner | hyprwayland_scanner) key=HYPRWAYLAND_SCANNER_TAG ;;
         HYPRLAND_PROTOCOLS | hyprland-protocols | hyprland_protocols) key=HYPRLAND_PROTOCOLS_TAG ;;
@@ -253,6 +288,7 @@ declare -A repos=(
         [AQUAMARINE_TAG]="hyprwm/aquamarine"
         [HYPRUTILS_TAG]="hyprwm/hyprutils"
         [HYPRLANG_TAG]="hyprwm/hyprlang"
+        [HYPRCURSOR_TAG]="hyprwm/hyprcursor"
         [HYPRGRAPHICS_TAG]="hyprwm/hyprgraphics"
         [HYPRWAYLAND_SCANNER_TAG]="hyprwm/hyprwayland-scanner"
         [HYPRLAND_PROTOCOLS_TAG]="hyprwm/hyprland-protocols"
@@ -367,6 +403,11 @@ run_stack() {
     export PATH="/usr/local/bin:${PATH}"
     export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
     export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
+    export CMAKE_LIBRARY_PATH="/usr/local/lib:${CMAKE_LIBRARY_PATH:-}"
+    export CMAKE_INCLUDE_PATH="/usr/local/include:${CMAKE_INCLUDE_PATH:-}"
+    export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+    export LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath-link,/usr/local/lib ${LDFLAGS:-}"
+    export CPPFLAGS="-I/usr/local/include ${CPPFLAGS:-}"
 
     # Auto-detect Debian trixie unless explicitly overridden.
     if [[ "$TRIXIE_MODE" == "auto" ]] && [[ -f /etc/os-release ]]; then
@@ -409,6 +450,7 @@ run_stack() {
                 hyprland-protocols
                 hyprutils
                 hyprlang
+                hyprcursor
                 aquamarine
                 hyprgraphics
                 hyprwayland-scanner
@@ -467,6 +509,9 @@ run_stack() {
                 if ! pkg-config --exists hyprwire 2>/dev/null; then
                     modules=("hyprwire" "${modules[@]}")
                 fi
+                if ! pkg-config --exists hyprcursor 2>/dev/null; then
+                    modules=("hyprcursor" "${modules[@]}")
+                fi
                 req_utils_ver="0.11.0"
                 have_utils_ver=$(pkg-config --modversion hyprutils 2>/dev/null || echo "")
                 if [[ -z "$have_utils_ver" ]] || [[ "$(printf '%s\n' "$req_utils_ver" "$have_utils_ver" | sort -V | head -n1)" != "$req_utils_ver" ]]; then
@@ -482,11 +527,21 @@ run_stack() {
             [[ $has_utils -eq 0 ]] && modules=("hyprutils" "${modules[@]}")
             [[ $has_lang -eq 0 ]] && modules=("hyprlang" "${modules[@]}")
             [[ $has_aqua -eq 0 ]] && modules=("aquamarine" "${modules[@]}")
+            [[ $has_hl -eq 1 ]] && {
+              # only ensure hyprcursor if not explicitly skipped
+              local skipping_cursor=0
+              for s in "${_skips[@]:-}"; do [[ "$s" == "hyprcursor" ]] && skipping_cursor=1; done
+              if [[ $skipping_cursor -eq 0 ]]; then
+                  local found_cursor=0
+                  for m in "${modules[@]}"; do [[ "$m" == "hyprcursor" ]] && found_cursor=1; done
+                  [[ $found_cursor -eq 0 ]] && modules=("hyprcursor" "${modules[@]}")
+              fi
+            }
 
             # Reorder to exact sequence before hyprland
             # Remove existing occurrences and rebuild in correct order
             local tmp=()
-            local inserted_wp=0 inserted_hlprot=0 inserted_utils=0 inserted_lang=0 inserted_aqua=0
+            local inserted_wp=0 inserted_hlprot=0 inserted_utils=0 inserted_lang=0 inserted_cursor=0 inserted_aqua=0
             for m in "${modules[@]}"; do
                 if [[ "$m" == "wayland-protocols-src" ]]; then
                     if [[ $inserted_wp -eq 0 ]]; then
@@ -535,6 +590,28 @@ run_stack() {
                         tmp+=("hyprlang")
                         inserted_lang=1
                     fi
+                elif [[ "$m" == "hyprcursor" ]]; then
+                    if [[ $inserted_cursor -eq 0 ]]; then
+                        # ensure lang before cursor
+                        if [[ $inserted_lang -eq 0 ]]; then
+                            if [[ $inserted_utils -eq 0 ]]; then
+                                if [[ $inserted_wp -eq 0 ]]; then
+                                    tmp+=("wayland-protocols-src")
+                                    inserted_wp=1
+                                fi
+                                if [[ $inserted_hlprot -eq 0 ]]; then
+                                    tmp+=("hyprland-protocols")
+                                    inserted_hlprot=1
+                                fi
+                                tmp+=("hyprutils")
+                                inserted_utils=1
+                            fi
+                            tmp+=("hyprlang")
+                            inserted_lang=1
+                        fi
+                        tmp+=("hyprcursor")
+                        inserted_cursor=1
+                    fi
                 elif [[ "$m" == "aquamarine" ]]; then
                     if [[ $inserted_aqua -eq 0 ]]; then
                         # ensure lang before aquamarine
@@ -574,6 +651,10 @@ run_stack() {
                     if [[ $inserted_lang -eq 0 ]]; then
                         tmp+=("hyprlang")
                         inserted_lang=1
+                    fi
+                    if [[ $inserted_cursor -eq 0 ]]; then
+                        tmp+=("hyprcursor")
+                        inserted_cursor=1
                     fi
                     if [[ $inserted_aqua -eq 0 ]]; then
                         tmp+=("aquamarine")
@@ -691,6 +772,10 @@ while [[ $# -gt 0 ]]; do
         PACKAGE_CLEANUP=1
         shift
         ;;
+    --clean)
+        DO_CLEAN=1
+        shift
+        ;;
     --no-fetch)
         NO_FETCH=1
         shift
@@ -769,6 +854,7 @@ fi
 # If only cleanup was requested, perform it and exit (no build).
 if [[ $PACKAGE_CLEANUP -eq 1 && $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 ]]; then
     remove_deb_hypr_packages
+    remove_orphaned_hypr_files
     exit 0
 fi
 if [[ $DO_DRY_RUN -eq 0 && $DO_INSTALL -eq 0 ]]; then
@@ -776,8 +862,14 @@ if [[ $DO_DRY_RUN -eq 0 && $DO_INSTALL -eq 0 ]]; then
     DO_DRY_RUN=1
 fi
 # Before install builds, optionally remove Debian-provided Hyprland stack to avoid mixed versions
-if [[ $DO_INSTALL -eq 1 && $PACKAGE_CLEANUP -eq 1 ]]; then
+if [[ $PACKAGE_CLEANUP -eq 1 && $DO_INSTALL -eq 1 ]]; then
     remove_deb_hypr_packages
+    remove_orphaned_hypr_files
+fi
+
+if [[ $DO_CLEAN -eq 1 ]]; then
+    echo "[INFO] Cleaning build directory: $REPO_ROOT/build" | tee -a "$SUMMARY_LOG"
+    rm -rf "$REPO_ROOT/build"
 fi
 
 # If using helper, delegate to dry-run-build.sh for summary-only output
