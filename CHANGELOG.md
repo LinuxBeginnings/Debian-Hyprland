@@ -1,5 +1,8 @@
 ## CHANGELOG
 
+## 03 March 2026
+ - Updated build tags to Hyprland v0.54.1 
+
 ## 28 February 2026
 
 - Added colored status results when buildng Hyprland
