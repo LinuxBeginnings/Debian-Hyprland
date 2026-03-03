@@ -165,9 +165,54 @@ fi
 
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_dependencies.log"
+# Preflight checks for common build issues
+preflight_checks() {
+    # Warn on invalid custom suites (e.g., tyson)
+    if grep -RqsE '^[[:space:]]*deb .*tyson' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+        echo "${WARN} Detected 'tyson' APT entries. These 404 and can break updates. Please remove/comment them." | tee -a "$LOG"
+    fi
+
+    # OpenGL headers/libs sanity (hard fail: required for builds)
+    if [[ ! -f /usr/include/GL/gl.h ]]; then
+        echo "${ERROR} Missing /usr/include/GL/gl.h (OpenGL headers). Install: mesa-common-dev libgl1-mesa-dev libglvnd-dev libopengl-dev libglx-dev" | tee -a "$LOG"
+        exit 1
+    fi
+    if ! dpkg -L libopengl-dev 2>/dev/null | grep -q 'OpenGLConfig\.cmake'; then
+        if ! cmake --find-package -DNAME=OpenGL -DCOMPILER_ID=GNU -DLANGUAGE=C -DMODE=EXIST >/dev/null 2>&1; then
+            echo "${ERROR} OpenGL CMake package not found by CMake. Install: libopengl-dev libglvnd-dev" | tee -a "$LOG"
+            exit 1
+        fi
+    fi
+    if ! ldconfig -p 2>/dev/null | grep -q 'libGL\.so'; then
+        echo "${ERROR} libGL.so not found in ldconfig cache. Reinstall: libgl1-mesa-dev libglvnd-dev" | tee -a "$LOG"
+        exit 1
+    fi
+
+    # Qt6 QML modules commonly required by hyprsysteminfo
+    local qml_pkgs=(
+        qml6-module-qtquick
+        qml6-module-qtquick-controls
+        qml6-module-qtquick-templates
+        qml6-module-qtquick-layouts
+        qml6-module-qtquick-window
+        qml6-module-qtquick-shapes
+        qml6-module-qt-labs-qmlmodels
+    )
+    local missing=()
+    for p in "${qml_pkgs[@]}"; do
+        if ! dpkg -s "$p" >/dev/null 2>&1; then
+            missing+=("$p")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "${WARN} Missing Qt6 QML modules: ${missing[*]}" | tee -a "$LOG"
+        echo "${NOTE} Install with: sudo apt install -y ${missing[*]}" | tee -a "$LOG"
+    fi
+}
 
 # Installation of main dependencies
 printf "\n%s - Installing ${SKY_BLUE}main dependencies....${RESET} \n" "${NOTE}"
+preflight_checks
 
 for PKG1 in "${dependencies[@]}" "${hyprland_dep[@]}"; do
     install_package "$PKG1" "$LOG"

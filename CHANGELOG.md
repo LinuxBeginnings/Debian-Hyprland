@@ -1,5 +1,17 @@
 ## CHANGELOG
 
+## 03 March 2026
+ - Updated build tags to Hyprland v0.54.1 
+
+## 28 February 2026
+
+- Added colored status results when buildng Hyprland
+- Added additional checks in `00-depdendencies.sh`
+    - Recent custom debian distro had mixed testing/forky repos
+    - Caused issues building Hyprland b/c of QT/OpenGL libs and missing headers
+    - If checks find issues preventing build completion, the script will exit
+    - It will display an error and suggested course of action
+
 ## 27 February 2026
 
 - Fixed `update-hyprland` script to properly build Hyprland v0.54

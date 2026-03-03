@@ -32,6 +32,9 @@
 # - Works from repo root; do not cd into install-scripts/
 
 set -euo pipefail
+GREEN=$'\e[32m'
+RED=$'\e[31m'
+RESET=$'\e[0m'
 
 REPO_ROOT=$(pwd)
 TAGS_FILE="$REPO_ROOT/hypr-tags.env"
@@ -626,6 +629,10 @@ run_stack() {
         sudo ldconfig || true
     fi
 
+    local failed=0
+    for mod in "${modules[@]}"; do
+        [[ "${results[$mod]:-}" == FAIL ]] && failed=1
+    done
     {
         printf "\nSummary:\n"
         for mod in "${modules[@]}"; do
@@ -637,18 +644,19 @@ run_stack() {
             grep -E '^[A-Z0-9_]+=' "$TAGS_FILE" | sort
         fi
         # Include change list if present
+        printf "\nChanges applied this run:\n"
         if [[ -f "$LOG_DIR/update-delta-$TS.log" ]]; then
-            printf "\nChanges applied this run:\n"
             cat "$LOG_DIR/update-delta-$TS.log"
+        else
+            printf "(none)\n"
+        fi
+        if [[ $failed -eq 0 ]]; then
+            printf "Build Run: %sSUCCESS%s\n" "$GREEN" "$RESET"
+        else
+            printf "Build Run: %sFAIL%s\n" "$RED" "$RESET"
         fi
         printf "\nLogs under: %s. This run: %s\n" "$LOG_DIR" "$SUMMARY_LOG"
     } | tee -a "$SUMMARY_LOG"
-
-    # Non-zero on any FAILs
-    local failed=0
-    for mod in "${modules[@]}"; do
-        [[ "${results[$mod]:-}" == FAIL ]] && failed=1
-    done
     return $failed
 }
 
