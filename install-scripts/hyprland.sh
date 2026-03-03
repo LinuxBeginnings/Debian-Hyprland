@@ -192,7 +192,10 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
 fi
 
 # Prefer clang if available; otherwise fall back to GCC
-if command -v clang >/dev/null 2>&1 && command -v clang++ >/dev/null 2>&1; then
+if command -v clang-21 >/dev/null 2>&1 && command -v clang++-21 >/dev/null 2>&1; then
+    export CC="${CC:-clang-21}"
+    export CXX="${CXX:-clang++-21}"
+elif command -v clang >/dev/null 2>&1 && command -v clang++ >/dev/null 2>&1; then
     export CC="${CC:-clang}"
     export CXX="${CXX:-clang++}"
 elif command -v gcc >/dev/null 2>&1 && command -v g++ >/dev/null 2>&1; then

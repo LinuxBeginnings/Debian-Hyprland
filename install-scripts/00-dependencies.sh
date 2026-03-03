@@ -218,6 +218,28 @@ for PKG1 in "${dependencies[@]}" "${hyprland_dep[@]}"; do
     install_package "$PKG1" "$LOG"
 done
 
+# Ensure Clang 21+ is available (required for Hyprland v0.54+ C++26 features)
+CHECK_CLANG=$(clang --version 2>/dev/null | grep -oP 'version \K[0-9]+' | head -1 || echo "0")
+if [ -z "$CHECK_CLANG" ] || [ "$CHECK_CLANG" -lt 21 ]; then
+    echo "${NOTE} Clang version ($CHECK_CLANG) is less than 21. Installing Clang 21 from LLVM repo..." | tee -a "$LOG"
+    sudo apt-get install -y wget software-properties-common gnupg 2>&1 | tee -a "$LOG"
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - 2>&1 | tee -a "$LOG"
+    # Use trixie/sid as appropriate for this repo's target
+    CODENAME=$(lsb_release -sc 2>/dev/null || echo "trixie")
+    if ! grep -q "apt.llvm.org" /etc/apt/sources.list.d/llvm.list 2>/dev/null; then
+        echo "deb http://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-21 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+    fi
+    sudo apt-get update -y 2>&1 | tee -a "$LOG"
+    sudo apt-get install -y clang-21 clang++-21 llvm-21 2>&1 | tee -a "$LOG"
+    
+    # Verify installation
+    if command -v clang-21 >/dev/null 2>&1; then
+        echo "${OK} Clang 21 installed successfully." | tee -a "$LOG"
+    else
+        echo "${WARN} Clang 21 installation might have failed. Build issues may occur." | tee -a "$LOG"
+    fi
+fi
+
 printf "\n%.0s" {1..1}
 
 for PKG1 in "${build_dep[@]}"; do

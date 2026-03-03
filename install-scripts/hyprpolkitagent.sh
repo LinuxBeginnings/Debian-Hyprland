@@ -62,7 +62,7 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprpolkitagent.git "
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprpolkitagent"
     mkdir -p "$BUILD_DIR"
-	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B "$BUILD_DIR"
+	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" --config Release --target all -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
     if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG" ; then
         printf "${OK} hyprpolkitagent installed successfully.\n" 2>&1 | tee -a "$MLOG"
