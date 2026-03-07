@@ -56,6 +56,18 @@ fi
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_rofi_wayland.log"
 MLOG="install-$(date +%d-%H%M%S)_rofi_wayland2.log"
+# Skip reinstall if rofi >= 2.0.0 is already present
+get_rofi_version() {
+  if command -v rofi >/dev/null 2>&1; then
+    rofi -version 2>/dev/null | awk 'NR==1 {print $2}'
+  fi
+}
+
+rofi_installed_ver="$(get_rofi_version || true)"
+if [ -n "$rofi_installed_ver" ] && dpkg --compare-versions "$rofi_installed_ver" ge "2.0.0"; then
+  echo "${INFO} Detected rofi ${YELLOW}$rofi_installed_ver${RESET} (>= 2.0.0). Skipping reinstall." | tee -a "$LOG"
+  exit 0
+fi
 
 # Installation of main components
 printf "\n%s - Ensuring ${SKY_BLUE}rofi build dependencies${RESET}.... \n" "${INFO}"

@@ -98,11 +98,30 @@ fi
 
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hypr-pkgs.log"
+# Detect installed rofi version (from PATH, including /usr/local builds)
+get_rofi_version() {
+    if command -v rofi >/dev/null 2>&1; then
+        rofi -version 2>/dev/null | awk 'NR==1 {print $2}'
+    fi
+}
+
+rofi_installed_ver="$(get_rofi_version || true)"
+rofi_ok=0
+if [ -n "$rofi_installed_ver" ]; then
+    if dpkg --compare-versions "$rofi_installed_ver" ge "2.0.0"; then
+        rofi_ok=1
+        echo "${INFO} Detected rofi ${YELLOW}$rofi_installed_ver${RESET} (>= 2.0.0). Skipping rofi uninstall." | tee -a "$LOG"
+    fi
+fi
 
 # conflicting packages removal
 overall_failed=0
 printf "\n%s - ${SKY_BLUE}Removing some packages${RESET} as it conflicts with KooL's Hyprland Dots \n" "${NOTE}"
 for PKG in "${uninstall[@]}"; do
+    if [ "$rofi_ok" -eq 1 ] && { [ "$PKG" = "rofi" ] || [ "$PKG" = "rofi-wayland" ]; }; then
+        echo "${INFO} Skipping uninstall of ${YELLOW}$PKG${RESET} (rofi >= 2.0.0 detected)." | tee -a "$LOG"
+        continue
+    fi
     uninstall_package "$PKG" 2>&1 | tee -a "$LOG"
     if [ $? -ne 0 ]; then
         overall_failed=1
