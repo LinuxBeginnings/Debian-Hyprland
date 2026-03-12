@@ -186,11 +186,13 @@ preflight_checks() {
     local ldconfig_bin=""
     if command -v ldconfig >/dev/null 2>&1; then
         ldconfig_bin="$(command -v ldconfig)"
+    elif [ -x /usr/sbin/ldconfig ]; then
+        ldconfig_bin="/usr/sbin/ldconfig"
     elif [ -x /sbin/ldconfig ]; then
         ldconfig_bin="/sbin/ldconfig"
     fi
     if [ -z "$ldconfig_bin" ]; then
-        echo "${WARN} ldconfig not found in PATH or /sbin. Skipping libGL.so cache check." | tee -a "$LOG"
+        echo "${WARN} ldconfig not found in PATH or /usr/sbin. Skipping libGL.so cache check." | tee -a "$LOG"
     else
         if ! "$ldconfig_bin" -p 2>/dev/null | grep -q 'libGL\.so'; then
             echo "${ERROR} libGL.so not found in ldconfig cache. Reinstall: libgl1-mesa-dev libglvnd-dev" | tee -a "$LOG"

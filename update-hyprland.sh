@@ -79,6 +79,7 @@ DEFAULT_MODULES=(
     xkbcommon
     hyprutils
     hyprlang
+    hyprcursor
     hyprtoolkit
     wayland-protocols-src
     aquamarine
@@ -455,7 +456,7 @@ run_stack() {
                 export_tags
             fi
         fi
-        local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_hlprot=0
+        local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_cursor=0 has_hlprot=0
         for m in "${modules[@]}"; do
             [[ "$m" == "hyprland" ]] && has_hl=1
             [[ "$m" == "aquamarine" ]] && has_aqua=1
@@ -463,6 +464,7 @@ run_stack() {
             [[ "$m" == "hyprland-protocols" ]] && has_hlprot=1
             [[ "$m" == "hyprutils" ]] && has_utils=1
             [[ "$m" == "hyprlang" ]] && has_lang=1
+            [[ "$m" == "hyprcursor" ]] && has_cursor=1
         done
         if [[ $has_hl -eq 1 ]]; then
             # When using system libs, ensure required libs will be built if missing/outdated
@@ -478,18 +480,24 @@ run_stack() {
                 if ! pkg-config --exists hyprlang 2>/dev/null; then
                     modules=("hyprlang" "${modules[@]}")
                 fi
+                req_cursor_ver="0.1.7"
+                have_cursor_ver=$(pkg-config --modversion hyprcursor 2>/dev/null || echo "")
+                if [[ -z "$have_cursor_ver" ]] || [[ "$(printf '%s\n' "$req_cursor_ver" "$have_cursor_ver" | sort -V | head -n1)" != "$req_cursor_ver" ]]; then
+                    modules=("hyprcursor" "${modules[@]}")
+                fi
             fi
             # ensure each prerequisite is present
             [[ $has_wp -eq 0 ]] && modules=("wayland-protocols-src" "${modules[@]}")
             [[ $has_hlprot -eq 0 ]] && modules=("hyprland-protocols" "${modules[@]}")
             [[ $has_utils -eq 0 ]] && modules=("hyprutils" "${modules[@]}")
             [[ $has_lang -eq 0 ]] && modules=("hyprlang" "${modules[@]}")
+            [[ $has_cursor -eq 0 ]] && modules=("hyprcursor" "${modules[@]}")
             [[ $has_aqua -eq 0 ]] && modules=("aquamarine" "${modules[@]}")
 
             # Reorder to exact sequence before hyprland
             # Remove existing occurrences and rebuild in correct order
             local tmp=()
-            local inserted_wp=0 inserted_hlprot=0 inserted_utils=0 inserted_lang=0 inserted_aqua=0
+            local inserted_wp=0 inserted_hlprot=0 inserted_utils=0 inserted_lang=0 inserted_cursor=0 inserted_aqua=0
             for m in "${modules[@]}"; do
                 if [[ "$m" == "wayland-protocols-src" ]]; then
                     if [[ $inserted_wp -eq 0 ]]; then
@@ -538,9 +546,9 @@ run_stack() {
                         tmp+=("hyprlang")
                         inserted_lang=1
                     fi
-                elif [[ "$m" == "aquamarine" ]]; then
-                    if [[ $inserted_aqua -eq 0 ]]; then
-                        # ensure lang before aquamarine
+                elif [[ "$m" == "hyprcursor" ]]; then
+                    if [[ $inserted_cursor -eq 0 ]]; then
+                        # ensure lang before cursor
                         if [[ $inserted_lang -eq 0 ]]; then
                             if [[ $inserted_utils -eq 0 ]]; then
                                 if [[ $inserted_wp -eq 0 ]]; then
@@ -556,6 +564,32 @@ run_stack() {
                             fi
                             tmp+=("hyprlang")
                             inserted_lang=1
+                        fi
+                        tmp+=("hyprcursor")
+                        inserted_cursor=1
+                    fi
+                elif [[ "$m" == "aquamarine" ]]; then
+                    if [[ $inserted_aqua -eq 0 ]]; then
+                        # ensure lang/cursor before aquamarine
+                        if [[ $inserted_lang -eq 0 ]]; then
+                            if [[ $inserted_utils -eq 0 ]]; then
+                                if [[ $inserted_wp -eq 0 ]]; then
+                                    tmp+=("wayland-protocols-src")
+                                    inserted_wp=1
+                                fi
+                                if [[ $inserted_hlprot -eq 0 ]]; then
+                                    tmp+=("hyprland-protocols")
+                                    inserted_hlprot=1
+                                fi
+                                tmp+=("hyprutils")
+                                inserted_utils=1
+                            fi
+                            tmp+=("hyprlang")
+                            inserted_lang=1
+                        fi
+                        if [[ $inserted_cursor -eq 0 ]]; then
+                            tmp+=("hyprcursor")
+                            inserted_cursor=1
                         fi
                         tmp+=("aquamarine")
                         inserted_aqua=1
@@ -577,6 +611,10 @@ run_stack() {
                     if [[ $inserted_lang -eq 0 ]]; then
                         tmp+=("hyprlang")
                         inserted_lang=1
+                    fi
+                    if [[ $inserted_cursor -eq 0 ]]; then
+                        tmp+=("hyprcursor")
+                        inserted_cursor=1
                     fi
                     if [[ $inserted_aqua -eq 0 ]]; then
                         tmp+=("aquamarine")

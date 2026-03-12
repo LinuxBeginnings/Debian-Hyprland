@@ -33,6 +33,7 @@ SUMMARY_LOG="$LOG_DIR/build-dry-run-$TS.log"
 DEFAULT_MODULES=(
   hyprutils
   hyprlang
+  hyprcursor
   wayland-protocols-src
   aquamarine
   hyprgraphics
