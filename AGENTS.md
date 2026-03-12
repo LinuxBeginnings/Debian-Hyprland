@@ -12,7 +12,7 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 - `install-scripts/` contains one script per dependency (e.g., `00-dependencies.sh`, `hyprwire.sh`, `hyprland.sh`, `nvidia.sh`). Every script sources `install-scripts/Global_functions.sh`, which defines logging, apt helpers, `BUILD_ROOT`/`SRC_ROOT`, and spinner output. Scripts respect `DRY_RUN=1`, inherit tags such as `HYPRLAND_TAG`, and write detailed logs to `Install-Logs/`.
 - `hypr-tags.env` centralizes the Hyprland stack versions. Setting a value to `auto`/`latest` allows tag refreshers to overwrite it; pinned versions stay untouched. These values are exported before every module run.
 - `refresh-hypr-tags.sh` and `update-hyprland.sh` manage tag drift and rebuilds without rerunning the full installer. They back up `hypr-tags.env`, fetch GitHub release tags (using `curl`/`jq`), and propagate them to installers.
-- `dry-run-build.sh` reuses the same module scripts with `DRY_RUN=1` to compile-only and summarize PASS/FAIL per module—useful for CI or before merging risky changes.
+- `dry-run-build.sh` reuses the same module scripts with `DRY_RUN=1` to compile-only and summarize PASS/FAIL per module—useful for CI or before merging risky changes. The default dry-run stack includes `hyprcursor` before Hyprland.
 - Root scripts at the top level (`auto-install.sh`, `update-hyprland.sh`, `dry-run-build.sh`, `uninstall.sh`, `preset.sh`) should always be invoked from repo root; per README the module scripts will fail if you `cd install-scripts`.
 - `assets/` bundles patches (`0001-fix-hyprland-compile-issue.patch`, `0002-start-hyprland-no-nixgl.patch`), packaged deps (e.g., `libglaze`), and config seeds (zsh themes, GTK/Thunar profiles) consumed by optional installers.
 
@@ -59,5 +59,5 @@ cat hypr-tags.env                        # inspect current pins
 ## Contribution workflow reminders
 - Follow `CONTRIBUTING.md`: branch from `development`, keep PRs focused, and update docs when behavior changes.
 - Include dry-run or install logs (`Install-Logs/...`) when fixing installer issues; reviewers expect evidence of successful builds.
-- If you touch module ordering or add a new component, update `install.sh` (sequence + option), `update-hyprland.sh` (`DEFAULT_MODULES`), and `dry-run-build.sh` (`DEFAULT_MODULES`) to prevent drift.
+- If you touch module ordering or add a new component, update `install.sh` (sequence + option), `update-hyprland.sh` (`DEFAULT_MODULES` + Hyprland prerequisite ordering), and `dry-run-build.sh` (`DEFAULT_MODULES`) to prevent drift.
 - When documenting new options, cross-link the relevant HOWTO/README sections so end users see the guidance surfaces described above.

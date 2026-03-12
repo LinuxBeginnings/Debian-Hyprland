@@ -128,10 +128,33 @@ EOF
             echo "${NOTE} Hyprland start-hyprland nixGL patch does not apply on $tag; skipping."
         fi
     fi
-
     # Remove Nix helper sources only if they are no longer referenced
     if [ "$NIXGL_PATCH_APPLIED" = "1" ] || ! grep -Rqs "Nix.hpp" start/src; then
         rm -f start/src/helpers/Nix.cpp start/src/helpers/Nix.hpp || true
+    else
+        # Fallback: provide a stub Nix helper to avoid glaze JSON dependency on Debian
+        cat > start/src/helpers/Nix.hpp <<'EOF'
+#pragma once
+
+#include <expected>
+#include <string>
+
+namespace Nix {
+    std::expected<void, std::string> nixEnvironmentOk();
+    bool                             shouldUseNixGL();
+};
+EOF
+        cat > start/src/helpers/Nix.cpp <<'EOF'
+#include "Nix.hpp"
+
+std::expected<void, std::string> Nix::nixEnvironmentOk() {
+    return {};
+}
+
+bool Nix::shouldUseNixGL() {
+    return false;
+}
+EOF
     fi
 
     # By default, build Hyprland with bundled hyprutils/hyprlang to avoid version mismatches
