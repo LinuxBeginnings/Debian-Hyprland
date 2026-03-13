@@ -15,6 +15,9 @@
 **Current Version:** `2026.03.13`  
 **Change History**
 - `2026.03.13` — Initial release: SDDM external display issue, post-update external display loss.
+- `2026.03.13` — Added trimmed command outputs and “missing output” hints for triage.
+- `2026.03.13` — Added SDDM journal and Xorg log example outputs.
+- `2026.03.13` — Added xrandr, nvidia-smi, and journal example outputs.
 
 ---
 
@@ -47,16 +50,6 @@ All SDDM issues/fixes go in this section.
 # See what connectors the kernel exposes
 ls -l /sys/class/drm | grep -E "card|DP|HDMI|eDP"
 
-### Example output (trimmed)
-```text
-lrwxrwxrwx    - root 13 Mar 15:32 card0 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0
-lrwxrwxrwx    - root 13 Mar 15:32 card0-DP-1 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0/card0-DP-1
-lrwxrwxrwx    - root 13 Mar 15:32 card0-DP-2 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0/card0-DP-2
-lrwxrwxrwx    - root 13 Mar 15:32 card0-HDMI-A-1 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0/card0-HDMI-A-1
-lrwxrwxrwx    - root 13 Mar 15:32 card1 -> ../../devices/pci0000:00/0000:00:02.0/drm/card1
-lrwxrwxrwx    - root 13 Mar 15:32 card1-eDP-1 -> ../../devices/pci0000:00/0000:00:02.0/drm/card1/card1-eDP-1
-```
-
 # Check current SDDM display server configuration
 cat /etc/sddm.conf 2>/dev/null
 cat /etc/sddm.conf.d/*.conf 2>/dev/null
@@ -70,9 +63,59 @@ sudo journalctl -u sddm -b --no-pager | tail -n 200
 sudo cat /var/log/Xorg.0.log | tail -n +1
 ```
 
+### Example output (trimmed)
+```text
+lrwxrwxrwx    - root 13 Mar 15:32 card0 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0
+lrwxrwxrwx    - root 13 Mar 15:32 card0-DP-1 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0/card0-DP-1
+lrwxrwxrwx    - root 13 Mar 15:32 card0-DP-2 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0/card0-DP-2
+lrwxrwxrwx    - root 13 Mar 15:32 card0-HDMI-A-1 -> ../../devices/pci0000:00/0000:00:01.0/0000:01:00.0/drm/card0/card0-HDMI-A-1
+lrwxrwxrwx    - root 13 Mar 15:32 card1 -> ../../devices/pci0000:00/0000:00:02.0/drm/card1
+lrwxrwxrwx    - root 13 Mar 15:32 card1-eDP-1 -> ../../devices/pci0000:00/0000:00:02.0/drm/card1/card1-eDP-1
+```
+
+### Example output (SDDM config, trimmed)
+```text
+[Theme]
+Current=simple_sddm_2
+
+[General]
+DisplayServer=x11
+InputMethod=qtvirtualkeyboard
+
+[X11]
+DisplayCommand=/etc/sddm/Xsetup
+```
+
+### Example output (SDDM journal, trimmed)
+```text
+Mar 13 04:17:32 prometheus sddm[1190]: Display server starting...
+Mar 13 04:17:32 prometheus sddm[1190]: Running: /usr/bin/X -nolisten tcp -background none -seat seat0 vt2 -auth /run/sddm/xauth_jjRloI -noreset -displayfd 18
+Mar 13 04:17:35 prometheus sddm[1190]: Running display setup script  "/etc/sddm/Xsetup"
+Mar 13 04:17:35 prometheus sddm[1190]: Display server started.
+Mar 13 04:17:36 prometheus sddm-helper[9850]: Starting X11 session: "" "/usr/bin/sddm-greeter-qt6 --socket /tmp/sddm-:0-IlognW --theme /usr/share/sddm/themes/simple_sddm_2"
+Mar 13 04:17:48 prometheus sddm[1190]: Authentication for user  "dwilliams"  successful
+Mar 13 04:17:48 prometheus sddm-helper[9966]: Starting Wayland user session: "/etc/sddm/wayland-session" "/usr/local/bin/start-hyprland"
+```
+
+### Example output (Xorg, trimmed)
+```text
+(--) NVIDIA(GPU-0): DELL S2721HS (DFP-4): connected
+(--) NVIDIA(GPU-0): DELL S2721HS (DFP-4): Internal TMDS
+(--) NVIDIA(GPU-0): DELL S2721HS (DFP-4): 600.0 MHz maximum pixel clock
+```
+
+### Example output (xrandr --query, trimmed)
+```text
+Screen 0: minimum 16 x 16, current 1920 x 1080, maximum 32767 x 32767
+HDMI-A-1 connected 1920x1080+0+0 (normal left inverted right x axis y axis) 600mm x 340mm
+   1920x1080     74.91*+
+   1280x720      74.78
+```
+
 ### 📌 What you’re looking for
 - **Xorg log shows external output connected** (e.g., NVIDIA `DFP-4`, `DP-1`, `HDMI-1-0`, etc.).
 - **Xsetup** is actually run and can see output names via `xrandr`.
+- **If `/sys/class/drm` only lists `eDP-1`, the external connector is not being detected.**
 
 ### ✅ Fix: make SDDM enable the first connected external output (dynamic)
 > The greeter uses Xorg and `xrandr`.  
@@ -168,6 +211,34 @@ ii  nvidia-open                                       595.45.04-1               
 ii  nvidia-opencl-icd:amd64                           595.45.04-1                               amd64        NVIDIA OpenCL installable client driver (ICD)
 ```
 **If NVIDIA packages are missing here, the driver is not installed or was removed.**
+
+### Example output (modules + DKMS)
+```text
+nvidia_uvm           2154496  0
+i915                 5079040  54
+nvidia_drm            151552  18
+nvidia_modeset       2170880  8 nvidia_drm
+nvidia              16347136  111 nvidia_uvm,nvidia_modeset
+filename:       /lib/modules/6.19.6+deb14-amd64/updates/dkms/nvidia.ko.xz
+version:        595.45.04
+nvidia/595.45.04, 6.18.15+deb14-amd64, x86_64: installed
+nvidia/595.45.04, 6.19.6+deb14-amd64, x86_64: installed
+```
+
+**If `lsmod` shows no `nvidia*` entries, the driver is not loaded.**
+
+### Example output (nvidia-smi, trimmed)
+```text
+NVIDIA-SMI 595.45.04              Driver Version: 595.45.04      CUDA Version: 13.2
+|   0  NVIDIA GeForce GTX 1660 Ti     On  |   00000000:01:00.0  On |
+| N/A   47C    P8              9W /   80W |      66MiB /   6144MiB |
+```
+
+### Example output (DKMS + modules-load journals, trimmed)
+```text
+-- No entries --
+```
+**If `journalctl -u dkms` is empty, there was no DKMS activity this boot (or DKMS isn’t installed).**
 
 ### ✅ Fix (Debian + KoolDots)
 Use the provided installer (recommended):
