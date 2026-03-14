@@ -1,6 +1,6 @@
 <div align="center">
 
-# 💌 KooL's Debian-Hyprland Install Script 💌
+# 💌 KoolDots --  Debian-Hyprland Install Script 💌
 
 #### For Debian 13 (Trixie) and above (testing, SID)
 
@@ -33,7 +33,7 @@
 </p>
 
 <div align="center">
-👇 KOOL's Hyprland-Dots related Links 👇
+👇 KoolDots  Hyprland-Dots related Links 👇
 <br/>
 </div>
 <div align="center">
@@ -51,9 +51,9 @@
 </p>
 
 <h3 align="center">
- <img src="https://github.com/JaKooLit/Telegram-Animated-Emojis/blob/main/Activity/Sparkles.webp" alt="Sparkles" width="38" height="38" />
+ <img src="https://github.com/LinuxBeginnings/Telegram-Animated-Emojis/blob/main/Activity/Sparkles.webp" alt="Sparkles" width="38" height="38" />
  KooL Hyprland-Dotfiles Showcase
- <img src="https://github.com/JaKooLit/Telegram-Animated-Emojis/blob/main/Activity/Sparkles.webp" alt="Sparkles" width="38" height="38" />
+ <img src="https://github.com/LinuxBeginnings/Telegram-Animated-Emojis/blob/main/Activity/Sparkles.webp" alt="Sparkles" width="38" height="38" />
 </h3>
 
 <div align="center">
@@ -78,7 +78,7 @@
 
 #### ⚠️ Pre-requisites and VERY Important
 
-> Note: At this time `Kali` Linux is not supported.
+> Note: At this time `Kali` Linux is NOT supported.
 > A number of users have reported issues installing and using the Dotfiles
 
 - Do not run this installer with `sudo` or as `root`
@@ -88,18 +88,33 @@
 
 ```bash
 sudo nano /etc/apt/sources.list
+sudo apt update
 ```
 
 - Delete `#` on the lines with `deb-src`
 - Make sure to install `non-free` repository especially for users with NVIDIA GPUs. You can also install non-free drivers if required.
     - Edit `install-scripts/nvidia.sh` and change the NVIDIA settings if required
 
-> Note: For users with newer NVIDIA GPUs, especially, RTX5000 series, we strongly suggest you manually install the current `open` drivers for NVIDIA
-> Not install them from Jak's Debian install script
+
+#### 🔔 NOTICE TO NVIDIA OWNERS
+
+- KoolDots nvidia install script has been updated 
+- It will offer you choice of drivers:
+  - Debian repo, for older NVIDIA GPUs
+  - CUDA closed drivers 
+  - CUDA Open drivers
+    - Current generation GPUs must choose the open drivers 
+    - Overall the Open drivers are the better choice for supported GPUs 
+- NVIDIA users / owners, after installation, check [`Notes For NVIDIA Users`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Notes_to_remember#--for-nvidia-gpu-users)
 
 ### 🪧🪧🪧 ANNOUNCEMENT 🪧🪧🪧
 
 [Debian-Hyprland Changelogs](https://github.com/LinuxBeginnings/Debian-Hyprland/blob/main/CHANGELOGS.md)
+
+- 14 February 2026 Update!
+  - Install and update scripts now build Hyprland v0.54.2 
+  - The installs script has been streamlined and checks for presence and version of pkgs 
+  - Preventing the reinstallation and re-compilation of many packages 
 
 - 10 January 2026 Update!
 - Debian now builds Hyprland v0.53.2!
@@ -142,24 +157,6 @@ sudo apt install --no-install-recommends -y sddm
 
 - If you opted to install SDDM theme, here's the [LINK](https://github.com/LinuxBeginnings/simple-sddm-2) which is a modified fork of [LINK](https://github.com/Keyitdev/sddm-astronaut-theme)
 - If you opted to install GTK Themes, Icons, here's the [LINK](https://github.com/LinuxBeginnings/GTK-themes-icons). This also includes Bibata Modern Ice cursor.
-
-#### 🔔 NOTICE TO NVIDIA OWNERS
-
-- By default it is installing the latest and newest **proprietary** NVIDIA drivers. If you have an older NVIDIA GPU (GTX 800 series and older), check out nvidia-debian website [LINK](https://wiki.debian.org/NvidiaGraphicsDrivers) and edit nvidia.sh in install-scripts directory to install proper gpu driver
-- If you have NVIDIA, and wanted to use proprietary drivers, uninstall nouveau first (if installed).
-- This script will install proprietary NVIDIA and will not deal with removal of nouveau.
-
-## > NOTE: If you have new NVIDIA GPUs, RTX5000+ then do **NOT** install these drivers!! Newer GPUs require the open drivers
-
-> Install those first, before installing Hyprland
-
-- NVIDIA users / owners, after installation, check [`THIS`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Notes_to_remember#--for-nvidia-gpu-users)
-
-> [!IMPORTANT]
-> If you wish to use the nouveau driver (installed by default in Debian), be sure to not select "NVIDIA" in the installation options.
-> See note above about new NVIDIA GPUs.
-
-> If you select this option, the NVIDIA installer part will attempt to blacklist nouveau; while Hyprland will still be installed, it will skip blacklisting nouveau if you don't select the NVIDIA option.
 
 ## ✨ Auto clone and install
 
