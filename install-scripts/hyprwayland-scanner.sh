@@ -74,7 +74,7 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprwayland-scanner.g
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprwayland-scanner"
     mkdir -p "$BUILD_DIR"
-	cmake -DCMAKE_INSTALL_PREFIX=/usr -B "$BUILD_DIR"
+	cmake -DCMAKE_INSTALL_PREFIX=/usr/local -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" -j `nproc`
     if [ $DO_INSTALL -eq 1 ]; then
         if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG" ; then

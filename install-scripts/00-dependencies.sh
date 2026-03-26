@@ -237,6 +237,27 @@ for PKG1 in "${build_dep[@]}"; do
     build_dep "$PKG1" "$LOG"
 done
 
+# Ensure Clang 21+ is available (required for Hyprland v0.54+ C++26 features)
+CHECK_CLANG=$(clang --version 2>/dev/null | grep -oP 'version \K[0-9]+' | head -1 || echo "0")
+if [ -z "$CHECK_CLANG" ] || [ "$CHECK_CLANG" -lt 21 ]; then
+    echo "${NOTE} Clang version ($CHECK_CLANG) is less than 21. Installing Clang 21 from LLVM repo..." | tee -a "$LOG"
+    sudo apt-get install -y wget ca-certificates software-properties-common gnupg 2>&1 | tee -a "$LOG"
+    CODENAME=$(lsb_release -sc 2>/dev/null || echo "trixie")
+    # Use a proper keyring (not deprecated apt-key) with HTTPS
+    sudo mkdir -p /usr/share/keyrings
+    wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | sudo tee /usr/share/keyrings/llvm-archive-keyring.asc > /dev/null
+    if ! grep -q "apt.llvm.org" /etc/apt/sources.list.d/llvm.list 2>/dev/null; then
+        echo "deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.asc] https://apt.llvm.org/$CODENAME/ llvm-toolchain-$CODENAME-21 main" | sudo tee /etc/apt/sources.list.d/llvm.list
+    fi
+    sudo apt-get update -y 2>&1 | tee -a "$LOG"
+    sudo apt-get install -y clang-21 clang++-21 llvm-21 2>&1 | tee -a "$LOG"
+    if command -v clang-21 >/dev/null 2>&1; then
+        echo "${OK} Clang 21 installed successfully." | tee -a "$LOG"
+    else
+        echo "${WARN} Clang 21 installation might have failed. Build issues may occur." | tee -a "$LOG"
+    fi
+fi
+
 # Install Glaze (header-only) from bundled asset if not already present
 # Hyprland's config serialization currently expects glaze >= 4.4; Debian may lag.
 # If /usr/include/glaze is missing, install our vendor .deb and fix up deps.

@@ -131,30 +131,6 @@ EOF
     # Remove Nix helper sources only if they are no longer referenced
     if [ "$NIXGL_PATCH_APPLIED" = "1" ] || ! grep -Rqs "Nix.hpp" start/src; then
         rm -f start/src/helpers/Nix.cpp start/src/helpers/Nix.hpp || true
-    else
-        # Fallback: provide a stub Nix helper to avoid glaze JSON dependency on Debian
-        cat > start/src/helpers/Nix.hpp <<'EOF'
-#pragma once
-
-#include <expected>
-#include <string>
-
-namespace Nix {
-    std::expected<void, std::string> nixEnvironmentOk();
-    bool                             shouldUseNixGL();
-};
-EOF
-        cat > start/src/helpers/Nix.cpp <<'EOF'
-#include "Nix.hpp"
-
-std::expected<void, std::string> Nix::nixEnvironmentOk() {
-    return {};
-}
-
-bool Nix::shouldUseNixGL() {
-    return false;
-}
-EOF
     fi
 
     # By default, build Hyprland with bundled hyprutils/hyprlang to avoid version mismatches
@@ -214,8 +190,11 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
     exit 1
 fi
 
-# Prefer clang if available; otherwise fall back to GCC
-if command -v clang >/dev/null 2>&1 && command -v clang++ >/dev/null 2>&1; then
+# Prefer clang-21 if available (required for C++26 on Hyprland v0.54+), then fall back
+if command -v clang-21 >/dev/null 2>&1 && command -v clang++-21 >/dev/null 2>&1; then
+    export CC="${CC:-clang-21}"
+    export CXX="${CXX:-clang++-21}"
+elif command -v clang >/dev/null 2>&1 && command -v clang++ >/dev/null 2>&1; then
     export CC="${CC:-clang}"
     export CXX="${CXX:-clang++}"
 elif command -v gcc >/dev/null 2>&1 && command -v g++ >/dev/null 2>&1; then

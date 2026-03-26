@@ -10,16 +10,11 @@
 # hypland-guiutils #
 
 guiutils=(
-	libqt6core5compat6
-    qt6-base-dev
-	qt6-wayland-dev
-    qt6-wayland
-	qt6-declarative-dev
-	qml6-module-qtcore
-	qt6-3d-dev
-	qt6-5compat-dev
-    libqt6waylandclient6
-    qml6-module-qtwayland-client-texturesharing
+    # hyprland-guiutils >= v0.2.0 uses Qt6-free rendering via pixman/drm/xkbcommon.
+    # The old Qt6 dependency list is no longer needed for this tag.
+    pixman-1
+    libdrm-dev
+    libxkbcommon-dev
 )
 
 #specific branch or release
@@ -83,7 +78,8 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprland-guiutils.git
     export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
     export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
     export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
-    export LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath-link,/usr/local/lib ${LDFLAGS:-}"
+    # -l flags must follow -L flags for correct linker ordering
+    export LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath-link,/usr/local/lib -lhyprutils -laquamarine -lhyprlang -lhyprgraphics ${LDFLAGS:-}"
     export CPPFLAGS="-I/usr/local/include ${CPPFLAGS:-}"
 
     BUILD_DIR="$BUILD_ROOT/hyprland-guiutils"

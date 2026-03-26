@@ -74,6 +74,44 @@ remove_deb_hypr_packages() {
     sudo apt-get autoremove -y >/dev/null 2>&1 || true
 }
 
+# Remove orphaned (non-package) Hyprland stack files from /usr to avoid shadowing /usr/local.
+# Gated behind --package-cleanup. Always previews what would be removed before acting.
+remove_orphaned_hypr_files() {
+    echo "[INFO] Checking for orphaned Hyprland stack files in /usr..." | tee -a "$SUMMARY_LOG"
+    local patterns=(
+        "/usr/lib/x86_64-linux-gnu/libhypr*.so*"
+        "/usr/lib/x86_64-linux-gnu/libaquamarine.so*"
+        "/usr/lib/x86_64-linux-gnu/pkgconfig/hypr*.pc"
+        "/usr/lib/x86_64-linux-gnu/pkgconfig/aquamarine.pc"
+        "/usr/include/hypr*"
+        "/usr/include/aquamarine"
+    )
+    local to_remove=()
+    for p in "${patterns[@]}"; do
+        for f in $p; do
+            [[ -e "$f" ]] || continue
+            if ! dpkg -S "$f" >/dev/null 2>&1; then
+                to_remove+=("$f")
+            fi
+        done
+    done
+    if [[ ${#to_remove[@]} -eq 0 ]]; then
+        echo "[INFO] No orphaned Hyprland stack files detected in /usr." | tee -a "$SUMMARY_LOG"
+        return
+    fi
+    echo "[INFO] The following orphaned files would be removed:" | tee -a "$SUMMARY_LOG"
+    for f in "${to_remove[@]}"; do
+        echo "  $f" | tee -a "$SUMMARY_LOG"
+    done
+    read -r -p "[PROMPT] Remove these ${#to_remove[@]} file(s)? [y/N] " confirm
+    if [[ "${confirm,,}" == "y" ]]; then
+        echo "[INFO] Removing orphaned files..." | tee -a "$SUMMARY_LOG"
+        sudo rm -rf "${to_remove[@]}"
+    else
+        echo "[INFO] Skipping orphaned file removal." | tee -a "$SUMMARY_LOG"
+    fi
+}
+
 # Default module order (core first, then Hyprland)
 DEFAULT_MODULES=(
     xkbcommon
@@ -106,6 +144,7 @@ DEFAULT_MODULES=(
 WITH_DEPS=0
 DO_INSTALL=0
 DO_DRY_RUN=0
+DO_CLEAN=0
 FETCH_LATEST=0
 RESTORE=0
 VIA_HELPER=0
@@ -144,7 +183,8 @@ Options:
       --system          Prefer system-installed hypr* libraries (default)
       --via-helper      Use dry-run-build.sh to summarize a dry-run
       --minimal         Build minimal stack before hyprland
-      --package-cleanup Purge Debian Hyprland packages before building
+      --package-cleanup Purge Debian Hyprland packages before building (also removes orphaned files with confirmation)
+      --clean           Remove build/ directory before starting
       --no-fetch        Do not auto-fetch tags on install
       --build-trixie    Force Debian 13 (trixie) compatibility mode (enables needed shims)
       --no-trixie       Disable trixie compatibility mode
@@ -737,6 +777,10 @@ while [[ $# -gt 0 ]]; do
         PACKAGE_CLEANUP=1
         shift
         ;;
+    --clean)
+        DO_CLEAN=1
+        shift
+        ;;
     --no-fetch)
         NO_FETCH=1
         shift
@@ -824,6 +868,14 @@ fi
 # Before install builds, optionally remove Debian-provided Hyprland stack to avoid mixed versions
 if [[ $DO_INSTALL -eq 1 && $PACKAGE_CLEANUP -eq 1 ]]; then
     remove_deb_hypr_packages
+    remove_orphaned_hypr_files
+fi
+
+# Wipe stale build caches if --clean was requested
+if [[ $DO_CLEAN -eq 1 ]]; then
+    echo "[INFO] --clean: removing build/ directory..." | tee -a "$SUMMARY_LOG"
+    rm -rf "$BUILD_ROOT"
+    echo "[INFO] build/ removed." | tee -a "$SUMMARY_LOG"
 fi
 
 # If using helper, delegate to dry-run-build.sh for summary-only output
