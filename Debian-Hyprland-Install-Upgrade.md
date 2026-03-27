@@ -517,6 +517,24 @@ git ls-remote --tags https://github.com/hyprwm/Hyprland
 # Use confirmed existing tag
 ./update-hyprland.sh --set HYPRLAND=v0.50.1 --install
 ```
+#### GUI Apps via pkexec Fail (Wayland)
+
+**Symptoms**: Password prompt appears but app fails to launch; errors like “Authorization required, but no authorization protocol specified” or “cannot open display”.
+
+**Solutions**:
+
+```bash
+pkexec env -u DISPLAY -u XAUTHORITY \
+  WAYLAND_DISPLAY="$WAYLAND_DISPLAY" \
+  XDG_RUNTIME_DIR="$XDG_RUNTIME_DIR" \
+  DBUS_SESSION_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS" \
+  GDK_BACKEND=wayland \
+  QT_QPA_PLATFORM=wayland \
+  <app>
+```
+
+**Notes**:
+- Ensure a Polkit agent is installed and running (this installer includes `xfce-polkit`).
 
 ### Debug Steps
 

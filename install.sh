@@ -917,6 +917,9 @@ if [ -e /usr/local/bin/hyprland ] || [ -f /usr/local/bin/Hyprland ]; then
 
     printf "${SKY_BLUE}Thank you${RESET} 🫰 for using 🇵🇭 ${MAGENTA}KooL's Hyprland Dots${RESET}. ${YELLOW}Enjoy and Have a good day!${RESET}"
     printf "\n%.0s" {1..2}
+    printf "\\n${NOTE} If GUI apps launched with pkexec fail under Wayland, use:\\n"
+    printf "  pkexec env -u DISPLAY -u XAUTHORITY WAYLAND_DISPLAY=\\\"\\$WAYLAND_DISPLAY\\\" XDG_RUNTIME_DIR=\\\"\\$XDG_RUNTIME_DIR\\\" DBUS_SESSION_BUS_ADDRESS=\\\"\\$DBUS_SESSION_BUS_ADDRESS\\\" GDK_BACKEND=wayland QT_QPA_PLATFORM=wayland <app>\\n"
+    printf "\\n%.0s" {1..1}
 
     printf "\n${NOTE} You can start Hyprland by typing ${SKY_BLUE}Hyprland${RESET} (IF SDDM is not installed) (note the capital H!).\n"
     printf "\n${NOTE} However, it is ${YELLOW}highly recommended to reboot${RESET} your system.\n\n"
