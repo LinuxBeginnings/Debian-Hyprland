@@ -1,20 +1,30 @@
 ## CHANGELOG
 
+## 27 March 2026
+
+- Fixed issues with policy kit
+    - Which prevented permission esclation
+    - Added `mate polkit` as backup
+    - Added missing `kvantum` packages breaking `kde polkit`
+- Updated Hyprland tags
+    - Hyprland v0.54.3
+
 ## 12 March 2026
 
--  Added ``ldconfig path detection`` in ``00-dependencies.sh`` to avoid false libGL cache failures when /usr/sbin isn’t in PATH  
--  Updated ``update-hyprland.sh`` to include ``hyprcursor`` in default module order and Hyprland prerequisite checks (ensures it builds before Hyprland)  
--  Added ``hyprcurso``r to the default dry-run stack in ``dry-run-build.sh``  
--  Modified  ``hyprshutdown`` to fetch its bundled Glaze version to avoid system Glaze API mismatches
+- Added `ldconfig path detection` in `00-dependencies.sh` to avoid false libGL cache failures when /usr/sbin isn’t in PATH
+- Updated `update-hyprland.sh` to include `hyprcursor` in default module order and Hyprland prerequisite checks (ensures it builds before Hyprland)
+- Added `hyprcurso`r to the default dry-run stack in `dry-run-build.sh`
+- Modified `hyprshutdown` to fetch its bundled Glaze version to avoid system Glaze API mismatches
 
 ## 06 March 2026
- - Updated build tags to Hyprland v0.54.2
- - Added presence and version check for rofi 
-   - To prevent removal and re-install when rofi was built from source 
 
+- Updated build tags to Hyprland v0.54.2
+- Added presence and version check for rofi
+    - To prevent removal and re-install when rofi was built from source
 
 ## 03 March 2026
- - Updated build tags to Hyprland v0.54.1 
+
+- Updated build tags to Hyprland v0.54.1
 
 ## 28 February 2026
 
