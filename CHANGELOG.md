@@ -5,6 +5,8 @@
 - Fixed issues with policy kit
     - Which prevented permission esclation
     - Added `mate polkit` as backup
+    - Added `gnome-polkit` as primary 
+      - Found corner cases where it otherwise failed 
     - Added missing `kvantum` packages breaking `kde polkit`
 - Updated Hyprland tags
     - Hyprland v0.54.3
