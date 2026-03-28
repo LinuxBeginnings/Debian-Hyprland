@@ -94,6 +94,10 @@ set -u
 LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/polkit-agent.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 echo "[$(date -Is)] starting polkit-agent wrapper" >>"$LOG_FILE"
+if pgrep -u "$UID" -f 'polkit-mate-authentication-agent-1|hyprpolkitagent|polkit-kde-authentication-agent-1|xfce-polkit' >/dev/null 2>&1; then
+  echo "[$(date -Is)] agent already running, exiting" >>"$LOG_FILE"
+  exit 0
+fi
 
 candidates=(
   "/usr/libexec/polkit-mate-authentication-agent-1"
