@@ -17,6 +17,7 @@ polkitagent=(
   qt6-tools-dev-tools
   qt6-charts-dev
   mate-polkit
+  policykit-1-gnome
 )
 
 #specific branch or release
@@ -103,6 +104,9 @@ candidates=(
   "/usr/libexec/polkit-mate-authentication-agent-1"
   "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
   "/usr/bin/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
+  "/usr/libexec/polkit-gnome-authentication-agent-1"
+  "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1"
   "/usr/lib/polkit-kde-authentication-agent-1"
   "/usr/libexec/polkit-kde-authentication-agent-1"
   "/usr/bin/polkit-kde-authentication-agent-1"
