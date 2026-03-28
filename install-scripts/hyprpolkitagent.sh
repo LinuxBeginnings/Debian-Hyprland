@@ -91,10 +91,6 @@ cat >"$WRAPPER" <<'EOF'
 set -u
 
 candidates=(
-  "/usr/libexec/hyprpolkitagent"
-  "/usr/lib/hyprpolkitagent"
-  "/usr/lib/hyprpolkitagent/hyprpolkitagent"
-  "/usr/bin/hyprpolkitagent"
   "/usr/libexec/polkit-mate-authentication-agent-1"
   "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
   "/usr/bin/polkit-mate-authentication-agent-1"
@@ -104,11 +100,21 @@ candidates=(
   "/usr/bin/xfce-polkit"
   "/usr/lib/xfce4/polkit-agent/xfce-polkit"
   "/usr/libexec/xfce-polkit"
+  "/usr/libexec/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent/hyprpolkitagent"
+  "/usr/bin/hyprpolkitagent"
 )
 
 for exe in "${candidates[@]}"; do
   if [ -x "$exe" ]; then
-    exec "$exe"
+    "$exe" &
+    pid=$!
+    wait "$pid"
+    status=$?
+    if [ "$status" -eq 0 ]; then
+      exit 0
+    fi
   fi
 done
 
