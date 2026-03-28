@@ -131,6 +131,10 @@ After=graphical-session.target
 PartOf=graphical-session.target
 
 [Service]
+Type=simple
+Environment=QT_QPA_PLATFORM=wayland
+Environment=GDK_BACKEND=wayland
+ExecStartPre=/bin/sh -c 'for i in \$(seq 1 50); do [ -n "\$WAYLAND_DISPLAY" ] && [ -n "\$XDG_RUNTIME_DIR" ] && [ -S "\$XDG_RUNTIME_DIR/\$WAYLAND_DISPLAY" ] && exit 0; sleep 0.2; done; exit 1'
 ExecStart=$WRAPPER
 Restart=on-failure
 RestartSec=1
