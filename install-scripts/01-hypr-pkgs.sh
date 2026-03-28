@@ -29,6 +29,8 @@ hypr_package=(
     pavucontrol
     pulseaudio-utils
     playerctl
+    mate-polkit
+    policykit-1-gnome
     polkit-kde-agent-1
     python3-requests
     python3-pip

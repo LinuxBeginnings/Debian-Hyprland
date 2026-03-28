@@ -16,6 +16,8 @@ polkitagent=(
   qt6-tools-dev
   qt6-tools-dev-tools
   qt6-charts-dev
+  mate-polkit
+  policykit-1-gnome
 )
 
 #specific branch or release
@@ -42,7 +44,7 @@ MLOG="install-$(date +%d-%H%M%S)_hyprpolkitagent.log"
 printf "\n%s - Installing hyprpolkitagent dependencies.... \n" "${NOTE}"
 
 for PKG1 in "${polkitagent[@]}"; do
-  re_install_package "$PKG1" 2>&1 | tee -a "$LOG"
+  install_package "$PKG1" "$LOG"
   if [ $? -ne 0 ]; then
     echo -e "\e[1A\e[K${ERROR} - $PKG1 Package installation failed, Please check the installation logs"
     exit 1
@@ -77,5 +79,94 @@ else
 fi
 
 printf "\n%.0s" {1..2}
+
+# Install a user-level polkit agent wrapper + systemd unit (best-effort)
+USER_BIN="$HOME/.local/bin"
+USER_SYSTEMD="$HOME/.config/systemd/user"
+WRAPPER="$USER_BIN/polkit-agent"
+UNIT="$USER_SYSTEMD/polkit-agent.service"
+
+mkdir -p "$USER_BIN" "$USER_SYSTEMD"
+
+cat >"$WRAPPER" <<'EOF'
+#!/usr/bin/env bash
+set -u
+
+LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/polkit-agent.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+echo "[$(date -Is)] starting polkit-agent wrapper" >>"$LOG_FILE"
+if pgrep -u "$UID" -f 'polkit-mate-authentication-agent-1|polkit-gnome-authentication-agent-1|polkit-kde-authentication-agent-1|xfce-polkit' >/dev/null 2>&1; then
+  echo "[$(date -Is)] agent already running, exiting" >>"$LOG_FILE"
+  exit 0
+fi
+if pgrep -u "$UID" -f 'hyprpolkitagent' >/dev/null 2>&1; then
+  echo "[$(date -Is)] hyprpolkitagent running, replacing it" >>"$LOG_FILE"
+  pkill -u "$UID" -f 'hyprpolkitagent' || true
+fi
+
+candidates=(
+  "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
+  "/usr/libexec/polkit-gnome-authentication-agent-1"
+  "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1"
+  "/usr/libexec/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
+  "/usr/bin/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-kde-authentication-agent-1"
+  "/usr/libexec/polkit-kde-authentication-agent-1"
+  "/usr/bin/polkit-kde-authentication-agent-1"
+  "/usr/bin/xfce-polkit"
+  "/usr/lib/xfce4/polkit-agent/xfce-polkit"
+  "/usr/libexec/xfce-polkit"
+  "/usr/libexec/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent/hyprpolkitagent"
+  "/usr/bin/hyprpolkitagent"
+)
+
+for exe in "${candidates[@]}"; do
+  if [ -x "$exe" ]; then
+    echo "[$(date -Is)] trying: $exe" >>"$LOG_FILE"
+    "$exe" &
+    pid=$!
+    wait "$pid"
+    status=$?
+    echo "[$(date -Is)] exit: $exe status=$status" >>"$LOG_FILE"
+    if [ "$status" -eq 0 ]; then
+      exit 0
+    fi
+  fi
+done
+
+echo "No supported polkit agent found." >&2
+echo "[$(date -Is)] no supported polkit agent found" >>"$LOG_FILE"
+exit 1
+EOF
+
+chmod +x "$WRAPPER"
+
+cat >"$UNIT" <<EOF
+[Unit]
+Description=Polkit authentication agent
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+Environment=QT_QPA_PLATFORM=wayland
+Environment=GDK_BACKEND=wayland
+Environment=XDG_CURRENT_DESKTOP=Hyprland
+ExecStartPre=/bin/sh -c 'for i in \$(seq 1 50); do [ -n "\$WAYLAND_DISPLAY" ] && [ -n "\$XDG_RUNTIME_DIR" ] && [ -S "\$XDG_RUNTIME_DIR/\$WAYLAND_DISPLAY" ] && exit 0; sleep 0.2; done; exit 1'
+ExecStart=$WRAPPER
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  systemctl --user enable --now polkit-agent.service >/dev/null 2>&1 || true
+fi
 
 
