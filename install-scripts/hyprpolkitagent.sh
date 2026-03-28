@@ -16,6 +16,7 @@ polkitagent=(
   qt6-tools-dev
   qt6-tools-dev-tools
   qt6-charts-dev
+  mate-polkit
 )
 
 #specific branch or release
@@ -42,7 +43,7 @@ MLOG="install-$(date +%d-%H%M%S)_hyprpolkitagent.log"
 printf "\n%s - Installing hyprpolkitagent dependencies.... \n" "${NOTE}"
 
 for PKG1 in "${polkitagent[@]}"; do
-  re_install_package "$PKG1" 2>&1 | tee -a "$LOG"
+  install_package "$PKG1" "$LOG"
   if [ $? -ne 0 ]; then
     echo -e "\e[1A\e[K${ERROR} - $PKG1 Package installation failed, Please check the installation logs"
     exit 1
@@ -90,6 +91,10 @@ cat >"$WRAPPER" <<'EOF'
 #!/usr/bin/env bash
 set -u
 
+LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/polkit-agent.log"
+mkdir -p "$(dirname "$LOG_FILE")"
+echo "[$(date -Is)] starting polkit-agent wrapper" >>"$LOG_FILE"
+
 candidates=(
   "/usr/libexec/polkit-mate-authentication-agent-1"
   "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
@@ -108,10 +113,12 @@ candidates=(
 
 for exe in "${candidates[@]}"; do
   if [ -x "$exe" ]; then
+    echo "[$(date -Is)] trying: $exe" >>"$LOG_FILE"
     "$exe" &
     pid=$!
     wait "$pid"
     status=$?
+    echo "[$(date -Is)] exit: $exe status=$status" >>"$LOG_FILE"
     if [ "$status" -eq 0 ]; then
       exit 0
     fi
@@ -119,6 +126,7 @@ for exe in "${candidates[@]}"; do
 done
 
 echo "No supported polkit agent found." >&2
+echo "[$(date -Is)] no supported polkit agent found" >>"$LOG_FILE"
 exit 1
 EOF
 
