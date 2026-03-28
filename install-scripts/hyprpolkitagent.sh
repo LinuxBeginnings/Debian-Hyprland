@@ -95,18 +95,22 @@ set -u
 LOG_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/polkit-agent.log"
 mkdir -p "$(dirname "$LOG_FILE")"
 echo "[$(date -Is)] starting polkit-agent wrapper" >>"$LOG_FILE"
-if pgrep -u "$UID" -f 'polkit-mate-authentication-agent-1|hyprpolkitagent|polkit-kde-authentication-agent-1|xfce-polkit' >/dev/null 2>&1; then
+if pgrep -u "$UID" -f 'polkit-mate-authentication-agent-1|polkit-gnome-authentication-agent-1|polkit-kde-authentication-agent-1|xfce-polkit' >/dev/null 2>&1; then
   echo "[$(date -Is)] agent already running, exiting" >>"$LOG_FILE"
   exit 0
 fi
+if pgrep -u "$UID" -f 'hyprpolkitagent' >/dev/null 2>&1; then
+  echo "[$(date -Is)] hyprpolkitagent running, replacing it" >>"$LOG_FILE"
+  pkill -u "$UID" -f 'hyprpolkitagent' || true
+fi
 
 candidates=(
-  "/usr/libexec/polkit-mate-authentication-agent-1"
-  "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
-  "/usr/bin/polkit-mate-authentication-agent-1"
   "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
   "/usr/libexec/polkit-gnome-authentication-agent-1"
   "/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1"
+  "/usr/libexec/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
+  "/usr/bin/polkit-mate-authentication-agent-1"
   "/usr/lib/polkit-kde-authentication-agent-1"
   "/usr/libexec/polkit-kde-authentication-agent-1"
   "/usr/bin/polkit-kde-authentication-agent-1"
@@ -150,6 +154,7 @@ PartOf=graphical-session.target
 Type=simple
 Environment=QT_QPA_PLATFORM=wayland
 Environment=GDK_BACKEND=wayland
+Environment=XDG_CURRENT_DESKTOP=Hyprland
 ExecStartPre=/bin/sh -c 'for i in \$(seq 1 50); do [ -n "\$WAYLAND_DISPLAY" ] && [ -n "\$XDG_RUNTIME_DIR" ] && [ -S "\$XDG_RUNTIME_DIR/\$WAYLAND_DISPLAY" ] && exit 0; sleep 0.2; done; exit 1'
 ExecStart=$WRAPPER
 Restart=on-failure
