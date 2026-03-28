@@ -78,4 +78,64 @@ fi
 
 printf "\n%.0s" {1..2}
 
+# Install a user-level polkit agent wrapper + systemd unit (best-effort)
+USER_BIN="$HOME/.local/bin"
+USER_SYSTEMD="$HOME/.config/systemd/user"
+WRAPPER="$USER_BIN/polkit-agent"
+UNIT="$USER_SYSTEMD/polkit-agent.service"
+
+mkdir -p "$USER_BIN" "$USER_SYSTEMD"
+
+cat >"$WRAPPER" <<'EOF'
+#!/usr/bin/env bash
+set -u
+
+candidates=(
+  "/usr/libexec/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent"
+  "/usr/lib/hyprpolkitagent/hyprpolkitagent"
+  "/usr/bin/hyprpolkitagent"
+  "/usr/libexec/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-mate/polkit-mate-authentication-agent-1"
+  "/usr/bin/polkit-mate-authentication-agent-1"
+  "/usr/lib/polkit-kde-authentication-agent-1"
+  "/usr/libexec/polkit-kde-authentication-agent-1"
+  "/usr/bin/polkit-kde-authentication-agent-1"
+  "/usr/bin/xfce-polkit"
+  "/usr/lib/xfce4/polkit-agent/xfce-polkit"
+  "/usr/libexec/xfce-polkit"
+)
+
+for exe in "${candidates[@]}"; do
+  if [ -x "$exe" ]; then
+    exec "$exe"
+  fi
+done
+
+echo "No supported polkit agent found." >&2
+exit 1
+EOF
+
+chmod +x "$WRAPPER"
+
+cat >"$UNIT" <<EOF
+[Unit]
+Description=Polkit authentication agent
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+ExecStart=$WRAPPER
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=graphical-session.target
+EOF
+
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user daemon-reload >/dev/null 2>&1 || true
+  systemctl --user enable --now polkit-agent.service >/dev/null 2>&1 || true
+fi
+
 
