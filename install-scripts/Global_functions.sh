@@ -42,6 +42,30 @@ mkdir -p "$BUILD_ROOT"
 SRC_ROOT="${SRC_ROOT:-$BUILD_ROOT/src}"
 mkdir -p "$SRC_ROOT"
 
+# Prefer /usr/local headers/libs/tools for source-built Hypr* components.
+# This reduces accidental linkage against distro-packaged /usr artifacts.
+setup_usr_local_env() {
+  local multiarch=""
+  if command -v dpkg-architecture >/dev/null 2>&1; then
+    multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+  fi
+
+  export PATH="/usr/local/bin:${PATH}"
+
+  local local_pc="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig"
+  if [ -n "$multiarch" ]; then
+    local_pc="/usr/local/lib/${multiarch}/pkgconfig:${local_pc}"
+  fi
+  export PKG_CONFIG_PATH="${local_pc}:${PKG_CONFIG_PATH:-}"
+
+  export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
+  export CPPFLAGS="-I/usr/local/include ${CPPFLAGS:-}"
+  export LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath-link,/usr/local/lib ${LDFLAGS:-}"
+  export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
+}
+
+setup_usr_local_env
+
 # Show progress function
 show_progress() {
     local pid=$1

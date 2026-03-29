@@ -596,6 +596,11 @@ The new tools work alongside existing installations:
 # Verify with:
 cat hypr-tags.env
 
+# hyprland-guiutils compatibility:
+# - older tags generally use Qt6 dependency path
+# - newer tags may use pixman/libdrm/libxkbcommon path
+# if you pin HYPRLAND_GUIUTILS_TAG and builds fail, verify that tag's upstream deps
+
 # Modify versions as needed:
 ./update-hyprland.sh --set HYPRLAND=v0.51.1
 ```
