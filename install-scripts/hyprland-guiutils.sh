@@ -9,6 +9,10 @@
 # Hypr Ecosystem #
 # hypland-guiutils #
 
+# Dependency note:
+# - Qt6 path is used for older hyprland-guiutils tags.
+# - Newer tags may switch to a pixman/libdrm/libxkbcommon path upstream.
+# If you pin a tag that fails, verify deps against that tag's upstream README.
 guiutils=(
 	libqt6core5compat6
     qt6-base-dev
@@ -31,6 +35,15 @@ if [ -z "${HYPRLAND_GUIUTILS_TAG:-}" ]; then
 fi
 # Allow environment override
 if [ -n "${HYPRLAND_GUIUTILS_TAG:-}" ]; then tag="$HYPRLAND_GUIUTILS_TAG"; fi
+
+tag_compatibility_note() {
+    local normalized="${tag#v}"
+    if [[ "$(printf '%s\n%s\n' "$normalized" "0.2.0" | sort -V | head -n1)" != "0.2.0" ]]; then
+        echo "${WARN} hyprland-guiutils tag ${tag} is older than v0.2.0; Qt6 deps are expected." | tee -a "$LOG"
+    else
+        echo "${INFO} hyprland-guiutils tag ${tag} is v0.2.0+; if upstream deps moved to pixman path, adjust this script accordingly." | tee -a "$LOG"
+    fi
+}
 
 # Dry-run support
 DO_INSTALL=1
@@ -55,6 +68,7 @@ fi
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprland-guiutils.log"
 MLOG="install-$(date +%d-%H%M%S)_hyprland-guiutils2.log"
+tag_compatibility_note
 
 # Installation of dependencies
 printf "\n%s - Installing ${YELLOW}hyprland-guiutils dependencies${RESET} .... \n" "${INFO}"
@@ -79,12 +93,6 @@ fi
 printf "${INFO} Installing ${YELLOW}hyprland-guiutils $tag${RESET} ...\n"
 if git clone --recursive -b $tag https://github.com/hyprwm/hyprland-guiutils.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
-    # Prefer /usr/local Hypr* libs so we don't accidentally link against copies in /lib.
-    export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
-    export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
-    export LD_LIBRARY_PATH="/usr/local/lib:${LD_LIBRARY_PATH:-}"
-    export LDFLAGS="-L/usr/local/lib -Wl,-rpath,/usr/local/lib -Wl,-rpath-link,/usr/local/lib ${LDFLAGS:-}"
-    export CPPFLAGS="-I/usr/local/include ${CPPFLAGS:-}"
 
     BUILD_DIR="$BUILD_ROOT/hyprland-guiutils"
     mkdir -p "$BUILD_DIR"

@@ -166,6 +166,84 @@ fi
 
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_dependencies.log"
+
+clang_major_version() {
+    if ! command -v clang >/dev/null 2>&1; then
+        echo 0
+        return
+    fi
+    clang --version 2>/dev/null | awk '
+        /version/ {
+            for (i = 1; i <= NF; i++) {
+                if ($i == "version") {
+                    split($(i+1), v, ".")
+                    print v[1]
+                    exit
+                }
+            }
+        }'
+}
+
+llvm_repo_available_for_suite() {
+    local suite="$1"
+    curl -fsI "https://apt.llvm.org/${suite}/dists/llvm-toolchain-${suite}-21/InRelease" >/dev/null 2>&1
+}
+
+ensure_clang_21() {
+    local current_major
+    current_major="$(clang_major_version)"
+    if [ "${current_major:-0}" -ge 21 ]; then
+        echo "${INFO} clang ${current_major} already available; skipping LLVM 21 setup." | tee -a "$LOG"
+        return 0
+    fi
+    if command -v clang-21 >/dev/null 2>&1 && command -v clang++-21 >/dev/null 2>&1; then
+        echo "${INFO} clang-21 already installed." | tee -a "$LOG"
+        return 0
+    fi
+
+    local detected_suite=""
+    if [ -f /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release || true
+        detected_suite="${VERSION_CODENAME:-}"
+    fi
+    if [ -z "$detected_suite" ] && command -v lsb_release >/dev/null 2>&1; then
+        detected_suite="$(lsb_release -sc 2>/dev/null || true)"
+    fi
+
+    local suites=()
+    [ -n "$detected_suite" ] && suites+=("$detected_suite")
+    suites+=(trixie bookworm sid unstable testing)
+
+    local llvm_suite=""
+    for suite in "${suites[@]}"; do
+        llvm_repo_available_for_suite "$suite" && { llvm_suite="$suite"; break; }
+    done
+
+    if [ -z "$llvm_suite" ]; then
+        echo "${WARN} LLVM 21 repo not available for detected/fallback suites; keeping distro clang (${current_major:-unknown})." | tee -a "$LOG"
+        return 0
+    fi
+
+    echo "${INFO} Using apt.llvm.org suite '${llvm_suite}' for clang-21." | tee -a "$LOG"
+    sudo install -d -m 0755 /etc/apt/keyrings >/dev/null 2>&1 || true
+    if [ ! -f /etc/apt/keyrings/llvm.gpg ]; then
+        if ! command -v gpg >/dev/null 2>&1; then
+            sudo apt-get update 2>&1 | tee -a "$LOG"
+            sudo apt-get install -y gnupg ca-certificates 2>&1 | tee -a "$LOG"
+        fi
+        curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+          | gpg --dearmor \
+          | sudo tee /etc/apt/keyrings/llvm.gpg >/dev/null
+    fi
+
+    cat <<EOF | sudo tee /etc/apt/sources.list.d/llvm-21.list >/dev/null
+deb [signed-by=/etc/apt/keyrings/llvm.gpg] https://apt.llvm.org/${llvm_suite}/ llvm-toolchain-${llvm_suite}-21 main
+EOF
+
+    sudo apt-get update 2>&1 | tee -a "$LOG"
+    sudo apt-get install -y clang-21 clang-tools-21 lld-21 llvm-21 2>&1 | tee -a "$LOG"
+}
 # Preflight checks for common build issues
 preflight_checks() {
     # Warn on invalid custom suites (e.g., tyson)
@@ -236,6 +314,10 @@ printf "\n%.0s" {1..1}
 for PKG1 in "${build_dep[@]}"; do
     build_dep "$PKG1" "$LOG"
 done
+
+# Hyprland v0.54+ benefits from LLVM/Clang 21.
+# If apt.llvm.org does not publish the current codename, we safely keep distro clang.
+ensure_clang_21
 
 # Install Glaze (header-only) from bundled asset if not already present
 # Hyprland's config serialization currently expects glaze >= 4.4; Debian may lag.

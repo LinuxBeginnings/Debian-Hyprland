@@ -1,0 +1,37 @@
+Testing PR-13 changes + my additions 
+
+
+1. LLVM repo codename guard/fallback
+◦  Updated install-scripts/00-dependencies.sh:
+▪  Added guarded LLVM 21 setup (ensure_clang_21) that:
+▪  checks current clang major,
+▪  probes apt.llvm.org for suite availability,
+▪  falls back safely if the detected codename isn’t available,
+▪  avoids breaking apt when no valid LLVM suite exists.
+2. Restore/retain glaze disable for hyprshutdown
+◦  install-scripts/hyprshutdown.sh already had:
+▪  -DCMAKE_DISABLE_FIND_PACKAGE_glaze=ON
+◦  I kept it and added an explicit comment so this doesn’t get removed accidentally.
+3. Nix helper removal safety path
+◦  install-scripts/hyprland.sh already had the safe behavior (remove only when safe, otherwise stub fallback).
+◦  Left this path intact as the intended guarded behavior.
+4. Centralize /usr/local build env exports
+◦  Added centralized environment setup in install-scripts/Global_functions.sh:
+▪  PATH, PKG_CONFIG_PATH, CMAKE_PREFIX_PATH, CPPFLAGS, LDFLAGS, LD_LIBRARY_PATH.
+◦  Called automatically via setup_usr_local_env so module scripts get consistent /usr/local linkage.
+
+https://github.com/LinuxBeginnings/Debian-Hyprland/pull/13
+ 
+ On branch pr13
+ Changes to be committed:
+	modified:   Debian-Hyprland-Install-Upgrade.md
+	modified:   hypr-tags.env
+	new file:   hypr-tags.env.bak-2026-03-27-193728
+	new file:   hypr-tags.env.bak-2026-03-27-195046
+	new file:   hypr-tags.env.bak-2026-03-29-002733
+	modified:   install-scripts/00-dependencies.sh
+	modified:   install-scripts/Global_functions.sh
+	modified:   install-scripts/hyprland-guiutils.sh
+	modified:   install-scripts/hyprshutdown.sh
+	modified:   update-hyprland.sh
+
