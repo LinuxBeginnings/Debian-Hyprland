@@ -1,10 +1,24 @@
 ## CHANGELOG
 
+## 29 March 2026
+
+- Major refactor of Hyprland build process
+    - Thanks to `@Bombatomica64`
+        - Updates the Debian Hyprland stack installer scripts to better support Hyprland v0.54+
+        - Changes:
+            - Add orphaned-file cleanup with preview + confirmation and
+            - Introduce a `--clean` flag in `update-hyprland.sh`.
+            - Standardize multiple module install prefixes to `/usr/local` (`CMake` + `Meson`).
+            - Add `Clang 21` installation via `LLVM` APT repo (signed-by keyring)
+            - Set prference to `clang-21` in the Hyprland build.
+
 ## 27 March 2026
 
 - Fixed issues with policy kit
     - Which prevented permission esclation
     - Added `mate polkit` as backup
+    - Added `gnome-polkit` as primary
+        - Found corner cases where it otherwise failed
     - Added missing `kvantum` packages breaking `kde polkit`
 - Updated Hyprland tags
     - Hyprland v0.54.3
