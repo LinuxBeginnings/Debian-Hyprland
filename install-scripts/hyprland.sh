@@ -123,6 +123,15 @@ EOF
         fi
     fi
 
+    # Lua branch compatibility: some sources include "DefaultConfig.hpp"
+    DEFAULT_CFG_SHIM="$(pwd)/src/config/DefaultConfig.hpp"
+    if [ -f "$DEFAULT_CFG_HDR" ] && [ ! -f "$DEFAULT_CFG_SHIM" ]; then
+        cat >"$DEFAULT_CFG_SHIM" <<'EOF'
+#pragma once
+#include "defaultConfig.hpp"
+EOF
+    fi
+
     # Compatibility: some toolchains/libstdc++ do not support std::string operator+ with std::string_view.
     # Hyprland hyprctl uses a std::string_view filename; ensure it is converted explicitly.
     HYPRCTL_MAIN="$(pwd)/hyprctl/src/main.cpp"
