@@ -43,6 +43,7 @@ mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
 LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
+LUA_HYPRLAND_REPO="https://github.com/vaxerski/Hyprland"
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
     local pkgs=(
@@ -179,6 +180,7 @@ enforce_lua_branch_tag() {
         return 0
     fi
     ensure_tags_file
+    export HYPRLAND_REPO="$LUA_HYPRLAND_REPO"
     if ! grep -q '^HYPRLAND_TAG='"$LUA_HYPRLAND_BRANCH"'$' "$TAGS_FILE"; then
         backup_tags
         if grep -q '^HYPRLAND_TAG=' "$TAGS_FILE"; then

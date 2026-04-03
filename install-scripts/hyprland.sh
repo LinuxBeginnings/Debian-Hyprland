@@ -10,6 +10,8 @@
 
 #specific branch or release
 tag="v0.53.3"
+# allow repo override (defaults to hyprwm)
+repo="${HYPRLAND_REPO:-https://github.com/hyprwm/Hyprland}"
 # Auto-source centralized tags if env is unset
 if [ -z "${HYPRLAND_TAG:-}" ]; then
   TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"
@@ -58,7 +60,7 @@ if [ -d "$SRC_DIR" ]; then
     rm -rf "$SRC_DIR" 2>&1 | tee -a "$LOG"
 fi
 
-if git clone --recursive -b $tag "https://github.com/hyprwm/Hyprland" "$SRC_DIR"; then
+if git clone --recursive -b $tag "$repo" "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprland"
     mkdir -p "$BUILD_DIR"

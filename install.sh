@@ -481,6 +481,7 @@ fi
 LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
 if [ "${HYPRLAND_LUA_BRANCH:-1}" != "0" ]; then
     export HYPRLAND_TAG="$LUA_HYPRLAND_BRANCH"
+    export HYPRLAND_REPO="https://github.com/vaxerski/Hyprland"
 fi
 
 #################
