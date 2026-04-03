@@ -27,6 +27,7 @@ Usage:
   FORCE=1 ./refresh-hypr-tags.sh
   ./refresh-hypr-tags.sh --force-update
   ./refresh-hypr-tags.sh --get-latest
+  ./refresh-hypr-tags.sh --get-lastest
 
 Notes:
   - By default, only updates keys set to auto/latest (or unset).
@@ -46,7 +47,7 @@ for arg in "$@"; do
       FORCE=1
       ;;
     # Alias for user ergonomics; refresh always checks latest tags.
-    --get-latest|--fetch-latest)
+    --get-latest|--get-lastest|--fetch-latest)
       :
       ;;
     *)
@@ -83,6 +84,38 @@ if ! command -v curl >/dev/null 2>&1; then
   echo "[ERROR] curl is required to refresh tags" | tee -a "$SUMMARY_LOG"
   exit 1
 fi
+if ! command -v git >/dev/null 2>&1; then
+  echo "[ERROR] git is required to refresh tags" | tee -a "$SUMMARY_LOG"
+  exit 1
+fi
+
+# Optional GitHub token to avoid rate limits (export GITHUB_TOKEN or GH_TOKEN).
+GITHUB_TOKEN=${GITHUB_TOKEN:-${GH_TOKEN:-}}
+
+fetch_url() {
+  local url="$1"
+  local accept_header="$2"
+  local auth_header=()
+  local response status body
+
+  if [[ -n "${GITHUB_TOKEN:-}" && "$url" == https://api.github.com/* ]]; then
+    auth_header=(-H "Authorization: Bearer $GITHUB_TOKEN")
+  fi
+
+  response=$(curl -sS \
+    --retry 3 --retry-delay 1 \
+    -H "User-Agent: Debian-Hyprland/refresh-hypr-tags" \
+    ${accept_header:+-H "$accept_header"} \
+    "${auth_header[@]}" \
+    -w "\nHTTP_STATUS:%{http_code}" \
+    "$url" || true)
+
+  status=$(printf '%s' "$response" | awk -F: '/^HTTP_STATUS:/ {print $2}' | tail -n1)
+  body=$(printf '%s' "$response" | sed '$d')
+
+  printf '%s\n' "$status"
+  printf '%s' "$body"
+}
 
 # Map of env var -> repo
 # (Some modules may not publish GitHub releases; in that case the tag may not refresh.)
@@ -100,6 +133,7 @@ declare -A repos=(
   [HYPRLAND_GUIUTILS_TAG]="hyprwm/hyprland-guiutils"
   [HYPRWIRE_TAG]="hyprwm/hyprwire"
   [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
+  [WAYLAND_PROTOCOLS_TAG]="wayland-project/wayland-protocols"
   # Additional apps/utilities
   [HYPRIDLE_TAG]="hyprwm/hypridle"
   [HYPRLOCK_TAG]="hyprwm/hyprlock"
@@ -123,20 +157,58 @@ done < "$TAGS_FILE"
 changes=()
 for key in "${!repos[@]}"; do
   repo="${repos[$key]}"
-  url="https://api.github.com/repos/$repo/releases/latest"
+  tag=""
   echo "[INFO] Checking latest tag for $repo" | tee -a "$SUMMARY_LOG"
 
-  # Be resilient to transient GitHub API errors (e.g. 5xx).
-  body=$(curl -fsSL \
-    --retry 3 --retry-all-errors --retry-delay 1 \
-    -H 'Accept: application/vnd.github+json' \
-    "$url" || true)
-
-  [[ -z "$body" ]] && { echo "[WARN] Empty response for $repo" | tee -a "$SUMMARY_LOG"; continue; }
-  if command -v jq >/dev/null 2>&1; then
-    tag=$(printf '%s' "$body" | jq -r '.tag_name // empty')
+  if [[ "$repo" == "wayland-project/wayland-protocols" ]]; then
+    # Official releases live on GitLab, not GitHub.
+    url="https://gitlab.freedesktop.org/api/v4/projects/wayland%2Fwayland-protocols/repository/tags?per_page=1"
   else
-    tag=$(printf '%s' "$body" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name"\s*:\s*"([^"]+)".*/\1/')
+    url="https://api.github.com/repos/$repo/releases/latest"
+  fi
+  # Be resilient to transient API errors; handle 403/404 explicitly.
+  status_and_body=$(fetch_url "$url" "Accept: application/vnd.github+json")
+  status=$(printf '%s' "$status_and_body" | head -n1)
+  body=$(printf '%s' "$status_and_body" | tail -n +2)
+
+  if [[ "$status" == "403" && "$repo" != "wayland-project/wayland-protocols" ]]; then
+    # Fall back to git ls-remote to avoid API rate limits.
+    tag=$(git ls-remote --tags --refs "https://github.com/$repo.git" \
+      | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
+    if [[ -z "$tag" ]]; then
+      echo "[WARN] HTTP 403 from API for $repo (rate limit or auth required). Set GITHUB_TOKEN to avoid limits." | tee -a "$SUMMARY_LOG"
+      continue
+    fi
+  fi
+
+  if [[ "$status" == "404" && "$repo" != "wayland-project/wayland-protocols" ]]; then
+    # Some repos don't publish GitHub releases; fall back to tags.
+    tags_url="https://api.github.com/repos/$repo/tags?per_page=1"
+    status_and_body=$(fetch_url "$tags_url" "Accept: application/vnd.github+json")
+    status=$(printf '%s' "$status_and_body" | head -n1)
+    body=$(printf '%s' "$status_and_body" | tail -n +2)
+  fi
+
+  if [[ -z "${tag:-}" && ( -z "$body" || "$status" == "404" ) ]]; then
+    echo "[WARN] Empty response for $repo" | tee -a "$SUMMARY_LOG"
+    continue
+  fi
+  if [[ -z "${tag:-}" ]]; then
+    if command -v jq >/dev/null 2>&1; then
+      tag=$(printf '%s' "$body" | jq -r 'if type=="object" then (.tag_name // empty) elif type=="array" then (.[0].name // empty) else empty end')
+    else
+      tag=$(printf '%s' "$body" | grep -m1 -E '"tag_name"|"name"' | sed -E 's/.*"(tag_name|name)"\s*:\s*"([^"]+)".*/\2/')
+    fi
+  fi
+  if [[ -z "$tag" ]]; then
+    # Final fallback: query git tags directly.
+    if [[ "$repo" == "wayland-project/wayland-protocols" ]]; then
+      tag=$(git ls-remote --tags --refs "https://gitlab.freedesktop.org/wayland/wayland-protocols.git" \
+        | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
+    else
+      tag=$(git ls-remote --tags --refs "https://github.com/$repo.git" \
+        | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
+    fi
   fi
   if [[ -z "$tag" ]]; then
     echo "[WARN] Could not parse tag for $repo" | tee -a "$SUMMARY_LOG"
