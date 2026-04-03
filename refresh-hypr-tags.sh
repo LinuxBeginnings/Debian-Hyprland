@@ -125,15 +125,21 @@ done < "$TAGS_FILE"
 changes=()
 for key in "${!repos[@]}"; do
   repo="${repos[$key]}"
-  url="https://api.github.com/repos/$repo/releases/latest"
   echo "[INFO] Checking latest tag for $repo" | tee -a "$SUMMARY_LOG"
+
+  if [[ "$repo" == "wayland-project/wayland-protocols" ]]; then
+    # Official releases live on GitLab, not GitHub.
+    url="https://gitlab.freedesktop.org/api/v4/projects/wayland%2Fwayland-protocols/repository/tags?per_page=1"
+  else
+    url="https://api.github.com/repos/$repo/releases/latest"
+  fi
 
   # Be resilient to transient GitHub API errors (e.g. 5xx).
   body=$(curl -fsSL \
     --retry 3 --retry-all-errors --retry-delay 1 \
     -H 'Accept: application/vnd.github+json' \
     "$url" || true)
-  if [[ -z "$body" ]]; then
+  if [[ -z "$body" && "$repo" != "wayland-project/wayland-protocols" ]]; then
     # Some repos don't publish GitHub releases; fall back to tags.
     tags_url="https://api.github.com/repos/$repo/tags?per_page=1"
     body=$(curl -fsSL \
@@ -144,7 +150,7 @@ for key in "${!repos[@]}"; do
 
   [[ -z "$body" ]] && { echo "[WARN] Empty response for $repo" | tee -a "$SUMMARY_LOG"; continue; }
   if command -v jq >/dev/null 2>&1; then
-    tag=$(printf '%s' "$body" | jq -r '.tag_name // (.[0].name // empty)')
+    tag=$(printf '%s' "$body" | jq -r 'if type=="object" then (.tag_name // empty) elif type=="array" then (.[0].name // empty) else empty end')
   else
     tag=$(printf '%s' "$body" | grep -m1 -E '"tag_name"|"name"' | sed -E 's/.*"(tag_name|name)"\s*:\s*"([^"]+)".*/\2/')
   fi
