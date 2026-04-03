@@ -146,11 +146,19 @@ EOF
 #include "DefaultConfig.hpp"
 EOF
     fi
-    for _shim in "$DEFAULT_CFG_LEGACY_SHIM" "$DEFAULT_CFG_LUA_SHIM"; do
-        if [ -f "$DEFAULT_CFG_SHIM" ] && [ ! -f "$_shim" ]; then
-            ln -sf ../DefaultConfig.hpp "$_shim" || true
-        fi
-    done
+    # Always create local shims for includes within legacy/lua directories
+    if [ ! -f "$DEFAULT_CFG_LEGACY_SHIM" ]; then
+        cat >"$DEFAULT_CFG_LEGACY_SHIM" <<'EOF'
+#pragma once
+#include "../defaultConfig.hpp"
+EOF
+    fi
+    if [ ! -f "$DEFAULT_CFG_LUA_SHIM" ]; then
+        cat >"$DEFAULT_CFG_LUA_SHIM" <<'EOF'
+#pragma once
+#include "../defaultConfig.hpp"
+EOF
+    fi
 
     # Compatibility: some toolchains/libstdc++ do not support std::string operator+ with std::string_view.
     # Hyprland hyprctl uses a std::string_view filename; ensure it is converted explicitly.
