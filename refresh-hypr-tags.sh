@@ -27,6 +27,7 @@ Usage:
   FORCE=1 ./refresh-hypr-tags.sh
   ./refresh-hypr-tags.sh --force-update
   ./refresh-hypr-tags.sh --get-latest
+  ./refresh-hypr-tags.sh --get-lastest
 
 Notes:
   - By default, only updates keys set to auto/latest (or unset).
@@ -46,7 +47,7 @@ for arg in "$@"; do
       FORCE=1
       ;;
     # Alias for user ergonomics; refresh always checks latest tags.
-    --get-latest|--fetch-latest)
+    --get-latest|--get-lastest|--fetch-latest)
       :
       ;;
     *)
@@ -100,6 +101,7 @@ declare -A repos=(
   [HYPRLAND_GUIUTILS_TAG]="hyprwm/hyprland-guiutils"
   [HYPRWIRE_TAG]="hyprwm/hyprwire"
   [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
+  [WAYLAND_PROTOCOLS_TAG]="wayland-project/wayland-protocols"
   # Additional apps/utilities
   [HYPRIDLE_TAG]="hyprwm/hypridle"
   [HYPRLOCK_TAG]="hyprwm/hyprlock"
@@ -131,12 +133,20 @@ for key in "${!repos[@]}"; do
     --retry 3 --retry-all-errors --retry-delay 1 \
     -H 'Accept: application/vnd.github+json' \
     "$url" || true)
+  if [[ -z "$body" ]]; then
+    # Some repos don't publish GitHub releases; fall back to tags.
+    tags_url="https://api.github.com/repos/$repo/tags?per_page=1"
+    body=$(curl -fsSL \
+      --retry 3 --retry-all-errors --retry-delay 1 \
+      -H 'Accept: application/vnd.github+json' \
+      "$tags_url" || true)
+  fi
 
   [[ -z "$body" ]] && { echo "[WARN] Empty response for $repo" | tee -a "$SUMMARY_LOG"; continue; }
   if command -v jq >/dev/null 2>&1; then
-    tag=$(printf '%s' "$body" | jq -r '.tag_name // empty')
+    tag=$(printf '%s' "$body" | jq -r '.tag_name // (.[0].name // empty)')
   else
-    tag=$(printf '%s' "$body" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name"\s*:\s*"([^"]+)".*/\1/')
+    tag=$(printf '%s' "$body" | grep -m1 -E '"tag_name"|"name"' | sed -E 's/.*"(tag_name|name)"\s*:\s*"([^"]+)".*/\2/')
   fi
   if [[ -z "$tag" ]]; then
     echo "[WARN] Could not parse tag for $repo" | tee -a "$SUMMARY_LOG"
