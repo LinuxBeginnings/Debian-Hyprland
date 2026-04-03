@@ -238,6 +238,20 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
     exit 1
 fi
 
+# Ensure pkg-config can resolve "lua" (Lua 5.x provides lua5.x.pc on Debian)
+if ! pkg-config --exists lua 2>/dev/null; then
+    for _luapc in lua5.4 lua5.3; do
+        if pkg-config --exists "$_luapc" 2>/dev/null; then
+            pcdir="$(pkg-config --variable=pcfiledir "$_luapc" 2>/dev/null)"
+            if [ -n "$pcdir" ] && [ ! -f "$pcdir/lua.pc" ]; then
+                echo "${NOTE} Creating lua.pc symlink for $_luapc in $pcdir" | tee -a "$LOG"
+                sudo ln -sf "$pcdir/${_luapc}.pc" "$pcdir/lua.pc" || true
+            fi
+            break
+        fi
+    done
+fi
+
 # Preflight: ensure glslang is available (CMake config) for Hyprland builds
 if [ -z "${glslang_DIR:-}" ]; then
     GLSLANG_CFG=$(find /usr/lib /usr/local/lib -maxdepth 6 -type f -name "glslangConfig.cmake" 2>/dev/null | head -n1)

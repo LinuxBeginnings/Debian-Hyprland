@@ -10,7 +10,7 @@
 # Provides a newer wayland-protocols.pc for pkg-config when distro version is too old
 
 #specific tag or release (e.g., 1.45, 1.46)
-tag="1.45"
+tag="1.47"
 # Auto-source centralized tags if env is unset
 if [ -z "${WAYLAND_PROTOCOLS_TAG:-}" ]; then
   TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"
