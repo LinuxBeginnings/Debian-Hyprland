@@ -24,6 +24,12 @@ fi
 # Allow environment override
 if [ -n "${HYPRLAND_TAG:-}" ]; then tag="$HYPRLAND_TAG"; fi
 
+# Force Lua branch if requested (default on; disable with HYPRLAND_LUA_BRANCH=0)
+if [ "${HYPRLAND_LUA_BRANCH:-1}" != "0" ]; then
+  tag="$LUA_HYPRLAND_BRANCH"
+  repo="https://github.com/vaxerski/Hyprland"
+fi
+
 # Dry-run support
 DO_INSTALL=1
 if [ "$1" = "--dry-run" ] || [ "${DRY_RUN}" = "1" ] || [ "${DRY_RUN}" = "true" ]; then
