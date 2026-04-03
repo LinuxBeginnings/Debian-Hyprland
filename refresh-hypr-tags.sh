@@ -157,6 +157,7 @@ done < "$TAGS_FILE"
 changes=()
 for key in "${!repos[@]}"; do
   repo="${repos[$key]}"
+  tag=""
   echo "[INFO] Checking latest tag for $repo" | tee -a "$SUMMARY_LOG"
 
   if [[ "$repo" == "wayland-project/wayland-protocols" ]]; then
@@ -170,7 +171,7 @@ for key in "${!repos[@]}"; do
   status=$(printf '%s' "$status_and_body" | head -n1)
   body=$(printf '%s' "$status_and_body" | tail -n +2)
 
-  if [[ "$status" == "403" ]]; then
+  if [[ "$status" == "403" && "$repo" != "wayland-project/wayland-protocols" ]]; then
     # Fall back to git ls-remote to avoid API rate limits.
     tag=$(git ls-remote --tags --refs "https://github.com/$repo.git" \
       | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
