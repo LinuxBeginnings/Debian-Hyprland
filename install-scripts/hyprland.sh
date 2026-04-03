@@ -132,6 +132,17 @@ EOF
             echo "${NOTE} xxd still unavailable; skipping #embed replacement." | tee -a "$LOG"
         fi
     fi
+    if [ -f "$EX_CONF" ] && [ ! -f "$EMBED_INC" ]; then
+        if ! command -v xxd >/dev/null 2>&1; then
+            echo "${NOTE} xxd not found; attempting to install xxd..." | tee -a "$LOG"
+            install_package "xxd" 2>&1 | tee -a "$LOG" || true
+        fi
+        if command -v xxd >/dev/null 2>&1; then
+            xxd -i -g 1 -c 16 "$EX_CONF" | awk 'BEGIN{f=0} /^\{/ {f=1; next} /^\};/ {f=0} f' >"$EMBED_INC" || true
+        else
+            echo "${NOTE} xxd still unavailable; defaultConfig.bytes.inc not generated." | tee -a "$LOG"
+        fi
+    fi
     # If no defaultConfig header exists (Lua branch), create one using the upstream template
     if [ ! -f "$DEFAULT_CFG_HDR_LOWER" ]; then
         cat >"$DEFAULT_CFG_HDR_LOWER" <<'EOF'
