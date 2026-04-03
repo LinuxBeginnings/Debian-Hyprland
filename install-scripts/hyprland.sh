@@ -44,6 +44,9 @@ cd "$PARENT_DIR" || exit 1
 
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
+# Ensure log directory exists before creating logs
+mkdir -p "$PARENT_DIR/Install-Logs"
+
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprland.log"
 MLOG="install-$(date +%d-%H%M%S)_hyprland2.log"
@@ -102,8 +105,8 @@ EOF
     DEFAULT_CFG_HDR="$(pwd)/src/config/defaultConfig.hpp"
     if [ -f "$EX_CONF" ] && [ -f "$DEFAULT_CFG_HDR" ]; then
         if ! command -v xxd >/dev/null 2>&1; then
-            echo "${NOTE} xxd not found; attempting to install vim-common..." | tee -a "$LOG"
-            install_package "vim-common" 2>&1 | tee -a "$LOG" || true
+            echo "${NOTE} xxd not found; attempting to install xxd..." | tee -a "$LOG"
+            install_package "xxd" 2>&1 | tee -a "$LOG" || true
         fi
         if command -v xxd >/dev/null 2>&1; then
             xxd -i -g 1 -c 16 "$EX_CONF" | sed -n '/^{/{flag=1;next} /};/{flag=0} flag p' >"$EMBED_INC" || true
