@@ -383,7 +383,9 @@ cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)
     else
         echo "${NOTE} DRY RUN: Skipping installation of Hyprland $tag."
     fi
-    [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/"
+    if [ -f "$MLOG" ] && [[ "$MLOG" != "$PARENT_DIR/Install-Logs/"* ]]; then
+        mv "$MLOG" "$PARENT_DIR/Install-Logs/"
+    fi
     cd ..
 else
     echo -e "${ERROR} Download failed for ${YELLOW}Hyprland $tag${RESET}" 2>&1 | tee -a "$LOG"
