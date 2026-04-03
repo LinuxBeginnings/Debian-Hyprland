@@ -111,10 +111,13 @@ EOF
     DEFAULT_CFG_HDR_LOWER="$(pwd)/src/config/defaultConfig.hpp"
     DEFAULT_CFG_HDR_UPPER="$(pwd)/src/config/DefaultConfig.hpp"
     DEFAULT_CFG_HDR=""
+    DEFAULT_CFG_NAME=""
     if [ -f "$DEFAULT_CFG_HDR_LOWER" ]; then
         DEFAULT_CFG_HDR="$DEFAULT_CFG_HDR_LOWER"
+        DEFAULT_CFG_NAME="defaultConfig.hpp"
     elif [ -f "$DEFAULT_CFG_HDR_UPPER" ]; then
         DEFAULT_CFG_HDR="$DEFAULT_CFG_HDR_UPPER"
+        DEFAULT_CFG_NAME="DefaultConfig.hpp"
     fi
     if [ -f "$EX_CONF" ] && [ -n "$DEFAULT_CFG_HDR" ]; then
         if ! command -v xxd >/dev/null 2>&1; then
@@ -147,17 +150,19 @@ EOF
 EOF
     fi
     # Always create local shims for includes within legacy/lua directories
-    if [ ! -f "$DEFAULT_CFG_LEGACY_SHIM" ]; then
-        cat >"$DEFAULT_CFG_LEGACY_SHIM" <<'EOF'
+    if [ -n "$DEFAULT_CFG_NAME" ]; then
+        if [ ! -f "$DEFAULT_CFG_LEGACY_SHIM" ]; then
+            cat >"$DEFAULT_CFG_LEGACY_SHIM" <<EOF
 #pragma once
-#include "../defaultConfig.hpp"
+#include "../$DEFAULT_CFG_NAME"
 EOF
-    fi
-    if [ ! -f "$DEFAULT_CFG_LUA_SHIM" ]; then
-        cat >"$DEFAULT_CFG_LUA_SHIM" <<'EOF'
+        fi
+        if [ ! -f "$DEFAULT_CFG_LUA_SHIM" ]; then
+            cat >"$DEFAULT_CFG_LUA_SHIM" <<EOF
 #pragma once
-#include "../defaultConfig.hpp"
+#include "../$DEFAULT_CFG_NAME"
 EOF
+        fi
     fi
 
     # Compatibility: some toolchains/libstdc++ do not support std::string operator+ with std::string_view.
