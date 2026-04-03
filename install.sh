@@ -477,6 +477,12 @@ if [ -f "./hypr-tags.env" ]; then
     done <"./hypr-tags.env"
 fi
 
+# Force Hyprland Lua branch for testing (opt-out with HYPRLAND_LUA_BRANCH=0)
+LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
+if [ "${HYPRLAND_LUA_BRANCH:-1}" != "0" ]; then
+    export HYPRLAND_TAG="$LUA_HYPRLAND_BRANCH"
+fi
+
 #################
 ## Default values for the options (will be overwritten by preset file if available)
 gtk_themes="OFF"

@@ -42,6 +42,7 @@ LOG_DIR="$REPO_ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
+LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
     local pkgs=(
@@ -158,7 +159,7 @@ ensure_tags_file() {
         cat >"$TAGS_FILE" <<'EOF'
 # Default Hyprland stack versions
 # (You can override any of these via --set or by editing hypr-tags.env.)
-HYPRLAND_TAG=v0.53.3
+HYPRLAND_TAG=lua-lua-lua-lua-lua-lua-lua
 AQUAMARINE_TAG=v0.10.0
 HYPRUTILS_TAG=v0.11.0
 HYPRLANG_TAG=v0.6.8
@@ -170,6 +171,22 @@ HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRWIRE_TAG=v0.2.1
 EOF
+    fi
+}
+
+enforce_lua_branch_tag() {
+    if [[ "${HYPRLAND_LUA_BRANCH:-1}" == "0" ]]; then
+        return 0
+    fi
+    ensure_tags_file
+    if ! grep -q '^HYPRLAND_TAG='"$LUA_HYPRLAND_BRANCH"'$' "$TAGS_FILE"; then
+        backup_tags
+        if grep -q '^HYPRLAND_TAG=' "$TAGS_FILE"; then
+            sed -i "s|^HYPRLAND_TAG=.*|HYPRLAND_TAG=$LUA_HYPRLAND_BRANCH|" "$TAGS_FILE"
+        else
+            printf '\nHYPRLAND_TAG=%s\n' "$LUA_HYPRLAND_BRANCH" >> "$TAGS_FILE"
+        fi
+        echo "[INFO] Forcing HYPRLAND_TAG to Lua test branch: $LUA_HYPRLAND_BRANCH" | tee -a "$SUMMARY_LOG"
     fi
 }
 
@@ -797,6 +814,7 @@ if [[ $DO_INSTALL -eq 1 && $DO_DRY_RUN -eq 1 ]]; then
 fi
 
 ensure_tags_file
+enforce_lua_branch_tag
 
 # Env compatibility: honor FORCE=1 as alias for --force-update
 if [[ ${FORCE:-0} -eq 1 ]]; then
