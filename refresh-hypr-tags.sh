@@ -201,6 +201,16 @@ for key in "${!repos[@]}"; do
     fi
   fi
   if [[ -z "$tag" ]]; then
+    # Final fallback: query git tags directly.
+    if [[ "$repo" == "wayland-project/wayland-protocols" ]]; then
+      tag=$(git ls-remote --tags --refs "https://gitlab.freedesktop.org/wayland/wayland-protocols.git" \
+        | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
+    else
+      tag=$(git ls-remote --tags --refs "https://github.com/$repo.git" \
+        | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
+    fi
+  fi
+  if [[ -z "$tag" ]]; then
     echo "[WARN] Could not parse tag for $repo" | tee -a "$SUMMARY_LOG"
     continue
   fi
