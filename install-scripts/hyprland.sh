@@ -156,6 +156,9 @@ inline constexpr std::string_view EXAMPLE_CONFIG = {EXAMPLE_CONFIG_BYTES, sizeof
 EOF
     fi
 
+    if [ -z "$DEFAULT_CFG_NAME" ] && [ -f "$DEFAULT_CFG_HDR_LOWER" ]; then
+        DEFAULT_CFG_NAME="defaultConfig.hpp"
+    fi
     # Lua branch compatibility: some sources include "DefaultConfig.hpp"
     DEFAULT_CFG_SHIM="$DEFAULT_CFG_HDR_UPPER"
     DEFAULT_CFG_LEGACY_SHIM="$(pwd)/src/config/legacy/DefaultConfig.hpp"
