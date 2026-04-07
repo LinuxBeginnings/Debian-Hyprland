@@ -13,6 +13,7 @@ set -euo pipefail
 GREEN=$'\e[32m'
 RED=$'\e[31m'
 YELLOW=$'\e[33m'
+BLUE=$'\e[34m'
 BOLD=$'\e[1m'
 RESET=$'\e[0m'
 
