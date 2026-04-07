@@ -34,6 +34,9 @@
 set -euo pipefail
 GREEN=$'\e[32m'
 RED=$'\e[31m'
+YELLOW=$'\e[33m'
+BLUE=$'\e[34m'
+BOLD=$'\e[1m'
 RESET=$'\e[0m'
 
 REPO_ROOT=$(pwd)
@@ -234,6 +237,61 @@ set_tags_from_args() {
     echo "[INFO] Updated $TAGS_FILE with provided tags" | tee -a "$SUMMARY_LOG"
 }
 
+compare_versions() {
+    local a="$1" b="$2"
+    if [[ "$a" == "$b" ]]; then
+        printf '0'
+        return
+    fi
+    local first
+    first=$(printf '%s\n%s\n' "$a" "$b" | sort -V | head -n1)
+    if [[ "$first" == "$a" ]]; then
+        printf '%s' '-1'
+    else
+        printf '%s' '1'
+    fi
+}
+
+format_change_line() {
+    local key="$1" old="$2" new="$3" color="$YELLOW"
+    if [[ -n "$old" && ! "$old" =~ ^(auto|latest)$ ]]; then
+        local cmp
+        cmp=$(compare_versions "$new" "$old")
+        if [[ "$cmp" == "-1" ]]; then
+            color="$RED"
+        else
+            color="$GREEN"
+        fi
+    fi
+    if [[ -t 1 ]]; then
+        printf "%s%s%s: %s -> %s%s" "$BOLD" "$color" "$key" "${old:-<unset>}" "$new" "$RESET"
+    else
+        printf "%s: %s -> %s" "$key" "${old:-<unset>}" "$new"
+    fi
+}
+
+format_tag_line() {
+    local key="$1" val="$2" old="$3"
+    if [[ -n "$old" ]]; then
+        local color="$YELLOW"
+        if [[ -n "$old" && ! "$old" =~ ^(auto|latest)$ ]]; then
+            local cmp
+            cmp=$(compare_versions "$val" "$old")
+            if [[ "$cmp" == "-1" ]]; then
+                color="$RED"
+            else
+                color="$GREEN"
+            fi
+        fi
+        if [[ -t 1 ]]; then
+            printf "%s%s%s=%s%s" "$BOLD" "$color" "$key" "$val" "$RESET"
+        else
+            printf "%s=%s" "$key" "$val"
+        fi
+    else
+        printf "%s=%s" "$key" "$val"
+    fi
+}
 # Fetch latest release tags from GitHub for the stack
 fetch_latest_tags() {
     ensure_tags_file
@@ -312,13 +370,17 @@ declare -A repos=(
     # Build a list of changes (old -> new) according to override rules
     changes=()
     for k in "${!tags[@]}"; do
+        old="${existing[$k]:-}"
+        new="${tags[$k]}"
         if [[ $FORCE_UPDATE -eq 1 ]]; then
             # Force override regardless of current value (matches FORCE=1 behavior in refresh-hypr-tags.sh)
-            map[$k]="${tags[$k]}"
+            map[$k]="$new"
+            [[ "$old" != "$new" ]] && changes+=("$k|$old|$new")
         else
             # Only override if pinned value is 'auto' or 'latest' (or unset)
-            if [[ "${existing[$k]:-}" =~ ^(auto|latest)$ ]] || [[ -z "${existing[$k]:-}" ]]; then
-                map[$k]="${tags[$k]}"
+            if [[ "$old" =~ ^(auto|latest)$ ]] || [[ -z "$old" ]]; then
+                map[$k]="$new"
+                [[ "$old" != "$new" ]] && changes+=("$k|$old|$new")
             fi
         fi
     done
@@ -326,7 +388,12 @@ declare -A repos=(
     # Interactive confirmation before writing, if we have a TTY
     if [[ -t 0 && ${#changes[@]} -gt 0 ]]; then
         printf "\nPlanned tag updates (update-hyprland.sh):\n" | tee -a "$SUMMARY_LOG"
-        printf "%s\n" "${changes[@]}" | tee -a "$SUMMARY_LOG" | tee -a "$CHANGES_FILE"
+        printf "%s\n" "${changes[@]}" | sort >>"$CHANGES_FILE"
+        printf "%s\n" "${changes[@]}" | sort >>"$SUMMARY_LOG"
+        printf "%s\n" "${changes[@]}" | sort | while IFS='|' read -r k o n; do
+            format_change_line "$k" "$o" "$n"
+            printf "\n"
+        done
         printf "\nProceed with writing updated tags to %s? [Y/n]: " "$TAGS_FILE"
         read -r ans || true
         ans=${ans:-Y}
@@ -341,7 +408,7 @@ declare -A repos=(
         esac
     else
         # non-interactive: still record changes
-        printf "%s\n" "${changes[@]}" >>"$CHANGES_FILE" || true
+        printf "%s\n" "${changes[@]}" | sort >>"$CHANGES_FILE" || true
     fi
 
     {
@@ -675,19 +742,34 @@ run_stack() {
         [[ "${results[$mod]:-}" == FAIL ]] && failed=1
     done
     {
-        printf "\nSummary:\n"
+        printf "\n%sSummary:%s\n" "$BOLD" "$RESET"
         for mod in "${modules[@]}"; do
             printf "%-24s %s\n" "$mod" "${results[$mod]:-SKIPPED}"
         done
         # Show updated versions (final tag values)
         if [[ -f "$TAGS_FILE" ]]; then
-            printf "\nUpdated versions (from %s):\n" "$TAGS_FILE"
-            grep -E '^[A-Z0-9_]+=' "$TAGS_FILE" | sort
+            printf "\n%sUpdated versions%s (from %s):\n" "$BOLD" "$RESET" "$TAGS_FILE"
+            declare -A changed_old
+            if [[ -f "$LOG_DIR/update-delta-$TS.log" ]]; then
+                while IFS='|' read -r k o n; do
+                    [[ -z "$k" ]] && continue
+                    changed_old["$k"]="$o"
+                done < "$LOG_DIR/update-delta-$TS.log"
+            fi
+            while IFS='=' read -r key val; do
+                [[ -z "$key" || "$key" =~ ^# ]] && continue
+                format_tag_line "$key" "$val" "${changed_old[$key]:-}"
+                printf "\n"
+            done < <(grep -E '^[A-Z0-9_]+=' "$TAGS_FILE" | sort)
         fi
         # Include change list if present
-        printf "\nChanges applied this run:\n"
-        if [[ -f "$LOG_DIR/update-delta-$TS.log" ]]; then
-            cat "$LOG_DIR/update-delta-$TS.log"
+        printf "\n%sChanges applied this run:%s\n" "$BOLD" "$RESET"
+        if [[ -s "$LOG_DIR/update-delta-$TS.log" ]]; then
+            while IFS='|' read -r k o n; do
+                [[ -z "$k" ]] && continue
+                format_change_line "$k" "$o" "$n"
+                printf "\n"
+            done < "$LOG_DIR/update-delta-$TS.log"
         else
             printf "(none)\n"
         fi
