@@ -76,24 +76,26 @@ format_change_line() {
 
 format_tag_line() {
   local key="$1" val="$2" old="$3"
-  if [[ -n "$old" ]]; then
-    local color="$YELLOW"
-    if [[ -n "$old" && ! "$old" =~ ^(auto|latest)$ ]]; then
-      local cmp
-      cmp=$(compare_versions "$val" "$old")
-      if [[ "$cmp" == "-1" ]]; then
-        color="$RED"
-      else
-        color="$GREEN"
-      fi
-    fi
-    if [[ -t 1 ]]; then
-      printf "%s%s%s=%s%s" "$BOLD" "$color" "$key" "$val" "$RESET"
+  local name_color="$GREEN" ver_color="$BLUE" emphasis=""
+  local downgraded=0
+  if [[ -n "$old" && ! "$old" =~ ^(auto|latest)$ ]]; then
+    local cmp
+    cmp=$(compare_versions "$val" "$old")
+    if [[ "$cmp" == "-1" ]]; then
+      downgraded=1
     else
-      printf "%s=%s" "$key" "$val"
+      emphasis="$BOLD"
+    fi
+  fi
+  if [[ -t 1 ]]; then
+    if [[ $downgraded -eq 1 ]]; then
+      printf "%s%s%s Version: %s%s%s" "$BOLD" "$RED" "$key" "$val" "$RESET" "$RESET"
+    else
+      printf "%s%s%s Version: %s%s%s%s" "$emphasis" "$name_color" "$key" "$RESET" "$emphasis" "$ver_color" "$val"
+      printf "%s" "$RESET"
     fi
   else
-    printf "%s=%s" "$key" "$val"
+    printf "%s Version: %s" "$key" "$val"
   fi
 }
 
