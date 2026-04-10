@@ -501,6 +501,8 @@ remove_source_hyprland_artifacts() {
         "/usr/local/bin/Hyprland"
         "/usr/local/bin/hyprland"
         "/usr/local/bin/start-hyprland"
+        "/usr/local/bin/hyprctl"
+        "/usr/local/bin/hyprpm"
         "/usr/local/share/wayland-sessions/hyprland.desktop"
         "/usr/local/share/wayland-sessions/hyprland-uwsm.desktop"
     )
