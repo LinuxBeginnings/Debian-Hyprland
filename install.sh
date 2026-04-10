@@ -497,14 +497,22 @@ purge_deb_hyprland_packages() {
 
 remove_source_hyprland_artifacts() {
     echo "${INFO} Checking for source-installed Hyprland artifacts..." | tee -a "$LOG"
-    local hyprland_binaries=("/usr/local/bin/Hyprland" "/usr/local/bin/hyprland")
+    local hyprland_binaries=(
+        "/usr/local/bin/Hyprland"
+        "/usr/local/bin/hyprland"
+        "/usr/local/bin/start-hyprland"
+        "/usr/local/share/wayland-sessions/hyprland.desktop"
+        "/usr/local/share/wayland-sessions/hyprland-uwsm.desktop"
+    )
     local binary
     for binary in "${hyprland_binaries[@]}"; do
         if [ -e "$binary" ]; then
-            echo "${NOTE} Removing binary: $binary" | tee -a "$LOG"
+            echo "${NOTE} Removing source artifact: $binary" | tee -a "$LOG"
             sudo rm -f "$binary"
         fi
     done
+    # Remove empty local wayland sessions directory (if now unused)
+    sudo rmdir /usr/local/share/wayland-sessions 2>/dev/null || true
 
     # Remove development files from /usr/local
     if [ -d "/usr/local/include/hyprland" ] || [ -d "/usr/local/lib/libhypr" ]; then

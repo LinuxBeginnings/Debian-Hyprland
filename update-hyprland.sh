@@ -135,6 +135,9 @@ remove_source_hypr_artifacts() {
     local source_paths=(
         /usr/local/bin/Hyprland
         /usr/local/bin/hyprland
+        /usr/local/bin/start-hyprland
+        /usr/local/share/wayland-sessions/hyprland.desktop
+        /usr/local/share/wayland-sessions/hyprland-uwsm.desktop
         /usr/local/include/hyprland
     )
     local removed=0
@@ -150,6 +153,7 @@ remove_source_hypr_artifacts() {
         sudo rm -f /usr/local/lib/libhypr* /usr/local/lib/libaquamarine* 2>/dev/null || true
         removed=1
     fi
+    sudo rmdir /usr/local/share/wayland-sessions 2>/dev/null || true
     [[ $removed -eq 1 ]] && sudo ldconfig || true
 }
 
