@@ -38,6 +38,9 @@ Usage: ${0##*/} [OPTIONS]
 Options:
   --build-trixie         Force trixie compatibility mode
   --no-trixie           Disable trixie compatibility mode
+  --mode <source|debian|auto>  Select Hyprland install method
+  --packages            Alias for --mode debian
+  --source              Alias for --mode source
   --preset <file>       Load preset file with options
   --force-reinstall     Force APT re-installs where applicable
   --tty                 Use simple TTY prompts instead of whiptail dialogs
@@ -167,6 +170,122 @@ verify_and_offer_fix_apt_sources() {
     echo -e "${INFO} APT sources status (post-fix):${msg}"
 }
 
+detect_suite() {
+    local c
+    c=$(_detect_codename)
+    case "$c" in
+    trixie | forky | sid)
+        echo "$c"
+        ;;
+    *)
+        echo "$c"
+        ;;
+    esac
+}
+
+ensure_trixie_backports_repo() {
+    local suite="$1"
+    [ "$suite" = "trixie" ] || return 0
+    local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
+    local desired="deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
+    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        # If we previously created an overlay but backports exists elsewhere, remove overlay to avoid duplicate targets.
+        if sudo test -f "$file"; then
+            sudo rm -f "$file" 2>/dev/null || true
+        fi
+        return 0
+    fi
+    echo "${INFO} Enabling Debian trixie-backports repository for Hyprland packages..." | tee -a "$LOG"
+    sudo bash -c "cat > '$file' <<EOF
+# Added by Debian-Hyprland installer for Hyprland package mode on trixie
+deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+EOF"
+}
+
+debian_hypr_required_packages=(
+    hyprland
+    xdg-desktop-portal-hyprland
+    hypridle
+    hyprlock
+    hyprpicker
+    hyprpolkitagent
+)
+debian_hypr_optional_packages=(
+    hyprpaper
+    hyprland-protocols
+    hyprland-guiutils
+    hyprland-qtutils
+    hyprwayland-scanner
+    hyprcursor-util
+    hyprlauncher
+    hyprland-backgrounds
+)
+
+package_available_for_suite() {
+    local pkg="$1"
+    local suite="$2"
+    if [ "$suite" = "trixie" ]; then
+        apt-cache madison "$pkg" 2>/dev/null | grep -q "trixie-backports" \
+            || apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"
+    else
+        apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+    fi
+}
+
+verify_debian_hypr_packages() {
+    local suite="$1"
+    local missing=()
+    local pkg
+    for pkg in "${debian_hypr_required_packages[@]}"; do
+        if ! package_available_for_suite "$pkg" "$suite"; then
+            missing+=("$pkg")
+        fi
+    done
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "${WARN} Missing required Debian Hyprland packages for suite '$suite': ${missing[*]}" | tee -a "$LOG"
+        return 1
+    fi
+    return 0
+}
+
+select_hypr_install_mode() {
+    local suite="$1"
+    local requested="$2"
+    local resolved="$requested"
+    if [ "$resolved" = "auto" ]; then
+        case "$suite" in
+        trixie | forky | sid)
+            resolved="debian"
+            ;;
+        *)
+            resolved="source"
+            ;;
+        esac
+    fi
+    echo "$resolved"
+}
+
+install_debian_hyprland_stack() {
+    local suite="$1"
+    local install_list=()
+    local pkg
+    for pkg in "${debian_hypr_required_packages[@]}"; do
+        install_list+=("$pkg")
+    done
+    for pkg in "${debian_hypr_optional_packages[@]}"; do
+        if package_available_for_suite "$pkg" "$suite"; then
+            install_list+=("$pkg")
+        fi
+    done
+    echo "${INFO} Installing Hyprland from Debian packages: ${install_list[*]}" | tee -a "$LOG"
+    if [ "$suite" = "trixie" ]; then
+        sudo apt-get install -y -t trixie-backports "${install_list[@]}"
+    else
+        sudo apt-get install -y "${install_list[@]}"
+    fi
+}
+
 # Warning: End of Life Support
 printf "\n%.0s" {1..2}
 print_color $YELLOW "
@@ -252,6 +371,7 @@ fi
 #   HYPR_BUILD_TRIXIE=1|0 (env)
 TRIXIE_MODE="auto"
 PRESET_FILE=""
+HYPR_INSTALL_MODE="auto"
 
 # Parse a small set of supported CLI args (order-independent)
 # NOTE: install.sh historically used "$1"/"$2" for --preset; this keeps that working.
@@ -268,6 +388,17 @@ for ((i = 0; i < ${#args[@]}; i++)); do
         ;;
     --force-reinstall)
         FORCE_REINSTALL=1
+        ;;
+    --mode)
+        if [ $((i + 1)) -lt ${#args[@]} ]; then
+            HYPR_INSTALL_MODE="${args[$((i + 1))]}"
+        fi
+        ;;
+    --packages)
+        HYPR_INSTALL_MODE="debian"
+        ;;
+    --source)
+        HYPR_INSTALL_MODE="source"
         ;;
     --tty)
         TTY_MODE=1
@@ -325,11 +456,19 @@ echo -e "\e[35m
 \e[0m"
 printf "\n%.0s" {1..1}
 
-# Function to clean up existing Hyprland installations
-clean_existing_hyprland() {
-    echo "${INFO} Checking for existing Hyprland installations..." | tee -a "$LOG"
+DEBIAN_SUITE="$(detect_suite)"
+HYPR_INSTALL_MODE="$(select_hypr_install_mode "$DEBIAN_SUITE" "$HYPR_INSTALL_MODE")"
+case "$HYPR_INSTALL_MODE" in
+source | debian) ;;
+*)
+    echo "${ERROR} Invalid --mode value '$HYPR_INSTALL_MODE'. Use: source, debian, auto." | tee -a "$LOG"
+    exit 1
+    ;;
+esac
 
-    # List of Hyprland-related packages to remove if installed via Debian repos
+# Function to remove Hyprland-related Debian packages
+purge_deb_hyprland_packages() {
+    echo "${INFO} Checking for Hyprland Debian packages..." | tee -a "$LOG"
     local hyprland_packages=(
         hyprland hyprland-plugins hyprland-session
         hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils
@@ -345,10 +484,8 @@ clean_existing_hyprland() {
         hyprpolkitagent hyprpm hyprctl
         xdg-desktop-portal-hyprland
     )
-    local hyprland_binaries=("/usr/local/bin/Hyprland" "/usr/local/bin/hyprland" "/usr/bin/Hyprland" "/usr/bin/hyprland")
-
-    # Remove installed .deb packages
     echo "${INFO} Removing any previously installed .deb packages..." | tee -a "$LOG"
+    local pkg
     for pkg in "${hyprland_packages[@]}"; do
         if dpkg -s "$pkg" >/dev/null 2>&1; then
             echo "${NOTE} Purging package: $pkg" | tee -a "$LOG"
@@ -356,9 +493,12 @@ clean_existing_hyprland() {
         fi
     done
     sudo apt-get autoremove -y >/dev/null 2>&1 || true
+}
 
-    # Remove binaries built from source
-    echo "${INFO} Checking for binaries built from source..." | tee -a "$LOG"
+remove_source_hyprland_artifacts() {
+    echo "${INFO} Checking for source-installed Hyprland artifacts..." | tee -a "$LOG"
+    local hyprland_binaries=("/usr/local/bin/Hyprland" "/usr/local/bin/hyprland")
+    local binary
     for binary in "${hyprland_binaries[@]}"; do
         if [ -e "$binary" ]; then
             echo "${NOTE} Removing binary: $binary" | tee -a "$LOG"
@@ -379,6 +519,11 @@ clean_existing_hyprland() {
     echo "${OK} Cleanup completed" | tee -a "$LOG"
 }
 
+clean_existing_hyprland() {
+    purge_deb_hyprland_packages
+    remove_source_hyprland_artifacts
+}
+
 # Welcome / proceed (TTY or whiptail)
 if [ "$TTY_MODE" -eq 1 ]; then
     echo "========================================"
@@ -387,8 +532,15 @@ if [ "$TTY_MODE" -eq 1 ]; then
     echo "ATTENTION: Run a full system update and reboot first (recommended)."
     echo "NOTE: On VMs, enable 3D acceleration or Hyprland may not start."
     echo
-    echo "Build method: FROM SOURCE"
-    echo "IMPORTANT: Ensure deb-src is enabled in /etc/apt/sources.list."
+    if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
+        echo "Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)"
+        if [ "$DEBIAN_SUITE" = "trixie" ]; then
+            echo "Trixie mode will enable trixie-backports for Hyprland."
+        fi
+    else
+        echo "Build method: FROM SOURCE"
+        echo "IMPORTANT: Ensure deb-src is enabled in /etc/apt/sources.list."
+    fi
     read -r -p "Proceed with installation? [y/N]: " _ans
     case "${_ans,,}" in
     y | yes) : ;;
@@ -404,7 +556,11 @@ else
 ATTENTION: Run a full system update and Reboot first !!! (Highly Recommended)\n\n\
 NOTE: If you are installing on a VM, ensure to enable 3D acceleration otherwise Hyprland may NOT start!" \
         15 80
-    proceed_msg="Build method: FROM SOURCE\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting deb-src on /etc/apt/sources.list else script may fail.\n\nShall we proceed?"
+    if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
+        proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nFor Debian trixie this will enable trixie-backports and install Hyprland from packages.\n\nShall we proceed?"
+    else
+        proceed_msg="Build method: FROM SOURCE\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting deb-src on /etc/apt/sources.list else script may fail.\n\nShall we proceed?"
+    fi
     if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 60; then
         echo -e "\n"
         echo "❌ ${INFO} You 🫵 chose ${YELLOW}NOT${RESET} to proceed. ${YELLOW}Exiting...${RESET}" | tee -a "$LOG"
@@ -674,102 +830,127 @@ printf "\n%.0s" {1..1}
 # Verify APT sources before updating (deb-src + non-free components)
 echo "${INFO} Verifying APT sources (deb-src, non-free, non-free-firmware)..." | tee -a "$LOG"
 verify_and_offer_fix_apt_sources
+if [ "$HYPR_INSTALL_MODE" = "debian" ] && [ "$DEBIAN_SUITE" = "trixie" ]; then
+    ensure_trixie_backports_repo "$DEBIAN_SUITE"
+fi
 
 echo "${INFO} Running a ${SKY_BLUE}full system update...${RESET}" | tee -a "$LOG"
 sudo apt update
 
 sleep 1
-# Remove any Debian-provided Hyprland stack packages before source builds
-clean_existing_hyprland
-# execute pre clean up
-execute_script "02-pre-cleanup.sh"
-
-echo "${INFO} Installing ${SKY_BLUE}necessary dependencies...${RESET}" | tee -a "$LOG"
-sleep 1
-execute_script "00-dependencies.sh"
-
-echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
-sleep 1
-execute_script "fonts.sh"
-
-# Build from source (only method)
-# Optional: refresh tags before building the Hyprland stack
-# Set FETCH_LATEST=1 to opt-in (default is no-refresh to honor pinned tags)
-if [ "${FETCH_LATEST:-0}" = "1" ] && [ -f ./refresh-hypr-tags.sh ]; then
-    chmod +x ./refresh-hypr-tags.sh || true
-    ./refresh-hypr-tags.sh
+if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
+    if ! verify_debian_hypr_packages "$DEBIAN_SUITE"; then
+        echo "${WARN} Falling back to source install mode because required Debian packages are unavailable." | tee -a "$LOG"
+        HYPR_INSTALL_MODE="source"
+    fi
 fi
 
-echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from source...${RESET}" | tee -a "$LOG"
-sleep 1
-execute_script "01-hypr-pkgs.sh"
-sleep 1
-execute_script "hyprutils.sh"
-sleep 1
-execute_script "hyprlang.sh"
-sleep 1
-execute_script "hyprcursor.sh"
-sleep 1
-execute_script "hyprwayland-scanner.sh"
-sleep 1
-execute_script "hyprgraphics.sh"
-sleep 1
-execute_script "aquamarine.sh"
-sleep 1
-execute_script "hyprland-qt-support.sh"
-sleep 1
-execute_script "hyprtoolkit.sh"
-sleep 1
-execute_script "hyprland-guiutils.sh"
-sleep 1
-execute_script "hyprland-protocols.sh"
-sleep 1
-# Ensure wayland-protocols (from source) is installed to satisfy Hyprland's >= 1.45 requirement
-execute_script "wayland-protocols-src.sh"
-sleep 1
-execute_script "xkbcommon.sh"
-sleep 1
-# Build hyprwire before Hyprland (required by Hyprland >= 0.53)
-execute_script "hyprwire.sh"
-sleep 1
-execute_script "hyprland.sh"
-sleep 1
-execute_script "hyprpolkitagent.sh"
-sleep 1
-execute_script "wallust.sh"
-sleep 1
-execute_script "swww.sh"
-sleep 1
-execute_script "rofi-wayland.sh"
-sleep 1
-execute_script "hyprlock.sh"
-sleep 1
-execute_script "hypridle.sh"
-sleep 1
-execute_script "hyprpicker.sh"
-sleep 1
-execute_script "hyprshutdown.sh"
-sleep 1
-execute_script "hyprpwcenter.sh"
-sleep 1
-execute_script "hyprtavern.sh"
-sleep 1
-execute_script "hyprsunset.sh"
-sleep 1
-execute_script "hyprlauncher.sh"
-sleep 1
-execute_script "hyprsysteminfo.sh"
+if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
+    remove_source_hyprland_artifacts
+    execute_script "02-pre-cleanup.sh"
+    echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
+    sleep 1
+    execute_script "fonts.sh"
+    echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from Debian repositories...${RESET}" | tee -a "$LOG"
+    sleep 1
+    install_debian_hyprland_stack "$DEBIAN_SUITE"
+    echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland runtime/support packages...${RESET}" | tee -a "$LOG"
+    sleep 1
+    execute_script "01-hypr-pkgs.sh"
+    sudo ldconfig 2>/dev/null || true
+else
+    # Remove any Debian-provided Hyprland stack packages before source builds
+    clean_existing_hyprland
+    # execute pre clean up
+    execute_script "02-pre-cleanup.sh"
 
-# Install XDG-Desktop-Portal-Hyprland by default (removed from menu)
-execute_script "xdph.sh"
+    echo "${INFO} Installing ${SKY_BLUE}necessary dependencies...${RESET}" | tee -a "$LOG"
+    sleep 1
+    execute_script "00-dependencies.sh"
 
-# Ensure /usr/local/lib is in the dynamic linker search path.
-# Many Hypr* components install shared libraries into /usr/local/lib; without this,
-# tools like hyprctl can fail to load (e.g. missing libhyprwire.so.*).
-if ! sudo grep -qxF "/usr/local/lib" /etc/ld.so.conf.d/usr-local.conf 2>/dev/null; then
-    echo "/usr/local/lib" | sudo tee -a /etc/ld.so.conf.d/usr-local.conf >/dev/null
+    echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
+    sleep 1
+    execute_script "fonts.sh"
+
+    # Build from source
+    # Optional: refresh tags before building the Hyprland stack
+    # Set FETCH_LATEST=1 to opt-in (default is no-refresh to honor pinned tags)
+    if [ "${FETCH_LATEST:-0}" = "1" ] && [ -f ./refresh-hypr-tags.sh ]; then
+        chmod +x ./refresh-hypr-tags.sh || true
+        ./refresh-hypr-tags.sh
+    fi
+
+    echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from source...${RESET}" | tee -a "$LOG"
+    sleep 1
+    execute_script "01-hypr-pkgs.sh"
+    sleep 1
+    execute_script "hyprutils.sh"
+    sleep 1
+    execute_script "hyprlang.sh"
+    sleep 1
+    execute_script "hyprcursor.sh"
+    sleep 1
+    execute_script "hyprwayland-scanner.sh"
+    sleep 1
+    execute_script "hyprgraphics.sh"
+    sleep 1
+    execute_script "aquamarine.sh"
+    sleep 1
+    execute_script "hyprland-qt-support.sh"
+    sleep 1
+    execute_script "hyprtoolkit.sh"
+    sleep 1
+    execute_script "hyprland-guiutils.sh"
+    sleep 1
+    execute_script "hyprland-protocols.sh"
+    sleep 1
+    # Ensure wayland-protocols (from source) is installed to satisfy Hyprland's >= 1.45 requirement
+    execute_script "wayland-protocols-src.sh"
+    sleep 1
+    execute_script "xkbcommon.sh"
+    sleep 1
+    # Build hyprwire before Hyprland (required by Hyprland >= 0.53)
+    execute_script "hyprwire.sh"
+    sleep 1
+    execute_script "hyprland.sh"
+    sleep 1
+    execute_script "hyprpolkitagent.sh"
+    sleep 1
+    execute_script "wallust.sh"
+    sleep 1
+    execute_script "swww.sh"
+    sleep 1
+    execute_script "rofi-wayland.sh"
+    sleep 1
+    execute_script "hyprlock.sh"
+    sleep 1
+    execute_script "hypridle.sh"
+    sleep 1
+    execute_script "hyprpicker.sh"
+    sleep 1
+    execute_script "hyprshutdown.sh"
+    sleep 1
+    execute_script "hyprpwcenter.sh"
+    sleep 1
+    execute_script "hyprtavern.sh"
+    sleep 1
+    execute_script "hyprsunset.sh"
+    sleep 1
+    execute_script "hyprlauncher.sh"
+    sleep 1
+    execute_script "hyprsysteminfo.sh"
+
+    # Install XDG-Desktop-Portal-Hyprland by default (removed from menu)
+    execute_script "xdph.sh"
+
+    # Ensure /usr/local/lib is in the dynamic linker search path.
+    # Many Hypr* components install shared libraries into /usr/local/lib; without this,
+    # tools like hyprctl can fail to load (e.g. missing libhyprwire.so.*).
+    if ! sudo grep -qxF "/usr/local/lib" /etc/ld.so.conf.d/usr-local.conf 2>/dev/null; then
+        echo "/usr/local/lib" | sudo tee -a /etc/ld.so.conf.d/usr-local.conf >/dev/null
+    fi
+    sudo ldconfig 2>/dev/null || true
 fi
-sudo ldconfig 2>/dev/null || true
 
 #execute_script "imagemagick.sh" #this is for compiling from source. 07 Sep 2024
 # execute_script "waybar-git.sh" only if waybar on repo is old
@@ -908,8 +1089,8 @@ execute_script "03-Final-Check.sh"
 
 printf "\n%.0s" {1..1}
 
-# Check if either hyprland or Hyprland files exist in /usr/local/bin/
-if [ -e /usr/local/bin/hyprland ] || [ -f /usr/local/bin/Hyprland ]; then
+# Check if either hyprland or Hyprland files exist in common install locations
+if [ -e /usr/local/bin/hyprland ] || [ -f /usr/local/bin/Hyprland ] || [ -e /usr/bin/hyprland ] || [ -f /usr/bin/Hyprland ]; then
     printf "\n ${OK} 👌 Hyprland is installed. However, some essential packages may not be installed. Please see above!"
     printf "\n${CAT} Ignore this message if it states ${YELLOW}All essential packages${RESET} are installed as per above\n"
     sleep 2

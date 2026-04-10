@@ -25,6 +25,8 @@
 #   ./update-hyprland.sh --fetch-latest --via-helper   # use dry-run-build.sh for a summary-only run
 #   ./update-hyprland.sh --force-update --install      # override pinned versions (equivalent to FORCE=1)
 #   ./update-hyprland.sh --package-cleanup --install   # purge Debian Hyprland packages before building
+#   ./update-hyprland.sh --mode debian --install       # switch to Debian package mode and install
+#   ./update-hyprland.sh --debian-remove               # remove Debian Hyprland packages
 #   ./update-hyprland.sh --help                        # show this help
 #
 # Notes:
@@ -45,6 +47,131 @@ LOG_DIR="$REPO_ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
+MODE="source"
+DEBIAN_REMOVE=0
+DEBIAN_INSTALL=0
+
+detect_suite() {
+    local c=""
+    if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release 2>/dev/null || true
+        c="${DEBIAN_CODENAME:-${VERSION_CODENAME:-}}"
+    fi
+    if [[ -z "$c" ]] && command -v lsb_release >/dev/null 2>&1; then
+        c="$(lsb_release -cs 2>/dev/null || true)"
+    fi
+    [[ -z "$c" ]] && c="trixie"
+    printf '%s' "$c"
+}
+
+ensure_trixie_backports_repo() {
+    local suite="$1"
+    [[ "$suite" == "trixie" ]] || return 0
+    local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
+    local desired="deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
+    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        # If we previously created an overlay but backports exists elsewhere, remove overlay to avoid duplicate targets.
+        if sudo test -f "$file"; then
+            sudo rm -f "$file" 2>/dev/null || true
+        fi
+        return 0
+    fi
+    echo "[INFO] Enabling Debian trixie-backports repository." | tee -a "$SUMMARY_LOG"
+    sudo bash -c "cat > '$file' <<EOF
+# Added by update-hyprland.sh for Hyprland package mode
+deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+EOF"
+}
+
+debian_hypr_required_packages=(
+    hyprland
+    xdg-desktop-portal-hyprland
+    hypridle
+    hyprlock
+    hyprpicker
+    hyprpolkitagent
+)
+debian_hypr_optional_packages=(
+    hyprpaper
+    hyprland-protocols
+    hyprland-guiutils
+    hyprland-qtutils
+    hyprwayland-scanner
+    hyprcursor-util
+    hyprlauncher
+    hyprland-backgrounds
+)
+
+package_available_for_suite() {
+    local pkg="$1"
+    local suite="$2"
+    if [[ "$suite" == "trixie" ]]; then
+        apt-cache madison "$pkg" 2>/dev/null | grep -q "trixie-backports" \
+            || apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"
+    else
+        apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+    fi
+}
+
+verify_debian_hypr_packages() {
+    local suite="$1"
+    local missing=()
+    local p
+    for p in "${debian_hypr_required_packages[@]}"; do
+        if ! package_available_for_suite "$p" "$suite"; then
+            missing+=("$p")
+        fi
+    done
+    if [[ ${#missing[@]} -gt 0 ]]; then
+        echo "[ERROR] Missing required Debian Hyprland packages for suite '$suite': ${missing[*]}" | tee -a "$SUMMARY_LOG"
+        return 1
+    fi
+    return 0
+}
+
+remove_source_hypr_artifacts() {
+    local source_paths=(
+        /usr/local/bin/Hyprland
+        /usr/local/bin/hyprland
+        /usr/local/include/hyprland
+    )
+    local removed=0
+    for p in "${source_paths[@]}"; do
+        if [[ -e "$p" ]]; then
+            echo "[INFO] Removing source-installed artifact: $p" | tee -a "$SUMMARY_LOG"
+            sudo rm -rf "$p" || true
+            removed=1
+        fi
+    done
+    if compgen -G "/usr/local/lib/libhypr*" >/dev/null || compgen -G "/usr/local/lib/libaquamarine*" >/dev/null; then
+        echo "[INFO] Removing source-installed Hypr* libraries from /usr/local/lib." | tee -a "$SUMMARY_LOG"
+        sudo rm -f /usr/local/lib/libhypr* /usr/local/lib/libaquamarine* 2>/dev/null || true
+        removed=1
+    fi
+    [[ $removed -eq 1 ]] && sudo ldconfig || true
+}
+
+install_debian_hypr_packages() {
+    local suite="$1"
+    local install_list=()
+    local p
+    for p in "${debian_hypr_required_packages[@]}"; do
+        install_list+=("$p")
+    done
+    for p in "${debian_hypr_optional_packages[@]}"; do
+        if package_available_for_suite "$p" "$suite"; then
+            install_list+=("$p")
+        fi
+    done
+    echo "[INFO] Installing Debian Hyprland packages: ${install_list[*]}" | tee -a "$SUMMARY_LOG"
+    if [[ "$suite" == "trixie" ]]; then
+        sudo apt-get install -y -t trixie-backports "${install_list[@]}"
+    else
+        sudo apt-get install -y "${install_list[@]}"
+    fi
+}
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
     local pkgs=(
@@ -148,6 +275,9 @@ Options:
       --via-helper      Use dry-run-build.sh to summarize a dry-run
       --minimal         Build minimal stack before hyprland
       --package-cleanup Purge Debian Hyprland packages before building
+      --mode MODE       Select mode: source (default) or debian
+      --debian-install  Install Hyprland stack from Debian repos and skip source build
+      --debian-remove   Remove Debian Hyprland stack packages and exit
       --no-fetch        Do not auto-fetch tags on install
       --build-trixie    Force Debian 13 (trixie) compatibility mode (enables needed shims)
       --no-trixie       Disable trixie compatibility mode
@@ -824,6 +954,20 @@ while [[ $# -gt 0 ]]; do
         PACKAGE_CLEANUP=1
         shift
         ;;
+    --mode)
+        MODE=${2:-}
+        shift 2
+        ;;
+    --debian-install)
+        MODE="debian"
+        DEBIAN_INSTALL=1
+        shift
+        ;;
+    --debian-remove)
+        MODE="debian"
+        DEBIAN_REMOVE=1
+        shift
+        ;;
     --no-fetch)
         NO_FETCH=1
         shift
@@ -879,6 +1023,10 @@ if [[ $DO_INSTALL -eq 1 && $DO_DRY_RUN -eq 1 ]]; then
     echo "[ERROR] Use either --dry-run or --install, not both." | tee -a "$SUMMARY_LOG"
     exit 2
 fi
+if [[ "$MODE" != "source" && "$MODE" != "debian" ]]; then
+    echo "[ERROR] Invalid mode '$MODE'. Use --mode source|debian." | tee -a "$SUMMARY_LOG"
+    exit 2
+fi
 
 ensure_tags_file
 
@@ -904,9 +1052,45 @@ if [[ $PACKAGE_CLEANUP -eq 1 && $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 ]]; then
     remove_deb_hypr_packages
     exit 0
 fi
+
+if [[ "$MODE" == "debian" ]]; then
+    SUITE="$(detect_suite)"
+    if [[ "$SUITE" == "trixie" ]]; then
+        ensure_trixie_backports_repo "$SUITE"
+    fi
+    echo "[INFO] Refreshing APT metadata for Debian package mode." | tee -a "$SUMMARY_LOG"
+    sudo apt-get update | tee -a "$SUMMARY_LOG"
+
+    if [[ $DEBIAN_REMOVE -eq 1 ]]; then
+        remove_deb_hypr_packages
+        exit 0
+    fi
+
+    if [[ $DO_INSTALL -eq 1 ]]; then
+        DEBIAN_INSTALL=1
+    fi
+
+    if [[ $DEBIAN_INSTALL -eq 1 ]]; then
+        verify_debian_hypr_packages "$SUITE"
+        remove_source_hypr_artifacts
+        remove_deb_hypr_packages
+        install_debian_hypr_packages "$SUITE"
+        echo "[INFO] Debian package mode install completed for suite '$SUITE'." | tee -a "$SUMMARY_LOG"
+        exit 0
+    fi
+
+    verify_debian_hypr_packages "$SUITE"
+    echo "[INFO] Debian package mode dry-run check complete for suite '$SUITE'." | tee -a "$SUMMARY_LOG"
+    exit 0
+fi
 if [[ $DO_DRY_RUN -eq 0 && $DO_INSTALL -eq 0 ]]; then
     echo "[INFO] No build option specified. Defaulting to --dry-run." | tee -a "$SUMMARY_LOG"
     DO_DRY_RUN=1
+fi
+# Switching to source mode should avoid mixed package/source installs by default.
+if [[ $DO_INSTALL -eq 1 && $PACKAGE_CLEANUP -eq 0 ]]; then
+    PACKAGE_CLEANUP=1
+    echo "[INFO] Source install mode: enabling Debian package cleanup to avoid mixed stack versions." | tee -a "$SUMMARY_LOG"
 fi
 # Before install builds, optionally remove Debian-provided Hyprland stack to avoid mixed versions
 if [[ $DO_INSTALL -eq 1 && $PACKAGE_CLEANUP -eq 1 ]]; then
