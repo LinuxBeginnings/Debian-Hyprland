@@ -1,15 +1,28 @@
 ## CHANGELOG
 
+## 11 April 2026
+
+- Fixed `ags.sh` install script
+- Added option to build Hyprland from deb packages
+    - Faster install
+    - Potentially more stable
+    - Won't be updated as often
+    - `update-hyprland.sh` can switch between source and pkgs
+- Updated output format of the output of `update-hyprland.sh`
+- Fixed wallpaper issue
+- Switching to Hyprland package build left behind source built binaries
+    - Caused hyprland to crash at startup with missing library
+
 ## 3 April 2026
 
-- Fixed `refresh-tags.sh` 
-  - Wasn't updating properly 
-  - Added fallback to `git ls-remote` 
-    - For 403/404 errors 
-    - Also fixed repeating 403/404 errors 
-    - Added option for GitHub token to avoid rate limits 
-   - Added `wayland-protocols` to hyprland tags 
-      - It wasn't getting updated and was three revs behind 
+- Fixed `refresh-tags.sh`
+    - Wasn't updating properly
+    - Added fallback to `git ls-remote`
+        - For 403/404 errors
+        - Also fixed repeating 403/404 errors
+        - Added option for GitHub token to avoid rate limits
+    - Added `wayland-protocols` to hyprland tags
+        - It wasn't getting updated and was three revs behind
 
 ## 29 March 2026
 
