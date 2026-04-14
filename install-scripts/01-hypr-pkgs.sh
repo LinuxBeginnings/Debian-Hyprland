@@ -35,13 +35,11 @@ hypr_package=(
     python3-requests
     python3-pip
     qt5ct
-    qt5-style-kvantum
     libqt5quick5
     libqt5qml5
     qt6-declarative-dev
     qt-style-kvantum-themes
     qt-style-kvantum
-    qt6-style-kvantum
     qt6ct
     slurp
     swappy

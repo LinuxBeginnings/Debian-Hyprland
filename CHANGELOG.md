@@ -12,6 +12,8 @@
 
 - Improved: Error handling in the `install.sh` script
     - Thank you `@moukhtar22` for finding this and filing an issue
+- Removed invalid QT packages
+    - Thank you `@moukhtar22` for finding this and filing an issue
 
 ## 11 April 2026
 
