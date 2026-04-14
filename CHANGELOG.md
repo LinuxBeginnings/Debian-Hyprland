@@ -1,5 +1,15 @@
 ## CHANGELOG
 
+## 14 April 2026
+
+- Fixed polkit issues
+    - Added missing QT kvantum packages
+    - This prevented the escalation dialog from running
+
+    ```bash
+      sudo apt install libqt5quick5 libqt5qml5 qt6-declarative-dev
+    ```
+
 ## 11 April 2026
 
 - Fixed `ags.sh` install script
