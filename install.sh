@@ -605,15 +605,19 @@ execute_script() {
         if [ -x "$script_path" ]; then
             # Pass flags via env so sub-scripts can react without CLI churn
             if [ "${HYPR_BUILD_TRIXIE:-0}" = "1" ]; then
-                env HYPR_BUILD_TRIXIE=1 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} "$script_path" --build-trixie "${args[@]}"
+                HYPR_BUILD_TRIXIE=1 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} bash "$script_path" --build-trixie "${args[@]}"
+                return $?
             else
-                env HYPR_BUILD_TRIXIE=0 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} "$script_path" "${args[@]}"
+                HYPR_BUILD_TRIXIE=0 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} bash "$script_path" "${args[@]}"
+                return $?
             fi
         else
             echo "Failed to make script '$script' executable." | tee -a "$LOG"
+            return 1
         fi
     else
         echo "Script '$script' not found in '$script_directory'." | tee -a "$LOG"
+        return 1
     fi
 }
 
@@ -860,13 +864,13 @@ if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
     execute_script "02-pre-cleanup.sh"
     echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "fonts.sh"
+    execute_script "fonts.sh" || { echo "${ERROR:-[ERROR]} Fonts installation failed" | tee -a "$LOG"; exit 1; }
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from Debian repositories...${RESET}" | tee -a "$LOG"
     sleep 1
     install_debian_hyprland_stack "$DEBIAN_SUITE"
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland runtime/support packages...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "01-hypr-pkgs.sh"
+    execute_script "01-hypr-pkgs.sh" || { echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"; exit 1; }
     sudo ldconfig 2>/dev/null || true
 else
     # Remove any Debian-provided Hyprland stack packages before source builds
@@ -876,11 +880,11 @@ else
 
     echo "${INFO} Installing ${SKY_BLUE}necessary dependencies...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "00-dependencies.sh"
+    execute_script "00-dependencies.sh" || { echo "${ERROR:-[ERROR]} Dependencies installation failed" | tee -a "$LOG"; exit 1; }
 
     echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "fonts.sh"
+    execute_script "fonts.sh" || { echo "${ERROR:-[ERROR]} Fonts installation failed" | tee -a "$LOG"; exit 1; }
 
     # Build from source
     # Optional: refresh tags before building the Hyprland stack
@@ -892,7 +896,7 @@ else
 
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from source...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "01-hypr-pkgs.sh"
+    execute_script "01-hypr-pkgs.sh" || { echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"; exit 1; }
     sleep 1
     execute_script "hyprutils.sh"
     sleep 1
@@ -922,7 +926,7 @@ else
     # Build hyprwire before Hyprland (required by Hyprland >= 0.53)
     execute_script "hyprwire.sh"
     sleep 1
-    execute_script "hyprland.sh"
+    execute_script "hyprland.sh" || { echo "${ERROR:-[ERROR]} Hyprland installation failed" | tee -a "$LOG"; exit 1; }
     sleep 1
     execute_script "hyprpolkitagent.sh"
     sleep 1
@@ -1067,7 +1071,7 @@ for option in "${options[@]}"; do
         ;;
     dots)
         echo "${INFO} Installing pre-configured ${SKY_BLUE}KooL Hyprland dotfiles...${RESET}" | tee -a "$LOG"
-        execute_script "dotfiles-branch.sh"
+        execute_script "dotfiles-branch.sh" || { echo "${ERROR:-[ERROR]} Dotfiles installation failed" | tee -a "$LOG"; exit 1; }
         ;;
     *)
         echo "Unknown option: $option" | tee -a "$LOG"
