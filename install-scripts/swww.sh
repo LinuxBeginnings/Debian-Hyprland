@@ -37,6 +37,7 @@ fi
 
 swww=(
     liblz4-dev
+    libwayland-dev
     wayland-protocols
 )
 
