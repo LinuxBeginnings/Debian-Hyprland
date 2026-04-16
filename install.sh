@@ -895,6 +895,10 @@ if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland runtime/support packages...${RESET}" | tee -a "$LOG"
     sleep 1
     execute_script "01-hypr-pkgs.sh" || { echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"; exit 1; }
+    sleep 1
+    execute_script "wallust.sh"
+    sleep 1
+    execute_script "swww.sh"
     sudo ldconfig 2>/dev/null || true
 else
     # Remove any Debian-provided Hyprland stack packages before source builds
