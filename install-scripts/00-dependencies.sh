@@ -323,7 +323,11 @@ install_libdisplay_info() {
     local candidates=(libdisplay-info3 libdisplay-info2 libdisplay-info1 libdisplay-info-dev)
     local pkg
     for pkg in "${candidates[@]}"; do
-        install_dep "$pkg"
+        if [ "${DEBIAN_SUITE:-}" = "trixie" ]; then
+            install_package_target "$pkg" "trixie-backports"
+        else
+            install_dep "$pkg"
+        fi
         if dpkg -l | grep -q -w "$pkg"; then
             return 0
         fi
