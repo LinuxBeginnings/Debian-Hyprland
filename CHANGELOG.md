@@ -14,6 +14,14 @@
     - Thank you `@moukhtar22` for finding this and filing an issue
 - Removed invalid QT packages
     - Thank you `@moukhtar22` for finding this and filing an issue
+- Fixed `ags.sh` script
+    - Failed to build
+- Fixed library conflict when using debian pkgs after building from source
+    - Updated script to remove them
+- Fixed refresh tags script
+- Updated `hyprutils`
+- Added `hyprshutdown`
+    - Need to implement in HL dots it more gracefully terminals apps
 
 ## 11 April 2026
 
