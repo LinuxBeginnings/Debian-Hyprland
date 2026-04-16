@@ -74,6 +74,7 @@ dependencies=(
     libvulkan-dev
     libvulkan-volk-dev
     libwayland-dev
+    libwayland-bin
     libwebp-dev
     libxcb-composite0-dev
     libxcb-cursor-dev

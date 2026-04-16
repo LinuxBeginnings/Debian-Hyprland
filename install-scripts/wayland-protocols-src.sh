@@ -11,6 +11,7 @@
 
 build_deps=(
     wayland
+    libwayland-bin
 )
 
 #specific tag or release (e.g., 1.45, 1.46, 1.48)
