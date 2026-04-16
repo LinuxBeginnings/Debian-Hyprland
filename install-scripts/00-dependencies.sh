@@ -306,8 +306,37 @@ preflight_checks() {
 printf "\n%s - Installing ${SKY_BLUE}main dependencies....${RESET} \n" "${NOTE}"
 preflight_checks
 
+install_dep() {
+    local pkg="$1"
+    if [ "${DEBIAN_SUITE:-}" = "trixie" ]; then
+        case "$pkg" in
+        libxkbcommon-dev | libxkbcommon-x11-dev | libxkbregistry-dev)
+            install_package_target "$pkg" "trixie-backports"
+            return
+            ;;
+        esac
+    fi
+    install_package "$pkg" "$LOG"
+}
+
+install_libdisplay_info() {
+    local candidates=(libdisplay-info3 libdisplay-info2 libdisplay-info1 libdisplay-info-dev)
+    local pkg
+    for pkg in "${candidates[@]}"; do
+        install_dep "$pkg"
+        if dpkg -l | grep -q -w "$pkg"; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 for PKG1 in "${dependencies[@]}" "${hyprland_dep[@]}"; do
-    install_package "$PKG1" "$LOG"
+    if [ "$PKG1" = "libdisplay-info3" ]; then
+        install_libdisplay_info
+    else
+        install_dep "$PKG1"
+    fi
 done
 
 printf "\n%.0s" {1..1}

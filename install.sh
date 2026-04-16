@@ -864,7 +864,7 @@ printf "\n%.0s" {1..1}
 # Verify APT sources before updating (deb-src + non-free components)
 echo "${INFO} Verifying APT sources (deb-src, non-free, non-free-firmware)..." | tee -a "$LOG"
 verify_and_offer_fix_apt_sources
-if [ "$HYPR_INSTALL_MODE" = "debian" ] && [ "$DEBIAN_SUITE" = "trixie" ]; then
+if [ "$DEBIAN_SUITE" = "trixie" ]; then
     ensure_trixie_backports_repo "$DEBIAN_SUITE"
 fi
 
