@@ -22,6 +22,10 @@
 - Updated `hyprutils`
 - Added `hyprshutdown`
     - Need to implement in HL dots it more gracefully terminals apps
+- Added menu option to build from source (recommended) or debian pkgs
+    - Currently Debian has HL v0.54.3 no iden when/if they will update it
+    - Source builds can keep up to date
+    - You can switch from debian package to source and vice-versa with `install.sh` script
 
 ## 11 April 2026
 

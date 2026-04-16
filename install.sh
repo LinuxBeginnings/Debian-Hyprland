@@ -457,6 +457,30 @@ echo -e "\e[35m
 printf "\n%.0s" {1..1}
 
 DEBIAN_SUITE="$(detect_suite)"
+if [ "$HYPR_INSTALL_MODE" = "auto" ]; then
+    if [ "$TTY_MODE" -eq 1 ]; then
+        echo "Select Hyprland install method:"
+        echo "  a) Auto (recommended for $DEBIAN_SUITE)"
+        echo "  d) Debian packages"
+        echo "  s) Build from source"
+        read -r -p "Choose [a/d/s] (default a): " _mode
+        case "${_mode,,}" in
+        d | debian) HYPR_INSTALL_MODE="debian" ;;
+        s | source) HYPR_INSTALL_MODE="source" ;;
+        a | "" | *) HYPR_INSTALL_MODE="auto" ;;
+        esac
+    else
+        choice=$(whiptail --title "Hyprland install method" --menu "Select installation source" 15 70 5 \
+            a "Auto (recommended for $DEBIAN_SUITE)" \
+            d "Debian packages" \
+            s "Build from source" 3>&1 1>&2 2>&3) || true
+        case "$choice" in
+        d) HYPR_INSTALL_MODE="debian" ;;
+        s) HYPR_INSTALL_MODE="source" ;;
+        a | *) HYPR_INSTALL_MODE="auto" ;;
+        esac
+    fi
+fi
 HYPR_INSTALL_MODE="$(select_hypr_install_mode "$DEBIAN_SUITE" "$HYPR_INSTALL_MODE")"
 case "$HYPR_INSTALL_MODE" in
 source | debian) ;;
