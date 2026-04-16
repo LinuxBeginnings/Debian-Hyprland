@@ -24,6 +24,7 @@ hypr_package=(
     gvfs-backends
     inxi
     imagemagick
+    jq
     kitty
     nano
     pavucontrol

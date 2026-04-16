@@ -37,6 +37,7 @@ fi
 
 swww=(
     liblz4-dev
+    wayland-protocols
 )
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
@@ -65,6 +66,12 @@ printf "\n%s - Installing ${SKY_BLUE}swww $swww_tag and dependencies${RESET} ...
 for PKG1 in "${swww[@]}"; do
     install_package "$PKG1" "$LOG"
 done
+
+# Ensure wayland.xml is available for build scripts
+if [ ! -f /usr/share/wayland-protocols/wayland.xml ] && [ ! -f /usr/local/share/wayland-protocols/wayland.xml ]; then
+    echo -e "${WARN} wayland.xml not found; attempting to install wayland-protocols."
+    install_package "wayland-protocols" "$LOG"
+fi
 
 printf "\n%.0s" {1..2}
 
