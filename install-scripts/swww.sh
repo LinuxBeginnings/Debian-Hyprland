@@ -87,7 +87,6 @@ fi
 if [ -n "${WAYLAND_PROTOCOLS_DIR:-}" ]; then
     export WAYLAND_PROTOCOLS_PATH="${WAYLAND_PROTOCOLS_DIR}"
 fi
-fi
 
 printf "\n%.0s" {1..2}
 
