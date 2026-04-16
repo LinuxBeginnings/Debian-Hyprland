@@ -50,6 +50,16 @@
         - Added option for GitHub token to avoid rate limits
     - Added `wayland-protocols` to hyprland tags
         - It wasn't getting updated and was three revs behind
+## 3 April 2026
+
+- Fixed `refresh-tags.sh` 
+  - Wasn't updating properly 
+  - Added fallback to `git ls-remote` 
+    - For 403/404 errors 
+    - Also fixed repeating 403/404 errors 
+    - Added option for GitHub token to avoid rate limits 
+   - Added `wayland-protocols` to hyprland tags 
+      - It wasn't getting updated and was three revs behind 
 
 ## 29 March 2026
 
