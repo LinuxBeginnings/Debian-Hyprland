@@ -320,7 +320,7 @@ install_dep() {
 }
 
 install_libdisplay_info() {
-    local candidates=(libdisplay-info3 libdisplay-info2 libdisplay-info1 libdisplay-info-dev)
+    local candidates=(libdisplay-info2 libdisplay-info-dev libdisplay-info-bin)
     local pkg
     for pkg in "${candidates[@]}"; do
         if [ "${DEBIAN_SUITE:-}" = "trixie" ]; then
@@ -332,6 +332,7 @@ install_libdisplay_info() {
             return 0
         fi
     done
+    echo "${WARN} No libdisplay-info package could be installed (tried: ${candidates[*]})." | tee -a "$LOG"
     return 1
 }
 
