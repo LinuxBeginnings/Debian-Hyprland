@@ -310,7 +310,7 @@ install_dep() {
     local pkg="$1"
     if [ "${DEBIAN_SUITE:-}" = "trixie" ]; then
         case "$pkg" in
-        libxkbcommon-dev | libxkbcommon-x11-dev | libxkbregistry-dev)
+        libxkbcommon-dev | libxkbcommon-x11-dev | libxkbregistry-dev | libgtk-3-dev | qt6-base-private-dev)
             install_package_target "$pkg" "trixie-backports"
             return
             ;;
