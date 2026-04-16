@@ -30,9 +30,6 @@ ags=(
     pkg-config
 )
 
-f_ags=(
-    npm
-)
 
 build_dep=(
     pam
@@ -85,9 +82,16 @@ for PKG1 in "${ags[@]}"; do
   install_package "$PKG1" "$LOG"
 done
 
-for force_ags in "${f_ags[@]}"; do
-   re_install_package "$force_ags" 2>&1 | tee -a "$LOG"
-  done
+if command -v npm >/dev/null 2>&1; then
+  npm_version="$(npm --version 2>/dev/null || true)"
+  if [ -n "$npm_version" ]; then
+    printf "${INFO} npm detected (v%s). Skipping reinstall.\\n" "$npm_version"
+  else
+    printf "${INFO} npm detected. Skipping reinstall.\\n"
+  fi
+else
+  install_package "npm" "$LOG"
+fi
 
 printf "\n%.0s" {1..1}
 
@@ -95,8 +99,17 @@ for PKG1 in "${build_dep[@]}"; do
   build_dep "$PKG1" "$LOG"
 done
 
-#install typescript by npm
-sudo npm install --global typescript 2>&1 | tee -a "$LOG"
+# install typescript by npm if tsc is missing
+if command -v tsc >/dev/null 2>&1; then
+  tsc_version="$(tsc --version 2>/dev/null | awk '{print $2}')"
+  if [ -n "$tsc_version" ]; then
+    printf "${INFO} TypeScript compiler detected (v%s). Skipping global install.\\n" "$tsc_version"
+  else
+    printf "${INFO} TypeScript compiler detected. Skipping global install.\\n"
+  fi
+else
+  sudo npm install --global typescript 2>&1 | tee -a "$LOG"
+fi
 
 # ags v1
 printf "${NOTE} Install and Compiling ${SKY_BLUE}Aylur's GTK shell $ags_tag${RESET}..\n"
@@ -120,8 +133,57 @@ if git clone --depth=1 https://github.com/LinuxBeginnings/ags_v1.9.0.git "$SRC_D
     BUILD_DIR="$BUILD_ROOT/ags_v1.9.0"
     mkdir -p "$BUILD_DIR"
     npm install
+    if [ -f "$SRC_DIR/tsconfig.json" ] && [ -f "$SRC_DIR/src/meson.build" ]; then
+      mkdir -p "$SRC_DIR/types"
+      cat >"$SRC_DIR/types/gi-any.d.ts" <<'EOF'
+declare module 'gi://Gtk?version=3.0' { import Gtk from '@girs/gtk-3.0'; export default Gtk; }
+declare module 'gi://Gdk?version=3.0' { import Gdk from '@girs/gdk-3.0'; export default Gdk; }
+declare module 'gi://GdkPixbuf' { import GdkPixbuf from '@girs/gdkpixbuf-2.0'; export default GdkPixbuf; }
+declare module 'gi://Gio' { import Gio from '@girs/gio-2.0'; export default Gio; }
+declare module 'gi://GLib?version=2.0' { import GLib from '@girs/glib-2.0'; export default GLib; }
+declare module 'gi://GObject' { import GObject from '@girs/gobject-2.0'; export default GObject; }
+declare module 'gi://Gvc' { import Gvc from '@girs/gvc-1.0'; export default Gvc; }
+declare module 'gi://NM' { import NM from '@girs/nm-1.0'; export default NM; }
+declare module 'gi://Notify' { import Notify from '@girs/notify-0.7'; export default Notify; }
+declare module 'gi://Soup?version=3.0' { import Soup from '@girs/soup-3.0'; export default Soup; }
+declare module 'gi://DbusmenuGtk3' { import DbusmenuGtk3 from '@girs/dbusmenugtk3-0.4'; export default DbusmenuGtk3; }
+declare module 'gi://Pango' { import Pango from '@girs/pango-1.0'; export default Pango; }
+declare module 'gi://cairo?version=1.0' { import Cairo from '@girs/cairo-1.0'; export default Cairo; }
+declare function logError(...args: any[]): void;
+EOF
+      if ! grep -q '"rootDir"' "$SRC_DIR/tsconfig.json"; then
+        sed -i '/"baseUrl":/i\        "rootDir": "src",' "$SRC_DIR/tsconfig.json"
+      fi
+      if ! grep -q '"noImplicitAny"' "$SRC_DIR/tsconfig.json"; then
+        sed -i '/"strict":/a\        "noImplicitAny": false,' "$SRC_DIR/tsconfig.json"
+      fi
+      if ! grep -q '\"noEmitOnError\"' "$SRC_DIR/tsconfig.json"; then
+        sed -i '/\"strict\":/a\        \"noEmitOnError\": false,' "$SRC_DIR/tsconfig.json"
+      fi
+      if ! grep -q '"ignoreDeprecations"' "$SRC_DIR/tsconfig.json"; then
+        sed -i '/"moduleResolution":/a\        "ignoreDeprecations": "6.0",' "$SRC_DIR/tsconfig.json"
+      fi
+      python3 - <<'PY'
+from pathlib import Path
+
+path = Path("src/meson.build")
+text = path.read_text()
+old_variants = [
+    "command: [ tsc, '--outDir', tsc_out ],",
+    "command: [ 'bash', '-lc', 'tsc -p \"' + (meson.project_source_root() / 'tsconfig.json').to_string() + '\" --outDir \"' + tsc_out.to_string() + '\" --noEmitOnError false || true' ],",
+    "command: [ 'bash', '-lc', 'tsc -p \"${MESON_SOURCE_ROOT}/tsconfig.json\" --outDir \"${MESON_BUILD_ROOT}/tsc-out\" --noEmitOnError false || true' ],",
+]
+new = "command: [ 'bash', '-lc', 'tsc -p \"' + meson.project_source_root() + '/tsconfig.json\" --outDir \"' + meson.project_build_root() + '/tsc-out\" --noEmitOnError false || true' ],"
+for old in old_variants:
+    if old in text:
+        text = text.replace(old, new)
+path.write_text(text)
+PY
+    fi
     meson setup "$BUILD_DIR"
-   if sudo meson install -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then
+    sudo meson install -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"
+    meson_status=${PIPESTATUS[0]}
+   if [ "$meson_status" -eq 0 ]; then
     printf "\n${OK} ${YELLOW}Aylur's GTK shell $ags_tag${RESET} installed successfully.\n" 2>&1 | tee -a "$MLOG"
 
     # Patch installed AGS launchers to ensure GI typelibs in /usr/local/lib are discoverable in GJS ESM

@@ -42,6 +42,7 @@ DEFAULT_MODULES=(
   hyprland-qt-support
   hyprland-qtutils
   hyprland
+  hyprshutdown
 )
 
 WITH_DEPS=0

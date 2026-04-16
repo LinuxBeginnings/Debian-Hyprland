@@ -9,6 +9,11 @@
 # Build and install wayland-protocols from source
 # Provides a newer wayland-protocols.pc for pkg-config when distro version is too old
 
+build_deps=(
+    wayland
+    libwayland-bin
+)
+
 #specific tag or release (e.g., 1.45, 1.46, 1.48)
 tag="1.48"
 # Auto-source centralized tags if env is unset
@@ -47,6 +52,11 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_wayland-protocols.log"
 MLOG="install-$(date +%d-%H%M%S)_wayland-protocols2.log"
 
 printf "\n%s - Installing ${YELLOW}wayland-protocols (from source)${RESET} .... \n" "${INFO}"
+
+# Ensure wayland-scanner is available
+for PKG in "${build_deps[@]}"; do
+    install_package "$PKG" "$LOG"
+done
 
 # Clean previous clone (under build/src)
 SRC_DIR="$SRC_ROOT/wayland-protocols"

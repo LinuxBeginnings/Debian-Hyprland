@@ -24,6 +24,7 @@ hypr_package=(
     gvfs-backends
     inxi
     imagemagick
+    jq
     kitty
     nano
     pavucontrol
@@ -35,10 +36,11 @@ hypr_package=(
     python3-requests
     python3-pip
     qt5ct
-    qt5-style-kvantum
+    libqt5quick5
+    libqt5qml5
+    qt6-declarative-dev
     qt-style-kvantum-themes
     qt-style-kvantum
-    qt6-style-kvantum
     qt6ct
     slurp
     swappy
@@ -143,7 +145,11 @@ printf "\n%.0s" {1..1}
 printf "\n%s - Installing ${SKY_BLUE}KooL's hyprland necessary packages${RESET} .... \n" "${NOTE}"
 
 for PKG1 in "${hypr_package[@]}" "${hypr_package_2[@]}" "${Extra[@]}"; do
-    install_package "$PKG1" "$LOG"
+    if [ "${HYPR_INSTALL_MODE:-}" = "debian" ] && [ "${DEBIAN_SUITE:-}" = "trixie" ] && [ "$PKG1" = "waybar" ]; then
+        install_package_target "$PKG1" "trixie-backports"
+    else
+        install_package "$PKG1" "$LOG"
+    fi
 done
 
 printf "\n%.0s" {1..1}

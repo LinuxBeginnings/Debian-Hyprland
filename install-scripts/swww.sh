@@ -37,6 +37,8 @@ fi
 
 swww=(
     liblz4-dev
+    libwayland-dev
+    wayland-protocols
 )
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
@@ -65,6 +67,27 @@ printf "\n%s - Installing ${SKY_BLUE}swww $swww_tag and dependencies${RESET} ...
 for PKG1 in "${swww[@]}"; do
     install_package "$PKG1" "$LOG"
 done
+# Ensure wayland.xml is available for build scripts
+if [ ! -f /usr/share/wayland-protocols/wayland.xml ] && [ ! -f /usr/local/share/wayland-protocols/wayland.xml ]; then
+    echo -e "${WARN} wayland.xml not found; attempting to install wayland-protocols."
+    install_package "wayland-protocols" "$LOG"
+fi
+if [ ! -f /usr/share/wayland-protocols/wayland.xml ] && [ ! -f /usr/local/share/wayland-protocols/wayland.xml ]; then
+    echo -e "${WARN} wayland.xml still missing; building wayland-protocols from source."
+    if [ -x "$PARENT_DIR/install-scripts/wayland-protocols-src.sh" ]; then
+        "$PARENT_DIR/install-scripts/wayland-protocols-src.sh"
+    fi
+fi
+
+# Export wayland-protocols path so waybackend-scanner can locate wayland.xml
+if [ -f /usr/local/share/wayland-protocols/wayland.xml ]; then
+    export WAYLAND_PROTOCOLS_DIR=/usr/local/share/wayland-protocols
+elif [ -f /usr/share/wayland-protocols/wayland.xml ]; then
+    export WAYLAND_PROTOCOLS_DIR=/usr/share/wayland-protocols
+fi
+if [ -n "${WAYLAND_PROTOCOLS_DIR:-}" ]; then
+    export WAYLAND_PROTOCOLS_PATH="${WAYLAND_PROTOCOLS_DIR}"
+fi
 
 printf "\n%.0s" {1..2}
 

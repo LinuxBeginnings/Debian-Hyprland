@@ -1,5 +1,55 @@
 ## CHANGELOG
 
+## 14 April 2026
+
+- Fixed polkit issues
+    - Added missing QT kvantum packages
+    - This prevented the escalation dialog from running
+
+    ```bash
+      sudo apt install libqt5quick5 libqt5qml5 qt6-declarative-dev
+    ```
+
+- Improved: Error handling in the `install.sh` script
+    - Thank you `@moukhtar22` for finding this and filing an issue
+- Removed invalid QT packages
+    - Thank you `@moukhtar22` for finding this and filing an issue
+- Fixed `ags.sh` script
+    - Failed to build
+- Fixed library conflict when using debian pkgs after building from source
+    - Updated script to remove them
+- Fixed refresh tags script
+- Updated `hyprutils`
+- Added `hyprshutdown`
+    - Need to implement in HL dots it more gracefully terminals apps
+- Added menu option to build from source (recommended) or debian pkgs
+    - Currently Debian has HL v0.54.3 no iden when/if they will update it
+    - Source builds can keep up to date
+    - You can switch from debian package to source and vice-versa with `install.sh` script
+
+## 11 April 2026
+
+- Fixed `ags.sh` install script
+- Added option to build Hyprland from deb packages
+    - Faster install
+    - Potentially more stable
+    - Won't be updated as often
+    - `update-hyprland.sh` can switch between source and pkgs
+- Updated output format of the output of `update-hyprland.sh`
+- Fixed wallpaper issue
+- Switching to Hyprland package build left behind source built binaries
+    - Caused hyprland to crash at startup with missing library
+
+## 3 April 2026
+
+- Fixed `refresh-tags.sh`
+    - Wasn't updating properly
+    - Added fallback to `git ls-remote`
+        - For 403/404 errors
+        - Also fixed repeating 403/404 errors
+        - Added option for GitHub token to avoid rate limits
+    - Added `wayland-protocols` to hyprland tags
+        - It wasn't getting updated and was three revs behind
 ## 3 April 2026
 
 - Fixed `refresh-tags.sh` 

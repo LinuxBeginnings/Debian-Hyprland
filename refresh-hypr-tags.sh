@@ -10,6 +10,13 @@
 
 set -euo pipefail
 
+GREEN=$'\e[32m'
+RED=$'\e[31m'
+YELLOW=$'\e[33m'
+BLUE=$'\e[34m'
+BOLD=$'\e[1m'
+RESET=$'\e[0m'
+
 REPO_ROOT=$(pwd)
 TAGS_FILE="$REPO_ROOT/hypr-tags.env"
 LOG_DIR="$REPO_ROOT/Install-Logs"
@@ -33,6 +40,64 @@ Notes:
   - By default, only updates keys set to auto/latest (or unset).
   - Use FORCE=1 or --force-update to override pinned values.
 EOF
+}
+
+compare_versions() {
+  local a="$1" b="$2"
+  if [[ "$a" == "$b" ]]; then
+    printf '0'
+    return
+  fi
+  local first
+  first=$(printf '%s\n%s\n' "$a" "$b" | sort -V | head -n1)
+  if [[ "$first" == "$a" ]]; then
+    printf '%s' '-1'
+  else
+    printf '%s' '1'
+  fi
+}
+
+format_change_line() {
+  local key="$1" old="$2" new="$3" color="$YELLOW"
+  if [[ -n "$old" && ! "$old" =~ ^(auto|latest)$ ]]; then
+    local cmp
+    cmp=$(compare_versions "$new" "$old")
+    if [[ "$cmp" == "-1" ]]; then
+      color="$RED"
+    else
+      color="$GREEN"
+    fi
+  fi
+  if [[ -t 1 ]]; then
+    printf "%s%s%s: %s -> %s%s" "$BOLD" "$color" "$key" "${old:-<unset>}" "$new" "$RESET"
+  else
+    printf "%s: %s -> %s" "$key" "${old:-<unset>}" "$new"
+  fi
+}
+
+format_tag_line() {
+  local key="$1" val="$2" old="$3"
+  local name_color="$GREEN" ver_color="$BLUE" emphasis=""
+  local downgraded=0
+  if [[ -n "$old" && ! "$old" =~ ^(auto|latest)$ ]]; then
+    local cmp
+    cmp=$(compare_versions "$val" "$old")
+    if [[ "$cmp" == "-1" ]]; then
+      downgraded=1
+    else
+      emphasis="$BOLD"
+    fi
+  fi
+  if [[ -t 1 ]]; then
+    if [[ $downgraded -eq 1 ]]; then
+      printf "%s%s%s Version: %s%s%s" "$BOLD" "$RED" "$key" "$val" "$RESET" "$RESET"
+    else
+      printf "%s%s%s Version: %s%s%s%s" "$emphasis" "$name_color" "$key" "$RESET" "$emphasis" "$ver_color" "$val"
+      printf "%s" "$RESET"
+    fi
+  else
+    printf "%s Version: %s" "$key" "$val"
+  fi
 }
 
 # Arg parsing (minimal/backwards compatible)
@@ -218,7 +283,7 @@ for key in "${!repos[@]}"; do
   if [[ $FORCE -eq 1 ]] || [[ "$existing" =~ ^(auto|latest)$ ]] || [[ -z "$existing" ]]; then
     cur[$key]="$tag"
     if [[ "$existing" != "$tag" ]]; then
-      changes+=("$key: $existing -> $tag")
+      changes+=("$key|$existing|$tag")
     fi
     echo "[OK] $key := $tag" | tee -a "$SUMMARY_LOG"
   else
@@ -229,7 +294,10 @@ done
 # Show change summary and prompt before writing (interactive only)
 if [[ -t 0 && ${#changes[@]} -gt 0 ]]; then
   printf "\nPlanned tag updates (refresh-hypr-tags.sh):\n" | tee -a "$SUMMARY_LOG"
-  printf "%s\n" "${changes[@]}" | tee -a "$SUMMARY_LOG"
+  printf "%s\n" "${changes[@]}" | sort | while IFS='|' read -r k o n; do
+    format_change_line "$k" "$o" "$n"
+    printf "\n"
+  done | tee -a "$SUMMARY_LOG"
   printf "\nProceed with writing updated tags to %s? [Y/n]: " "$TAGS_FILE"
   read -r ans || true
   ans=${ans:-Y}
@@ -249,3 +317,28 @@ fi
 } > "$TAGS_FILE"
 
 echo "[OK] Refreshed tags written to $TAGS_FILE" | tee -a "$SUMMARY_LOG"
+
+printf "\n%sUpdated versions%s (from %s):\n" "$BOLD" "$RESET" "$TAGS_FILE"
+declare -A changed_old
+if [[ ${#changes[@]} -gt 0 ]]; then
+  for item in "${changes[@]}"; do
+    IFS='|' read -r k o n <<<"$item"
+    [[ -z "$k" ]] && continue
+    changed_old["$k"]="$o"
+  done
+fi
+while IFS='=' read -r key val; do
+  [[ -z "$key" || "$key" =~ ^# ]] && continue
+  format_tag_line "$key" "$val" "${changed_old[$key]:-}"
+  printf "\n"
+done < <(grep -E '^[A-Z0-9_]+=' "$TAGS_FILE" | sort)
+
+printf "\n%sChanges applied this run:%s\n" "$BOLD" "$RESET"
+if [[ ${#changes[@]} -gt 0 ]]; then
+  printf "%s\n" "${changes[@]}" | sort | while IFS='|' read -r k o n; do
+    format_change_line "$k" "$o" "$n"
+    printf "\n"
+  done
+else
+  printf "(none)\n"
+fi
