@@ -629,10 +629,10 @@ execute_script() {
         if [ -x "$script_path" ]; then
             # Pass flags via env so sub-scripts can react without CLI churn
             if [ "${HYPR_BUILD_TRIXIE:-0}" = "1" ]; then
-                HYPR_BUILD_TRIXIE=1 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} bash "$script_path" --build-trixie "${args[@]}"
+                HYPR_BUILD_TRIXIE=1 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} HYPR_INSTALL_MODE="${HYPR_INSTALL_MODE:-}" DEBIAN_SUITE="${DEBIAN_SUITE:-}" bash "$script_path" --build-trixie "${args[@]}"
                 return $?
             else
-                HYPR_BUILD_TRIXIE=0 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} bash "$script_path" "${args[@]}"
+                HYPR_BUILD_TRIXIE=0 HYPR_FORCE_REINSTALL=${FORCE_REINSTALL:-0} HYPR_INSTALL_MODE="${HYPR_INSTALL_MODE:-}" DEBIAN_SUITE="${DEBIAN_SUITE:-}" bash "$script_path" "${args[@]}"
                 return $?
             fi
         else

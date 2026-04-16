@@ -107,6 +107,27 @@ install_package() {
     fi
   fi
 }
+# Function for installing packages from a target release (e.g., backports)
+install_package_target() {
+  local pkg="$1"
+  local target="$2"
+  if dpkg -l | grep -q -w "$pkg" ; then
+    echo -e "${INFO} ${MAGENTA}$pkg${RESET} is already installed. Skipping..."
+  else
+    (
+      stdbuf -oL sudo apt install -y -t "$target" "$pkg" 2>&1
+    ) >> "$LOG" 2>&1 &
+    PID=$!
+    show_progress $PID "$pkg"
+
+    # Double check if the package successfully installed
+    if dpkg -l | grep -q -w "$pkg"; then
+      echo -e "\e[1A\e[K${OK} Package ${YELLOW}$pkg${RESET} has been successfully installed!"
+    else
+      echo -e "\e[1A\e[K${ERROR} ${YELLOW}$pkg${RESET} failed to install. Please check the install.log. You may need to install it manually. Sorry, I have tried :("
+    fi
+  fi
+}
 
 # Function for build depencies with a progress bar
 build_dep() { 
