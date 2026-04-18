@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+## 18 April 2026
+
+- Update `hyprlock` to `v0.9.5`
+
 ## 16 April 2026
 
 - Fixed issues install with debian packages
