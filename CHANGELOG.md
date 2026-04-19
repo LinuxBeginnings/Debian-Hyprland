@@ -1,5 +1,10 @@
 ## CHANGELOG
 
+## 19 April 2026
+
+- Fixed long standing bug in fastfetch copy
+    - The `install.sh` script was overwritting `config.jsonc`
+
 ## 18 April 2026
 
 - Update `hyprlock` to `v0.9.5`

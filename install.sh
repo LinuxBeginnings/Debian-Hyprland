@@ -1116,10 +1116,6 @@ done
 
 clear
 
-# copy fastfetch config if debian is not present
-if [ ! -f "$HOME/.config/fastfetch/debian.png" ]; then
-    cp -r assets/fastfetch "$HOME/.config/"
-fi
 
 printf "\n%.0s" {1..2}
 # final check essential packages if it is installed
