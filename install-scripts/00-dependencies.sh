@@ -42,6 +42,8 @@ dependencies=(
     libgdk-pixbuf2.0-bin
     libgirepository1.0-dev
     libgl1-mesa-dev
+    libglvnd-dev
+    libglx-dev
     libgraphene-1.0-0
     libgraphene-1.0-dev
     libgtk-3-dev
@@ -57,6 +59,7 @@ dependencies=(
     libliftoff-dev
     liblzma-dev
     libnotify-bin
+    libopengl-dev
     libpam0g-dev
     libpango1.0-dev
     libpipewire-0.3-dev
@@ -305,7 +308,6 @@ preflight_checks() {
 
 # Installation of main dependencies
 printf "\n%s - Installing ${SKY_BLUE}main dependencies....${RESET} \n" "${NOTE}"
-preflight_checks
 
 install_dep() {
     local pkg="$1"
@@ -350,6 +352,9 @@ printf "\n%.0s" {1..1}
 for PKG1 in "${build_dep[@]}"; do
     build_dep "$PKG1" "$LOG"
 done
+
+# Run preflight checks after dependencies are installed
+preflight_checks
 
 # Hyprland v0.54+ benefits from LLVM/Clang 21.
 # If apt.llvm.org does not publish the current codename, we safely keep distro clang.

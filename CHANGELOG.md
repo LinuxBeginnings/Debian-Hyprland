@@ -2,6 +2,8 @@
 
 ## 19 April 2026
 
+- Fixed preflight depdendencies check during install
+    - It was called before the pkgs were installed
 - Fixed long standing bug in fastfetch copy
     - The `install.sh` script was overwritting `config.jsonc`
 - Updated:
