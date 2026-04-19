@@ -248,7 +248,8 @@ EOF
 # Preflight checks for common build issues
 preflight_checks() {
     # Warn on invalid custom suites (e.g., tyson)
-    if grep -RqsE '^[[:space:]]*deb .*tyson' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null; then
+    if grep -RqsE '^[[:space:]]*deb .*tyson' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || \
+       grep -RqsE '^[[:space:]]*Suites:[[:space:]].*\btyson\b' /etc/apt/sources.list.d/*.sources 2>/dev/null; then
         echo "${WARN} Detected 'tyson' APT entries. These 404 and can break updates. Please remove/comment them." | tee -a "$LOG"
     fi
 

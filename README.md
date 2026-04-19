@@ -84,10 +84,12 @@
 - Do not run this installer with `sudo` or as `root`
 - This Installer requires a user with a `sudo` privileges to install packages
 - Debian 13 Trixie or greater. For the correct `GCC` compiler and libs
-- Edit your `/etc/apt/sources.list` and **remove** `#` on lines with `deb-src` to enable source packaging else will not install properly especially Hyprland
-
+- Edit your APT sources (e.g. `/etc/apt/sources.list` or `/etc/apt/sources.list.d/debian.sources`) and ensure `deb-src` is enabled (uncomment `#deb-src...` or change `Types: deb` to `Types: deb deb-src`) to enable source packaging else will not install properly especially Hyprland
+- To easily do this
 ```bash
 sudo nano /etc/apt/sources.list
+# OR
+sudo nano /etc/apt/sources.list.d/debian.sources
 sudo apt update
 ```
 

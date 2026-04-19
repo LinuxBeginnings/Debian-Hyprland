@@ -38,13 +38,10 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_nvidia.log"
 MLOG="install-$(date +%d-%H%M%S)_nvidia2.log"
 
 ## adding the deb source for nvidia driver
-# Create a backup of the sources.list file
-sudo cp /etc/apt/sources.list /etc/apt/sources.list.backup 2>&1 | tee -a "$LOG"
-
 ## UBUNTU - NVIDIA (comment this two by adding # you dont need this!)
-# Add the comment and repository entry to sources.list
-echo "## for nvidia" | sudo tee -a /etc/apt/sources.list 2>&1 | tee -a "$LOG"
-echo "deb http://deb.debian.org/debian/ trixie main contrib non-free non-free-firmware" | sudo tee -a /etc/apt/sources.list 2>&1 | tee -a "$LOG"
+# Add the repository entry to sources.list.d
+echo "## for nvidia" | sudo tee /etc/apt/sources.list.d/nvidia-trixie.list 2>&1 | tee -a "$LOG"
+echo "deb http://deb.debian.org/debian/ trixie main contrib non-free non-free-firmware" | sudo tee -a /etc/apt/sources.list.d/nvidia-trixie.list 2>&1 | tee -a "$LOG"
 
 # Update the package list
 sudo apt update

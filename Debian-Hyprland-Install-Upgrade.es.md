@@ -527,7 +527,7 @@ git ls-remote --tags https://github.com/hyprwm/Hyprland
     cat /etc/os-release
 
     # Asegurar deb-src habilitado
-    grep -E "^deb-src" /etc/apt/sources.list
+    grep -rE "^[[:space:]]*(deb-src|Types:.*deb-src)" /etc/apt/sources.list /etc/apt/sources.list.d/
     ```
 
 2. **Verificar entorno**:

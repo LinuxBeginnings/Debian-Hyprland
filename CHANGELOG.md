@@ -4,6 +4,9 @@
 
 - Fixed long standing bug in fastfetch copy
     - The `install.sh` script was overwritting `config.jsonc`
+- Updated:
+    - Install script to support `deb822` format
+    - Documentation and screen prompts to reflect this change
 
 ## 18 April 2026
 

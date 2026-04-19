@@ -77,6 +77,12 @@ ensure_trixie_backports_repo() {
         fi
         return 0
     fi
+    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        if sudo test -f "$file"; then
+            sudo rm -f "$file" 2>/dev/null || true
+        fi
+        return 0
+    fi
     echo "[INFO] Enabling Debian trixie-backports repository." | tee -a "$SUMMARY_LOG"
     sudo bash -c "cat > '$file' <<EOF
 # Added by update-hyprland.sh for Hyprland package mode

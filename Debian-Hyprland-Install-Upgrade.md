@@ -545,7 +545,7 @@ pkexec env -u DISPLAY -u XAUTHORITY \
     cat /etc/os-release
 
     # Ensure deb-src enabled
-    grep -E "^deb-src" /etc/apt/sources.list
+    grep -rE "^[[:space:]]*(deb-src|Types:.*deb-src)" /etc/apt/sources.list /etc/apt/sources.list.d/
     ```
 
 2. **Verify environment**:
