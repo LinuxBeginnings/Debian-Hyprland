@@ -31,7 +31,6 @@ hypr_package=(
     pulseaudio-utils
     playerctl
     mate-polkit
-    policykit-1-gnome
     polkit-kde-agent-1
     python3-requests
     python3-pip
@@ -71,7 +70,6 @@ hypr_package_2=(
     nvtop
     pamixer
     qalculate-gtk
-    xfce-polkit
 )
 
 # packages to force reinstall (only when HYPR_FORCE_REINSTALL=1)
