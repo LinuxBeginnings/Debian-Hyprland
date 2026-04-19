@@ -66,13 +66,25 @@ _detect_codename() {
 }
 
 _has_deb_src_enabled() {
-    sudo grep -RhsE '^[[:space:]]*deb-src[[:space:]]' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .
+    if sudo grep -RhsE '^[[:space:]]*deb-src[[:space:]]' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    if sudo grep -RhsE '^[[:space:]]*Types:[[:space:]].*\bdeb-src\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    return 1
 }
 
 _has_component_enabled() {
     # $1: component (e.g., non-free, non-free-firmware)
     local comp="$1"
-    sudo grep -RhsE "^[[:space:]]*deb(-src)?[[:space:]].*\\b${comp}(\\s|$)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .
+    if sudo grep -RhsE "^[[:space:]]*deb(-src)?[[:space:]].*\b${comp}(\s|$)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    if sudo grep -RhsE "^[[:space:]]*Components:[[:space:]].*\b${comp}(\s|$)" /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    return 1
 }
 
 # Unconditionally uncomment deb-src lines across all APT list files
@@ -80,6 +92,10 @@ _uncomment_deb_src_everywhere() {
     for f in /etc/apt/sources.list /etc/apt/sources.list.d/*.list; do
         [ -f "$f" ] || continue
         sudo sed -i -E 's/^[[:space:]]*#([[:space:]]*deb-src[[:space:]])/\1/' "$f" 2>/dev/null || true
+    done
+    for f in /etc/apt/sources.list.d/*.sources; do
+        [ -f "$f" ] || continue
+        sudo sed -i -E '/^[[:space:]]*Types:[[:space:]]/ { /\bdeb-src\b/! s/(Types:.*)/\1 deb-src/ }' "$f" 2>/dev/null || true
     done
 }
 
@@ -90,16 +106,18 @@ _enable_deb_src_conservatively() {
     if ! _has_deb_src_enabled; then
         # If still none present, duplicate active deb lines into deb-src lines in the main list
         local f=/etc/apt/sources.list
-        local tmp
-        tmp=$(mktemp)
-        sudo awk '
-            BEGIN { added=0 }
-            /^[[:space:]]*deb[[:space:]]/ && $0 !~ /^[[:space:]]*#/ {
-                line=$0; sub(/^([[:space:]]*)deb/, "\\1deb-src", line); print $0; print line; added=1; next
-            }
-            { print $0 }
-            END { if (added==0) {} }
-        ' "$f" >"$tmp" && sudo cp "$tmp" "$f" && rm -f "$tmp"
+        if [ -f "$f" ]; then
+            local tmp
+            tmp=$(mktemp)
+            sudo awk '
+                BEGIN { added=0 }
+                /^[[:space:]]*deb[[:space:]]/ && $0 !~ /^[[:space:]]*#/ {
+                    line=$0; sub(/^([[:space:]]*)deb/, "\\1deb-src", line); print $0; print line; added=1; next
+                }
+                { print $0 }
+                END { if (added==0) {} }
+            ' "$f" >"$tmp" && sudo cp "$tmp" "$f" && rm -f "$tmp"
+        fi
     fi
 }
 
@@ -190,6 +208,12 @@ ensure_trixie_backports_repo() {
     local desired="deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
     if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
         # If we previously created an overlay but backports exists elsewhere, remove overlay to avoid duplicate targets.
+        if sudo test -f "$file"; then
+            sudo rm -f "$file" 2>/dev/null || true
+        fi
+        return 0
+    fi
+    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi
@@ -569,7 +593,7 @@ if [ "$TTY_MODE" -eq 1 ]; then
         fi
     else
         echo "Build method: FROM SOURCE"
-        echo "IMPORTANT: Ensure deb-src is enabled in /etc/apt/sources.list."
+        echo "IMPORTANT: Ensure deb-src is enabled in APT sources."
     fi
     read -r -p "Proceed with installation? [y/N]: " _ans
     case "${_ans,,}" in
@@ -589,7 +613,7 @@ NOTE: If you are installing on a VM, ensure to enable 3D acceleration otherwise 
     if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
         proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nFor Debian trixie this will enable trixie-backports and install Hyprland from packages.\n\nShall we proceed?"
     else
-        proceed_msg="Build method: FROM SOURCE\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting deb-src on /etc/apt/sources.list else script may fail.\n\nShall we proceed?"
+        proceed_msg="Build method: FROM SOURCE\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting or adding deb-src to APT sources else script may fail.\n\nShall we proceed?"
     fi
     if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 60; then
         echo -e "\n"
@@ -1116,10 +1140,6 @@ done
 
 clear
 
-# copy fastfetch config if debian is not present
-if [ ! -f "$HOME/.config/fastfetch/debian.png" ]; then
-    cp -r assets/fastfetch "$HOME/.config/"
-fi
 
 printf "\n%.0s" {1..2}
 # final check essential packages if it is installed

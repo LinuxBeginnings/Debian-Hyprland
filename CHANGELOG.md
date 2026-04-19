@@ -1,5 +1,15 @@
 ## CHANGELOG
 
+## 19 April 2026
+
+- Fixed preflight depdendencies check during install
+    - It was called before the pkgs were installed
+- Fixed long standing bug in fastfetch copy
+    - The `install.sh` script was overwritting `config.jsonc`
+- Updated:
+    - Install script to support `deb822` format
+    - Documentation and screen prompts to reflect this change
+
 ## 18 April 2026
 
 - Update `hyprlock` to `v0.9.5`
