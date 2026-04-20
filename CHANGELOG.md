@@ -3,6 +3,9 @@
 ## 20 April 2026
 
 - Fixed bad substitusion in `install.sh` script
+- Fixed `install-ags.sh`
+    - Debian Trixie has old version of `tsc`
+    - Removed it from apt depdendencies added it with `npm`
 
 ## 19 April 2026
 
