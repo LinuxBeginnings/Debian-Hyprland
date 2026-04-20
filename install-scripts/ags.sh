@@ -9,7 +9,6 @@
 # Aylur's GTK Shell #
 
 ags=(
-    node-typescript 
     npm 
     meson 
     libgjs-dev 
@@ -99,16 +98,33 @@ for PKG1 in "${build_dep[@]}"; do
   build_dep "$PKG1" "$LOG"
 done
 
-# install typescript by npm if tsc is missing
+# install typescript by npm if tsc is missing or too old
+needs_tsc_install=0
 if command -v tsc >/dev/null 2>&1; then
   tsc_version="$(tsc --version 2>/dev/null | awk '{print $2}')"
   if [ -n "$tsc_version" ]; then
-    printf "${INFO} TypeScript compiler detected (v%s). Skipping global install.\\n" "$tsc_version"
+    # ags >= 1.9 requires TypeScript >= 5.0 for 'const' type modifiers
+    major_ver="$(echo "$tsc_version" | cut -d. -f1 | grep -oE '^[0-9]+' || echo 0)"
+    if [ "$major_ver" -lt 5 ]; then
+      printf "${INFO} TypeScript compiler detected (v%s) but is too old (needs >= 5). Proceeding with install.\\n" "$tsc_version"
+      needs_tsc_install=1
+    else
+      printf "${INFO} TypeScript compiler detected (v%s). Skipping global install.\\n" "$tsc_version"
+    fi
   else
     printf "${INFO} TypeScript compiler detected. Skipping global install.\\n"
   fi
 else
-  sudo npm install --global typescript 2>&1 | tee -a "$LOG"
+  needs_tsc_install=1
+fi
+
+if [ "$needs_tsc_install" -eq 1 ]; then
+  # Purge older apt version if present to avoid conflicts
+  if dpkg -l | grep -q "^ii  node-typescript"; then
+    printf "${INFO} Removing old apt package node-typescript...\\n"
+    sudo apt-get purge -y node-typescript 2>&1 | tee -a "$LOG"
+  fi
+  sudo npm install --global --prefix /usr/local typescript 2>&1 | tee -a "$LOG"
 fi
 
 # ags v1
