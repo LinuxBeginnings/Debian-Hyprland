@@ -1,5 +1,9 @@
 ## CHANGELOG
 
+## 20 April 2026
+
+- Fixed bad substitusion in `install.sh` script
+
 ## 19 April 2026
 
 - Fixed preflight depdendencies check during install

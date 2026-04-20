@@ -112,7 +112,7 @@ _enable_deb_src_conservatively() {
             sudo awk '
                 BEGIN { added=0 }
                 /^[[:space:]]*deb[[:space:]]/ && $0 !~ /^[[:space:]]*#/ {
-                    line=$0; sub(/^([[:space:]]*)deb/, "\\1deb-src", line); print $0; print line; added=1; next
+                    line=$0; sub(/^[[:space:]]*deb/, "deb-src", line); print $0; print line; added=1; next
                 }
                 { print $0 }
                 END { if (added==0) {} }
