@@ -36,6 +36,10 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
     BUILD_DIR="$BUILD_ROOT/hyprsysteminfo"
     mkdir -p "$BUILD_DIR"
     if [ -f CMakeLists.txt ]; then
+        if grep -q "WaylandClientPrivate" src/CMakeLists.txt && ! grep -q "WaylandClientPrivate" CMakeLists.txt; then
+            echo "${NOTE} Adding Qt6 WaylandClientPrivate component to satisfy Debian Qt6 packaging." | tee -a "$MLOG"
+            sed -i 's/WaylandClient)/WaylandClient WaylandClientPrivate)/' CMakeLists.txt
+        fi
         cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
         cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
         if [ $DO_INSTALL -eq 1 ]; then sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
