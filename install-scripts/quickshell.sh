@@ -161,7 +161,8 @@ Libs: -L${libdir} -lbreakpad_client
 Cflags: -I${includedir}
 PCEOF
             sudo mkdir -p /usr/local/lib/pkgconfig
-            sudo mv "$TMP_PC" /usr/local/lib/pkgconfig/breakpad.pc
+            sudo install -m 644 "$TMP_PC" /usr/local/lib/pkgconfig/breakpad.pc
+            rm -f "$TMP_PC"
         fi
     fi
 

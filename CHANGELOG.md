@@ -8,13 +8,14 @@
 - Also set whiptail to dark contrasting colors
     - Previous version often left menu unreadable
     - Will do same for the other installers
+- Fixed some scripts changing ownership of files/directories
 
 ## 20 April 2026
 
 - Fixed build script for `hyprsysteminfo`
     - Needed `qt6 WaylandClientPrivate`
-- Fixed build script for `hyprsysteminfo` 
-  - Needed `qt6 WaylandClientPrivate`
+- Fixed build script for `hyprsysteminfo`
+    - Needed `qt6 WaylandClientPrivate`
 - Fixed bad substitusion in `install.sh` script
 - Fixed `install-ags.sh`
     - Debian Trixie has old version of `tsc`
