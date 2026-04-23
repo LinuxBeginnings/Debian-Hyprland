@@ -56,8 +56,10 @@ if git clone --depth=1 "$source_theme" "$SRC_DIR"; then
     echo "${OK} - Directory '/usr/share/sddm/themes' created." | tee -a "$LOG"
   fi
 
-  # Move cloned theme to the themes directory
-  sudo mv "$SRC_DIR" "/usr/share/sddm/themes/$theme_name" 2>&1 | tee -a "$LOG"
+  # Copy cloned theme to the themes directory without preserving user ownership
+  sudo cp -r "$SRC_DIR" "/usr/share/sddm/themes/$theme_name" 2>&1 | tee -a "$LOG"
+  sudo chown -R root:root "/usr/share/sddm/themes/$theme_name" 2>&1 | tee -a "$LOG"
+  rm -rf "$SRC_DIR"
 
   # setting up SDDM theme
   sddm_conf="/etc/sddm.conf"
