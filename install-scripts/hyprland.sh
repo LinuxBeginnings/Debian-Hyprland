@@ -50,6 +50,7 @@ ensure_re2_absl_consistent() {
     if [ -n "$expected" ] && [ -n "$installed" ] && [ "$installed" != "$expected" ]; then
         echo "${WARN} libabsl-dev ($installed) does not match $dep ($expected). Fixing to prevent linker conflicts..." | tee -a "$LOG"
         sudo apt-get install -y "libabsl-dev=${expected}" 2>&1 | tee -a "$LOG" || true
+        sudo apt-mark hold libabsl-dev 2>&1 | tee -a "$LOG" || true
     fi
 }
 
