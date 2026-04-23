@@ -65,6 +65,21 @@ detect_suite() {
     printf '%s' "$c"
 }
 
+ensure_re2_absl_consistent() {
+    local dep abi expected installed candidate
+    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ {print $2; exit}')"
+    [[ -z "$dep" ]] && return 0
+    abi="${dep#libabsl}"
+    candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1)"
+    expected="${candidate:-$(dpkg-query -W -f='${Version}' "$dep" 2>/dev/null || true)}"
+    installed="$(dpkg-query -W -f='${Version}' libabsl-dev 2>/dev/null || true)"
+    if [[ -n "$expected" && -n "$installed" && "$installed" != "$expected" ]]; then
+        echo "[WARN] libabsl-dev ($installed) does not match $dep ($expected). Fixing to prevent linker conflicts..." | tee -a "$SUMMARY_LOG"
+        sudo apt-get install -y "libabsl-dev=${expected}" 2>&1 | tee -a "$SUMMARY_LOG" || true
+        sudo apt-mark hold libabsl-dev 2>&1 | tee -a "$SUMMARY_LOG" || true
+    fi
+}
+
 ensure_trixie_backports_repo() {
     local suite="$1"
     [[ "$suite" == "trixie" ]] || return 0
@@ -1095,6 +1110,7 @@ if [[ "$MODE" == "debian" ]]; then
     echo "[INFO] Debian package mode dry-run check complete for suite '$SUITE'." | tee -a "$SUMMARY_LOG"
     exit 0
 fi
+ensure_re2_absl_consistent
 if [[ $DO_DRY_RUN -eq 0 && $DO_INSTALL -eq 0 ]]; then
     echo "[INFO] No build option specified. Defaulting to --dry-run." | tee -a "$SUMMARY_LOG"
     DO_DRY_RUN=1
