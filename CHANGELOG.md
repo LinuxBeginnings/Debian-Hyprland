@@ -13,6 +13,8 @@
 
 - Fixed build script for `hyprsysteminfo`
     - Needed `qt6 WaylandClientPrivate`
+- Fixed build script for `hyprsysteminfo` 
+  - Needed `qt6 WaylandClientPrivate`
 - Fixed bad substitusion in `install.sh` script
 - Fixed `install-ags.sh`
     - Debian Trixie has old version of `tsc`
