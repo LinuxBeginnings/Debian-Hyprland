@@ -38,15 +38,32 @@ cd "$PARENT_DIR" || exit 1
 
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
+# Ensure libre2 and libabsl-dev ABIs match to prevent hyprctl link failures
+ensure_re2_absl_consistent() {
+    local dep abi expected installed candidate
+    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ {print $2; exit}')"
+    [ -z "$dep" ] && return 0
+    abi="${dep#libabsl}"
+    candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1)"
+    expected="${candidate:-$(dpkg-query -W -f='${Version}' "$dep" 2>/dev/null || true)}"
+    installed="$(dpkg-query -W -f='${Version}' libabsl-dev 2>/dev/null || true)"
+    if [ -n "$expected" ] && [ -n "$installed" ] && [ "$installed" != "$expected" ]; then
+        echo "${WARN} libabsl-dev ($installed) does not match $dep ($expected). Fixing to prevent linker conflicts..." | tee -a "$LOG"
+        sudo apt-get install -y "libabsl-dev=${expected}" 2>&1 | tee -a "$LOG" || true
+        sudo apt-mark hold libabsl-dev 2>&1 | tee -a "$LOG" || true
+    fi
+}
+
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprland.log"
-MLOG="install-$(date +%d-%H%M%S)_hyprland2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprland.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprland2.log"
 
 
 printf "\n%.0s" {1..1}
 
 
 printf "\n%.0s" {1..1}
+ensure_re2_absl_consistent
 
 # Clone, build, and install Hyprland using Cmake
 printf "${NOTE} Cloning and Installing ${YELLOW}Hyprland $tag${RESET} ...\n"
@@ -61,6 +78,10 @@ fi
 if git clone --recursive -b $tag "https://github.com/hyprwm/Hyprland" "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprland"
+    if [ -d "$BUILD_DIR" ]; then
+        printf "${NOTE} Removing existing Hyprland build directory...\\n"
+        rm -rf "$BUILD_DIR" 2>&1 | tee -a "$LOG"
+    fi
     mkdir -p "$BUILD_DIR"
 
     # Compatibility shim for toolchains without std::vector::{insert_range,append_range}
@@ -350,7 +371,9 @@ cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)
     else
         echo "${NOTE} DRY RUN: Skipping installation of Hyprland $tag."
     fi
-    [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/"
+    if [ -f "$MLOG" ] && [ "$(dirname "$MLOG")" != "$PARENT_DIR/Install-Logs" ]; then
+        mv "$MLOG" "$PARENT_DIR/Install-Logs/"
+    fi
     cd ..
 else
     echo -e "${ERROR} Download failed for ${YELLOW}Hyprland $tag${RESET}" 2>&1 | tee -a "$LOG"

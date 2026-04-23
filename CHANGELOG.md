@@ -1,7 +1,18 @@
 ## CHANGELOG
 
+## 23 April 2026
+
+- Downloaded `libasl-dev`
+    - Causes ABI version mismatch build failure
+    - `apt-mark hold` set also
+- Also set whiptail to dark contrasting colors
+    - Previous version often left menu unreadable
+    - Will do same for the other installers
+
 ## 20 April 2026
 
+- Fixed build script for `hyprsysteminfo`
+    - Needed `qt6 WaylandClientPrivate`
 - Fixed build script for `hyprsysteminfo` 
   - Needed `qt6 WaylandClientPrivate`
 - Fixed bad substitusion in `install.sh` script
