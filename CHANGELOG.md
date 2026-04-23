@@ -5,6 +5,9 @@
 - Downloaded `libasl-dev`
     - Causes ABI version mismatch build failure
     - `apt-mark hold` set also
+- Also set whiptail to dark contrasting colors
+    - Previous version often left menu unreadable
+    - Will do same for the other installers
 
 ## 20 April 2026
 
