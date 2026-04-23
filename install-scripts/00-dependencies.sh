@@ -319,6 +319,15 @@ install_dep() {
             ;;
         esac
     fi
+    # Keep re2/abseil ABI consistent with the active Debian suite to avoid link conflicts
+    case "$pkg" in
+    libabsl-dev | libabsl20240722 | libabsl20260107 | libre2-dev | libre2-11)
+        if [ -n "${DEBIAN_SUITE:-}" ] && apt-cache policy "$pkg" 2>/dev/null | grep -q " ${DEBIAN_SUITE}/"; then
+            install_package_target "$pkg" "${DEBIAN_SUITE}"
+            return
+        fi
+        ;;
+    esac
     install_package "$pkg" "$LOG"
 }
 
@@ -348,6 +357,21 @@ for PKG1 in "${dependencies[@]}" "${hyprland_dep[@]}"; do
 done
 
 printf "\n%.0s" {1..1}
+# Ensure libre2 and libabsl-dev ABIs match to prevent hyprctl link failures
+ensure_re2_absl_consistent() {
+    local dep abi expected installed candidate
+    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ {print $2; exit}')"
+    [ -z "$dep" ] && return 0
+    abi="${dep#libabsl}"
+    candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1)"
+    expected="${candidate:-$(dpkg-query -W -f='${Version}' "$dep" 2>/dev/null || true)}"
+    installed="$(dpkg-query -W -f='${Version}' libabsl-dev 2>/dev/null || true)"
+    if [ -n "$expected" ] && [ -n "$installed" ] && [ "$installed" != "$expected" ]; then
+        echo "${WARN} libabsl-dev ($installed) does not match $dep ($expected). Fixing to prevent linker conflicts..." | tee -a "$LOG"
+        sudo apt-get install -y "libabsl-dev=${expected}" 2>&1 | tee -a "$LOG" || true
+    fi
+}
+ensure_re2_absl_consistent
 
 for PKG1 in "${build_dep[@]}"; do
     build_dep "$PKG1" "$LOG"
