@@ -329,6 +329,7 @@ HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRWIRE_TAG=v0.2.1
+XDPH_TAG=v1.3.12
 EOF
     fi
 }
@@ -494,6 +495,7 @@ declare -A repos=(
         [HYPRSUNSET_TAG]="hyprwm/hyprsunset"
         [HYPRLAUNCHER_TAG]="hyprwm/hyprlauncher"
         [HYPRSYSTEMINFO_TAG]="hyprwm/hyprsysteminfo"
+        [XDPH_TAG]="hyprwm/xdg-desktop-portal-hyprland"
     )
 
     declare -A tags
