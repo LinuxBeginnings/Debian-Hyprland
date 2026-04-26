@@ -18,8 +18,13 @@ xdg=(
   xdg-desktop-portal-gtk
 )
 
-#specific branch or release
-tag="v1.3.10"
+#specific branch or release (fallback)
+tag_default="v1.3.12"
+if [ -z "${XDPH_TAG:-}" ]; then
+  TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"
+  [ -f "$TAGS_FILE" ] && source "$TAGS_FILE"
+fi
+tag="${XDPH_TAG:-$tag_default}"
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"

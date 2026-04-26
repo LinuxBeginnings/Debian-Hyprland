@@ -138,6 +138,7 @@ HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRLAND_GUIUTILS_TAG=v0.2.0
 HYPRWIRE_TAG=v0.2.1
 WAYLAND_PROTOCOLS_TAG=1.46
+XDPH_TAG=v1.3.12
 EOF
 fi
 
@@ -209,6 +210,7 @@ declare -A repos=(
   [HYPRSUNSET_TAG]="hyprwm/hyprsunset"
   [HYPRLAUNCHER_TAG]="hyprwm/hyprlauncher"
   [HYPRSYSTEMINFO_TAG]="hyprwm/hyprsysteminfo"
+  [XDPH_TAG]="hyprwm/xdg-desktop-portal-hyprland"
 )
 
 # Read existing

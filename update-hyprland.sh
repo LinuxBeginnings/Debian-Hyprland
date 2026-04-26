@@ -70,13 +70,32 @@ ensure_re2_absl_consistent() {
     dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ {print $2; exit}')"
     [[ -z "$dep" ]] && return 0
     abi="${dep#libabsl}"
-    candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1)"
+    candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1 || true)"
     expected="${candidate:-$(dpkg-query -W -f='${Version}' "$dep" 2>/dev/null || true)}"
     installed="$(dpkg-query -W -f='${Version}' libabsl-dev 2>/dev/null || true)"
+    if [[ -z "$candidate" && -z "$expected" ]]; then
+        echo "[WARN] Unable to determine a matching libabsl-dev candidate for $dep; falling back to RE2 source build." | tee -a "$SUMMARY_LOG"
+        local re2_script="$REPO_ROOT/install-scripts/re2.sh"
+        if [[ -x "$re2_script" ]]; then
+            "$re2_script" --force || true
+        else
+            echo "[WARN] RE2 helper script missing at $re2_script" | tee -a "$SUMMARY_LOG"
+        fi
+        return 0
+    fi
     if [[ -n "$expected" && -n "$installed" && "$installed" != "$expected" ]]; then
         echo "[WARN] libabsl-dev ($installed) does not match $dep ($expected). Fixing to prevent linker conflicts..." | tee -a "$SUMMARY_LOG"
-        sudo apt-get install -y "libabsl-dev=${expected}" 2>&1 | tee -a "$SUMMARY_LOG" || true
-        sudo apt-mark hold libabsl-dev 2>&1 | tee -a "$SUMMARY_LOG" || true
+        if sudo apt-get install -y "libabsl-dev=${expected}" 2>&1 | tee -a "$SUMMARY_LOG"; then
+            sudo apt-mark hold libabsl-dev 2>&1 | tee -a "$SUMMARY_LOG" || true
+        else
+            echo "[WARN] Failed to install libabsl-dev=${expected}; falling back to RE2 source build." | tee -a "$SUMMARY_LOG"
+            local re2_script="$REPO_ROOT/install-scripts/re2.sh"
+            if [[ -x "$re2_script" ]]; then
+                "$re2_script" --force || true
+            else
+                echo "[WARN] RE2 helper script missing at $re2_script" | tee -a "$SUMMARY_LOG"
+            fi
+        fi
     fi
 }
 
@@ -329,6 +348,7 @@ HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRWIRE_TAG=v0.2.1
+XDPH_TAG=v1.3.12
 EOF
     fi
 }
@@ -494,6 +514,7 @@ declare -A repos=(
         [HYPRSUNSET_TAG]="hyprwm/hyprsunset"
         [HYPRLAUNCHER_TAG]="hyprwm/hyprlauncher"
         [HYPRSYSTEMINFO_TAG]="hyprwm/hyprsysteminfo"
+        [XDPH_TAG]="hyprwm/xdg-desktop-portal-hyprland"
     )
 
     declare -A tags
