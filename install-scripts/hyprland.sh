@@ -101,7 +101,7 @@ if git clone --recursive -b $tag "https://github.com/hyprwm/Hyprland" "$SRC_DIR"
         printf "${NOTE} Removing existing Hyprland build directory...\\n"
         rm -rf "$BUILD_DIR" 2>&1 | tee -a "$LOG"
     fi
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
     # Compatibility shim for toolchains without std::vector::{insert_range,append_range}
     RANGE_HDR="$(pwd)/hypr_range_compat.hpp"

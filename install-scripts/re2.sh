@@ -45,7 +45,7 @@ rm -rf "$SRC_DIR" "$BUILD_DIR" 2>/dev/null || true
 printf "${NOTE} Cloning and Installing ${YELLOW}RE2${RESET} ${RE2_TAG:+($RE2_TAG)} ...\\n" | tee -a "$LOG"
 if git clone --depth=1 ${RE2_TAG:+-b "$RE2_TAG"} https://github.com/google/re2.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -DRE2_BUILD_TESTING=OFF
     cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" | tee -a "$LOG"
     if [ $DO_INSTALL -eq 1 ]; then

@@ -34,7 +34,7 @@ printf "${INFO} Installing ${YELLOW}hyprsysteminfo ${git_ref:-default-branch}${R
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprsysteminfo.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprsysteminfo"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     if [ -f CMakeLists.txt ]; then
         if grep -q "WaylandClientPrivate" src/CMakeLists.txt && ! grep -q "WaylandClientPrivate" CMakeLists.txt; then
             echo "${NOTE} Adding Qt6 WaylandClientPrivate component to satisfy Debian Qt6 packaging." | tee -a "$MLOG"

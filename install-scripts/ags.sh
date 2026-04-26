@@ -147,7 +147,7 @@ SRC_DIR="$SRC_ROOT/ags_v1.9.0"
 if git clone --depth=1 https://github.com/LinuxBeginnings/ags_v1.9.0.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/ags_v1.9.0"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     npm install
     if [ -f "$SRC_DIR/tsconfig.json" ] && [ -f "$SRC_DIR/src/meson.build" ]; then
       mkdir -p "$SRC_DIR/types"

@@ -96,7 +96,7 @@ printf "${INFO} Installing ${YELLOW}hyprpaper ${git_ref:-default-branch}${RESET}
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprpaper.git "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
   BUILD_DIR="$BUILD_ROOT/hyprpaper"
-  mkdir -p "$BUILD_DIR"
+  rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
   # Build with CMake
   CMAKE_FLAGS=(

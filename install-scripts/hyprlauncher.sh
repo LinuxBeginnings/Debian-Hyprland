@@ -47,7 +47,7 @@ printf "${INFO} Installing ${YELLOW}hyprlauncher ${git_ref:-default-branch}${RES
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprlauncher.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprlauncher"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     if [ -f CMakeLists.txt ]; then
         cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
         cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"

@@ -72,7 +72,7 @@ printf "${INFO} Installing ${YELLOW}hypridle ${git_ref:-default-branch}${RESET} 
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hypridle.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hypridle"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -S . -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" --config Release --target hypridle -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
     if [ $DO_INSTALL -eq 1 ]; then

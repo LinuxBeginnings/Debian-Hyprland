@@ -174,7 +174,7 @@ EOF
     [ -n "$HYPRWIRE_PROTO_DIR" ] && export HYPRWIRE_PROTOCOLS_DIR="$HYPRWIRE_PROTO_DIR"
 
     BUILD_DIR="$BUILD_ROOT/hyprtavern"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
     # Debian trixie: shim std::vector::append_range if missing
     NEED_SHIM=0

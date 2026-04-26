@@ -102,7 +102,7 @@ export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PK
 
 # Proceed with the installation steps
 BUILD_DIR="$BUILD_ROOT/rofi-${rofi_ver}"
-mkdir -p "$BUILD_DIR"
+rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 # Build both backends if available
 if meson setup "$BUILD_DIR" --prefix /usr/local -Dxcb=enabled -Dwayland=enabled && ninja -C "$BUILD_DIR" ; then
   if sudo ninja -C "$BUILD_DIR" install 2>&1 | tee -a "$MLOG"; then

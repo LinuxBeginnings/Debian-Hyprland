@@ -78,7 +78,7 @@ fi
 if git clone --recursive -b "$tag" https://github.com/hyprwm/hyprwire.git "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
   BUILD_DIR="$BUILD_ROOT/hyprwire"
-  mkdir -p "$BUILD_DIR"
+  rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
   # Decide whether we need the append_range compatibility shim.
   # On Debian 13 (trixie), libstdc++ typically lacks std::vector::append_range, so we patch.

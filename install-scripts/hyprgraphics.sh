@@ -72,7 +72,7 @@ printf "${INFO} Installing ${YELLOW}hyprgraphics $tag${RESET} ...\n"
 if git clone --recursive -b $tag https://github.com/hyprwm/hyprgraphics.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprgraphics"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" --config Release --target hyprgraphics -j`nproc 2>/dev/null || getconf _NPROCESSORS_CONF`
     if [ $DO_INSTALL -eq 1 ]; then
