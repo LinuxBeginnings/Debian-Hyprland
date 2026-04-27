@@ -16,7 +16,7 @@ hyprgraphics=(
 )
 
 #specific branch or release
-tag="v0.4.0"
+tag="v0.5.1"
 # Auto-source centralized tags if env is unset
 if [ -z "${HYPRGRAPHICS_TAG:-}" ]; then
   TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"

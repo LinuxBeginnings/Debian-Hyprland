@@ -164,7 +164,7 @@ HYPRLAND_TAG=lua-lua-lua-lua-lua-lua-lua
 AQUAMARINE_TAG=v0.10.0
 HYPRUTILS_TAG=v0.11.0
 HYPRLANG_TAG=v0.6.8
-HYPRGRAPHICS_TAG=v0.5.0
+HYPRGRAPHICS_TAG=v0.5.1
 HYPRCURSOR_TAG=v0.1.13
 HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
@@ -478,10 +478,12 @@ run_stack() {
                 export_tags
             fi
         fi
-        local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_cursor=0 has_hlprot=0
+        local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_cursor=0 has_hlprot=0 has_graphics=0 has_scanner=0
         for m in "${modules[@]}"; do
             [[ "$m" == "hyprland" ]] && has_hl=1
             [[ "$m" == "aquamarine" ]] && has_aqua=1
+            [[ "$m" == "hyprgraphics" ]] && has_graphics=1
+            [[ "$m" == "hyprwayland-scanner" ]] && has_scanner=1
             [[ "$m" == "wayland-protocols-src" ]] && has_wp=1
             [[ "$m" == "hyprland-protocols" ]] && has_hlprot=1
             [[ "$m" == "hyprutils" ]] && has_utils=1
@@ -507,6 +509,14 @@ run_stack() {
                 if [[ -z "$have_cursor_ver" ]] || [[ "$(printf '%s\n' "$req_cursor_ver" "$have_cursor_ver" | sort -V | head -n1)" != "$req_cursor_ver" ]]; then
                     modules=("hyprcursor" "${modules[@]}")
                 fi
+                req_graphics_ver="0.5.1"
+                have_graphics_ver=$(pkg-config --modversion hyprgraphics 2>/dev/null || echo "")
+                if [[ -z "$have_graphics_ver" ]] || [[ "$(printf '%s\n' "$req_graphics_ver" "$have_graphics_ver" | sort -V | head -n1)" != "$req_graphics_ver" ]]; then
+                    modules=("hyprgraphics" "${modules[@]}")
+                fi
+                if ! pkg-config --exists hyprwayland-scanner 2>/dev/null; then
+                    modules=("hyprwayland-scanner" "${modules[@]}")
+                fi
             fi
             # ensure each prerequisite is present
             [[ $has_wp -eq 0 ]] && modules=("wayland-protocols-src" "${modules[@]}")
@@ -514,12 +524,14 @@ run_stack() {
             [[ $has_utils -eq 0 ]] && modules=("hyprutils" "${modules[@]}")
             [[ $has_lang -eq 0 ]] && modules=("hyprlang" "${modules[@]}")
             [[ $has_cursor -eq 0 ]] && modules=("hyprcursor" "${modules[@]}")
+            [[ $has_graphics -eq 0 ]] && modules=("hyprgraphics" "${modules[@]}")
+            [[ $has_scanner -eq 0 ]] && modules=("hyprwayland-scanner" "${modules[@]}")
             [[ $has_aqua -eq 0 ]] && modules=("aquamarine" "${modules[@]}")
 
             # Reorder to exact sequence before hyprland
             # Remove existing occurrences and rebuild in correct order
             local tmp=()
-            local inserted_wp=0 inserted_hlprot=0 inserted_utils=0 inserted_lang=0 inserted_cursor=0 inserted_aqua=0
+            local inserted_wp=0 inserted_hlprot=0 inserted_utils=0 inserted_lang=0 inserted_cursor=0 inserted_aqua=0 inserted_graphics=0 inserted_scanner=0
             for m in "${modules[@]}"; do
                 if [[ "$m" == "wayland-protocols-src" ]]; then
                     if [[ $inserted_wp -eq 0 ]]; then
@@ -616,6 +628,68 @@ run_stack() {
                         tmp+=("aquamarine")
                         inserted_aqua=1
                     fi
+                elif [[ "$m" == "hyprgraphics" ]]; then
+                    if [[ $inserted_graphics -eq 0 ]]; then
+                        if [[ $inserted_aqua -eq 0 ]]; then
+                            if [[ $inserted_lang -eq 0 ]]; then
+                                if [[ $inserted_utils -eq 0 ]]; then
+                                    if [[ $inserted_wp -eq 0 ]]; then
+                                        tmp+=("wayland-protocols-src")
+                                        inserted_wp=1
+                                    fi
+                                    if [[ $inserted_hlprot -eq 0 ]]; then
+                                        tmp+=("hyprland-protocols")
+                                        inserted_hlprot=1
+                                    fi
+                                    tmp+=("hyprutils")
+                                    inserted_utils=1
+                                fi
+                                tmp+=("hyprlang")
+                                inserted_lang=1
+                            fi
+                            if [[ $inserted_cursor -eq 0 ]]; then
+                                tmp+=("hyprcursor")
+                                inserted_cursor=1
+                            fi
+                            tmp+=("aquamarine")
+                            inserted_aqua=1
+                        fi
+                        tmp+=("hyprgraphics")
+                        inserted_graphics=1
+                    fi
+                elif [[ "$m" == "hyprwayland-scanner" ]]; then
+                    if [[ $inserted_scanner -eq 0 ]]; then
+                        if [[ $inserted_graphics -eq 0 ]]; then
+                            if [[ $inserted_aqua -eq 0 ]]; then
+                                if [[ $inserted_lang -eq 0 ]]; then
+                                    if [[ $inserted_utils -eq 0 ]]; then
+                                        if [[ $inserted_wp -eq 0 ]]; then
+                                            tmp+=("wayland-protocols-src")
+                                            inserted_wp=1
+                                        fi
+                                        if [[ $inserted_hlprot -eq 0 ]]; then
+                                            tmp+=("hyprland-protocols")
+                                            inserted_hlprot=1
+                                        fi
+                                        tmp+=("hyprutils")
+                                        inserted_utils=1
+                                    fi
+                                    tmp+=("hyprlang")
+                                    inserted_lang=1
+                                fi
+                                if [[ $inserted_cursor -eq 0 ]]; then
+                                    tmp+=("hyprcursor")
+                                    inserted_cursor=1
+                                fi
+                                tmp+=("aquamarine")
+                                inserted_aqua=1
+                            fi
+                            tmp+=("hyprgraphics")
+                            inserted_graphics=1
+                        fi
+                        tmp+=("hyprwayland-scanner")
+                        inserted_scanner=1
+                    fi
                 elif [[ "$m" == "hyprland" ]]; then
                     # ensure all prerequisites already present
                     if [[ $inserted_wp -eq 0 ]]; then
@@ -641,6 +715,14 @@ run_stack() {
                     if [[ $inserted_aqua -eq 0 ]]; then
                         tmp+=("aquamarine")
                         inserted_aqua=1
+                    fi
+                    if [[ $inserted_graphics -eq 0 ]]; then
+                        tmp+=("hyprgraphics")
+                        inserted_graphics=1
+                    fi
+                    if [[ $inserted_scanner -eq 0 ]]; then
+                        tmp+=("hyprwayland-scanner")
+                        inserted_scanner=1
                     fi
                     tmp+=("hyprland")
                 else

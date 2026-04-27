@@ -60,11 +60,11 @@ done
 if [[ ! -f "$TAGS_FILE" ]]; then
 cat > "$TAGS_FILE" <<'EOF'
 # Default Hyprland stack versions
-HYPRLAND_TAG=v0.53.3
+HYPRLAND_TAG=lua-lua-lua-lua-lua-lua-lua
 AQUAMARINE_TAG=v0.10.0
 HYPRUTILS_TAG=v0.11.0
 HYPRLANG_TAG=v0.6.8
-HYPRGRAPHICS_TAG=v0.5.0
+HYPRGRAPHICS_TAG=v0.5.1
 HYPRTOOLKIT_TAG=v0.4.1
 HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
@@ -88,7 +88,7 @@ fi
 # Map of env var -> repo
 # (Some modules may not publish GitHub releases; in that case the tag may not refresh.)
 declare -A repos=(
-  [HYPRLAND_TAG]="hyprwm/Hyprland"
+  [HYPRLAND_TAG]="vaxerski/Hyprland"
   [AQUAMARINE_TAG]="hyprwm/aquamarine"
   [HYPRUTILS_TAG]="hyprwm/hyprutils"
   [HYPRLANG_TAG]="hyprwm/hyprlang"

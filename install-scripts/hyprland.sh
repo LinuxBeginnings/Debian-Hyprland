@@ -317,19 +317,22 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
     exit 1
 fi
 
-# Ensure pkg-config can resolve "lua" (Lua 5.x provides lua5.x.pc on Debian)
-if ! pkg-config --exists lua 2>/dev/null; then
-    for _luapc in lua5.4 lua5.3; do
-        if pkg-config --exists "$_luapc" 2>/dev/null; then
-            pcdir="$(pkg-config --variable=pcfiledir "$_luapc" 2>/dev/null)"
-            if [ -n "$pcdir" ] && [ ! -f "$pcdir/lua.pc" ]; then
-                echo "${NOTE} Creating lua.pc symlink for $_luapc in $pcdir" | tee -a "$LOG"
-                sudo ln -sf "$pcdir/${_luapc}.pc" "$pcdir/lua.pc" || true
+# Ensure pkg-config can resolve Lua names expected by the Lua Hyprland branch.
+# Debian typically ships lua5.4/lua54 metadata rather than lua/lua55.
+for _luaalias in lua lua55; do
+    if ! pkg-config --exists "$_luaalias" 2>/dev/null; then
+        for _luapc in lua5.4 lua54 lua-5.4 lua5.3 lua53 lua-5.3; do
+            if pkg-config --exists "$_luapc" 2>/dev/null; then
+                pcdir="$(pkg-config --variable=pcfiledir "$_luapc" 2>/dev/null)"
+                if [ -n "$pcdir" ] && [ ! -f "$pcdir/${_luaalias}.pc" ]; then
+                    echo "${NOTE} Creating ${_luaalias}.pc symlink for $_luapc in $pcdir" | tee -a "$LOG"
+                    sudo ln -sf "$pcdir/${_luapc}.pc" "$pcdir/${_luaalias}.pc" || true
+                fi
+                break
             fi
-            break
-        fi
-    done
-fi
+        done
+    fi
+done
 
 # Preflight: ensure glslang is available (CMake config) for Hyprland builds
 if [ -z "${glslang_DIR:-}" ]; then
