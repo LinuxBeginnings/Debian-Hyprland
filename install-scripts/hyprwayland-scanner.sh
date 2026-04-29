@@ -73,7 +73,7 @@ printf "${NOTE} Installing hyprwayland-scanner...\n"
 if git clone --recursive -b $tag https://github.com/hyprwm/hyprwayland-scanner.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprwayland-scanner"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 	cmake -DCMAKE_INSTALL_PREFIX=/usr -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" -j `nproc`
     if [ $DO_INSTALL -eq 1 ]; then

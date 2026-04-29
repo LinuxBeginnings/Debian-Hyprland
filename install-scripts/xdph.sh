@@ -69,7 +69,7 @@ fi
 if git clone --recursive -b $tag "https://github.com/hyprwm/xdg-desktop-portal-hyprland.git" "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
   BUILD_DIR="$BUILD_ROOT/xdg-desktop-portal-hyprland"
-  mkdir -p "$BUILD_DIR"
+  rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
   cmake -DCMAKE_INSTALL_LIBEXECDIR=/usr/lib -DCMAKE_INSTALL_PREFIX=/usr -B "$BUILD_DIR"
   cmake --build "$BUILD_DIR"
   if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then

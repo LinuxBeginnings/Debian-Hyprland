@@ -58,7 +58,7 @@ printf "${NOTE} Installing xkbcommon...\n"
 if git clone --recursive -b $tag https://github.com/xkbcommon/libxkbcommon.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/libxkbcommon"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     meson setup "$BUILD_DIR" \
       --prefix=/usr/local \
       --libdir=/usr/local/lib \

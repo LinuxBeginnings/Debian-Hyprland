@@ -34,7 +34,7 @@ printf "${INFO} Installing ${YELLOW}hyprsunset ${git_ref:-default-branch}${RESET
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprsunset.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprsunset"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     if [ -f CMakeLists.txt ]; then
         cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
         cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"

@@ -34,7 +34,7 @@ printf "${INFO} Installing ${YELLOW}hyprpwcenter ${git_ref:-default-branch}${RES
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprpwcenter.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprpwcenter"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
     # Debian trixie libstdc++ may lack std::vector::append_range (C++23). Detect and shim if needed.
     NEED_SHIM=0

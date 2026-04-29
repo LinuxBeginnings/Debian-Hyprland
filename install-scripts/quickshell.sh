@@ -197,7 +197,7 @@ CMAKE_FLAGS=(
 note "Configuring Quickshell (CMake)..."
 # Use explicit source/build dirs and preserve cmake exit code with pipefail
 BUILD_DIR="$BUILD_ROOT/quickshell"
-mkdir -p "$BUILD_DIR"
+rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" 2>&1 | tee -a "$MLOG"; then
     echo "${ERROR} CMake configure failed. See log: $MLOG" | tee -a "$LOG"
     exit 1

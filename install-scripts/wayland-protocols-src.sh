@@ -88,7 +88,7 @@ if git clone --depth=1 --filter=blob:none "$repo_url" "$SRC_DIR"; then
     fi
     # Install to /usr/local so pkg-config can prefer it over distro /usr
     BUILD_DIR="$BUILD_ROOT/wayland-protocols"
-    mkdir -p "$BUILD_DIR"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     meson setup "$BUILD_DIR" --prefix=/usr/local
     meson compile -C "$BUILD_DIR" -j"$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
     if [ $DO_INSTALL -eq 1 ]; then
