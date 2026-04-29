@@ -74,12 +74,12 @@ EOF
     fi
 
     if [ -f CMakeLists.txt ]; then
-        cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23 "${EXTRA_FLAGS[@]}"
-        cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
+        cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_STANDARD=23 "${EXTRA_FLAGS[@]}" 2>&1 | tee -a "$MLOG"
+        cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" 2>&1 | tee -a "$MLOG"
         if [ $DO_INSTALL -eq 1 ]; then sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
     elif [ -f meson.build ]; then
-        meson setup "$BUILD_DIR" --buildtype=release
-        meson compile -C "$BUILD_DIR"
+        meson setup "$BUILD_DIR" --buildtype=release 2>&1 | tee -a "$MLOG"
+        meson compile -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"
         if [ $DO_INSTALL -eq 1 ]; then sudo meson install -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
     elif [ -f Cargo.toml ]; then
         cargo build --release 2>&1 | tee -a "$MLOG"

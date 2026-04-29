@@ -215,16 +215,16 @@ EOF
         [ -n "$HYP_PROTO_DIR" ]       && CMAKE_FLAGS+=( -DHYPRLAND_PROTOCOLS_DIR="$HYP_PROTO_DIR" )
         [ -n "$WLR_PROTO_DIR" ]       && CMAKE_FLAGS+=( -DWLR_PROTOCOLS_DIR="$WLR_PROTO_DIR" )
         [ -n "$HYPRWIRE_PROTO_DIR" ]  && CMAKE_FLAGS+=( -DHYPRWIRE_PROTOCOLS_DIR="$HYPRWIRE_PROTO_DIR" )
-        cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" "${EXTRA_FLAGS[@]}"
-        cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
+        cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" "${EXTRA_FLAGS[@]}" 2>&1 | tee -a "$MLOG"
+        cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" 2>&1 | tee -a "$MLOG"
         if [ $DO_INSTALL -eq 1 ]; then sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
     elif [ -f meson.build ]; then
         meson setup "$BUILD_DIR" --buildtype=release \
             ${WL_PROTO_DIR:+-Dwayland_protocols_dir="$WL_PROTO_DIR"} \
             ${HYP_PROTO_DIR:+-Dhyprland_protocols_dir="$HYP_PROTO_DIR"} \
             ${WLR_PROTO_DIR:+-Dwlr_protocols_dir="$WLR_PROTO_DIR"} \
-            ${HYPRWIRE_PROTO_DIR:+-Dhyprwire_protocols_dir="$HYPRWIRE_PROTO_DIR"}
-        meson compile -C "$BUILD_DIR"
+            ${HYPRWIRE_PROTO_DIR:+-Dhyprwire_protocols_dir="$HYPRWIRE_PROTO_DIR"} 2>&1 | tee -a "$MLOG"
+        meson compile -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"
         if [ $DO_INSTALL -eq 1 ]; then sudo meson install -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
     elif [ -f Cargo.toml ]; then
         cargo build --release 2>&1 | tee -a "$MLOG"
