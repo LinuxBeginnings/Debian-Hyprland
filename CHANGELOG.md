@@ -4,6 +4,7 @@
 
 - Modified `update-hyprland.sh` to follow `main` branch as option
     - use flag `--follow-main --install` or `--follow-main --install --only hyprland`
+- Fixed BUILD issues with `hyprsysteminfo`
 
 ## 29 March 2026
 
