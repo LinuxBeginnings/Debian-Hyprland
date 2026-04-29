@@ -1,5 +1,17 @@
 ## CHANGELOG
 
+## 29 April 2026
+
+- Ported fix for hyprsysteminfo from `lua-cfg-test` branch
+    - The `#embed` polyfill:
+    - Added the fallback script that checks for missing `#embed`
+    - support on older toolchains and uses xxd + awk to convert the hyprlandlogo.svg
+    - to an inline bytes header (hyprlandlogo.bytes.inc).
+    - C++ standard library linkage (extern "C"): Added the perl snippet to wrap
+    - `#include <pci/pci.h>` with `extern "C"` in `SystemInfo.cpp` so it links correctly.
+    - PCI dependencies and linker flags: Added `libpci-dev` to the install check loop
+    - (re_install_package) and injected `-lpci` linker flags across the CMake configuration.
+
 ## 23 April 2026
 
 - Downloaded `libasl-dev`
@@ -13,8 +25,8 @@
 
 - Fixed build script for `hyprsysteminfo`
     - Needed `qt6 WaylandClientPrivate`
-- Fixed build script for `hyprsysteminfo` 
-  - Needed `qt6 WaylandClientPrivate`
+- Fixed build script for `hyprsysteminfo`
+    - Needed `qt6 WaylandClientPrivate`
 - Fixed bad substitusion in `install.sh` script
 - Fixed `install-ags.sh`
     - Debian Trixie has old version of `tsc`
