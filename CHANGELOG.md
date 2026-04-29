@@ -1,5 +1,10 @@
 ## CHANGELOG
 
+## 29 April 2026
+
+- Modified `update-hyprland.sh` to follow `main` branch as option
+    - use flag `--follow-main --install` or `--follow-main --install --only hyprland`
+
 ## 29 March 2026
 
 - Major refactor of Hyprland build process
