@@ -12,10 +12,6 @@
 tag="v0.53.3"
 # allow repo override (defaults to hyprwm)
 repo="${HYPRLAND_REPO:-https://github.com/hyprwm/Hyprland}"
-LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
-if [ -z "${HYPRLAND_REPO:-}" ] && [ "$tag" = "$LUA_HYPRLAND_BRANCH" ]; then
-  repo="https://github.com/vaxerski/Hyprland"
-fi
 # Auto-source centralized tags if env is unset
 if [ -z "${HYPRLAND_TAG:-}" ]; then
   TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"
@@ -24,11 +20,6 @@ fi
 # Allow environment override
 if [ -n "${HYPRLAND_TAG:-}" ]; then tag="$HYPRLAND_TAG"; fi
 
-# Force Lua branch if requested (default on; disable with HYPRLAND_LUA_BRANCH=0)
-if [ "${HYPRLAND_LUA_BRANCH:-1}" != "0" ]; then
-  tag="$LUA_HYPRLAND_BRANCH"
-  repo="https://github.com/vaxerski/Hyprland"
-fi
 
 # Dry-run support
 DO_INSTALL=1
@@ -143,7 +134,7 @@ EOF
             echo "${NOTE} xxd still unavailable; defaultConfig.bytes.inc not generated." | tee -a "$LOG"
         fi
     fi
-    # If no defaultConfig header exists (Lua branch), create one using the upstream template
+    # If no defaultConfig header exists, create one using the upstream template
     if [ ! -f "$DEFAULT_CFG_HDR_LOWER" ]; then
         cat >"$DEFAULT_CFG_HDR_LOWER" <<'EOF'
 #pragma once
@@ -170,7 +161,7 @@ EOF
     if [ -z "$DEFAULT_CFG_NAME" ] && [ -f "$DEFAULT_CFG_HDR_LOWER" ]; then
         DEFAULT_CFG_NAME="defaultConfig.hpp"
     fi
-    # Lua branch compatibility: some sources include "DefaultConfig.hpp"
+    # Compatibility: some sources include "DefaultConfig.hpp"
     DEFAULT_CFG_SHIM="$DEFAULT_CFG_HDR_UPPER"
     DEFAULT_CFG_LEGACY_SHIM="$(pwd)/src/config/legacy/DefaultConfig.hpp"
     DEFAULT_CFG_LUA_SHIM="$(pwd)/src/config/lua/DefaultConfig.hpp"
@@ -186,7 +177,7 @@ EOF
 #include "DefaultConfig.hpp"
 EOF
     fi
-    # Always create local shims for includes within legacy/lua directories
+    # Always create local shims for includes within legacy/aux directories
     if [ -n "$DEFAULT_CFG_NAME" ]; then
         if [ ! -f "$DEFAULT_CFG_LEGACY_SHIM" ]; then
             cat >"$DEFAULT_CFG_LEGACY_SHIM" <<EOF
@@ -317,7 +308,7 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
     exit 1
 fi
 
-# Ensure pkg-config can resolve Lua names expected by the Lua Hyprland branch.
+# Ensure pkg-config can resolve Lua names expected by Hyprland.
 # Debian typically ships lua5.4/lua54 metadata rather than lua/lua55.
 for _luaalias in lua lua55; do
     if ! pkg-config --exists "$_luaalias" 2>/dev/null; then

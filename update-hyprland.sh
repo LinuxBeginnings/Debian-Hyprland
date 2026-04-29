@@ -42,10 +42,6 @@ LOG_DIR="$REPO_ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
-LUA_HYPRLAND_BRANCH="main"
-#LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
-LUA_HYPRLAND_REPO="https://github.com/hyprwm/Hyprland"
-#LUA_HYPRLAND_REPO="https://github.com/vaxerski/Hyprland"
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
     local pkgs=(
@@ -119,6 +115,7 @@ AUTO_FALLBACK=0
 MINIMAL=0
 FORCE_UPDATE=0
 PACKAGE_CLEANUP=0
+FOLLOW_MAIN=0
 ONLY_LIST=""
 SKIP_LIST=""
 SET_ARGS=()
@@ -150,6 +147,7 @@ Options:
       --minimal         Build minimal stack before hyprland
       --package-cleanup Purge Debian Hyprland packages before building
       --no-fetch        Do not auto-fetch tags on install
+      --follow-main    Pin Hyprland stack tags to "main" (disables auto-fetch)
       --build-trixie    Force Debian 13 (trixie) compatibility mode (enables needed shims)
       --no-trixie       Disable trixie compatibility mode
       --set K=V [...]   Set one or more tags (e.g., HYPRLAND=v0.53.0)
@@ -162,7 +160,7 @@ ensure_tags_file() {
         cat >"$TAGS_FILE" <<'EOF'
 # Default Hyprland stack versions
 # (You can override any of these via --set or by editing hypr-tags.env.)
-HYPRLAND_TAG=lua-lua-lua-lua-lua-lua-lua
+HYPRLAND_TAG=auto
 AQUAMARINE_TAG=v0.10.0
 HYPRUTILS_TAG=v0.11.0
 HYPRLANG_TAG=v0.6.8
@@ -177,21 +175,48 @@ EOF
     fi
 }
 
-enforce_lua_branch_tag() {
-    if [[ "${HYPRLAND_LUA_BRANCH:-1}" == "0" ]]; then
-        return 0
-    fi
+set_main_tags() {
     ensure_tags_file
-    export HYPRLAND_REPO="$LUA_HYPRLAND_REPO"
-    if ! grep -q '^HYPRLAND_TAG='"$LUA_HYPRLAND_BRANCH"'$' "$TAGS_FILE"; then
-        backup_tags
-        if grep -q '^HYPRLAND_TAG=' "$TAGS_FILE"; then
-            sed -i "s|^HYPRLAND_TAG=.*|HYPRLAND_TAG=$LUA_HYPRLAND_BRANCH|" "$TAGS_FILE"
-        else
-            printf '\nHYPRLAND_TAG=%s\n' "$LUA_HYPRLAND_BRANCH" >>"$TAGS_FILE"
-        fi
-        echo "[INFO] Forcing HYPRLAND_TAG to Lua test branch: $LUA_HYPRLAND_BRANCH" | tee -a "$SUMMARY_LOG"
-    fi
+    backup_tags
+    declare -a main_keys=(
+        HYPRLAND_TAG
+        AQUAMARINE_TAG
+        HYPRUTILS_TAG
+        HYPRLANG_TAG
+        HYPRGRAPHICS_TAG
+        HYPRCURSOR_TAG
+        HYPRWAYLAND_SCANNER_TAG
+        HYPRLAND_PROTOCOLS_TAG
+        HYPRLAND_QT_SUPPORT_TAG
+        HYPRLAND_QTUTILS_TAG
+        HYPRLAND_GUIUTILS_TAG
+        HYPRWIRE_TAG
+        HYPRWIRE_PROTOCOLS_TAG
+        HYPRTOOLKIT_TAG
+        HYPRIDLE_TAG
+        HYPRLOCK_TAG
+        HYPRPICKER_TAG
+        HYPRSHUTDOWN_TAG
+        HYPRPWCENTER_TAG
+        HYPRTAVERN_TAG
+        HYPRSUNSET_TAG
+        HYPRLAUNCHER_TAG
+        HYPRSYSTEMINFO_TAG
+    )
+    declare -A map
+    while IFS='=' read -r k v; do
+        [[ -z "$k" || "$k" =~ ^# ]] && continue
+        map[$k]="$v"
+    done <"$TAGS_FILE"
+    for k in "${main_keys[@]}"; do
+        map[$k]="main"
+    done
+    {
+        for k in "${!map[@]}"; do
+            echo "$k=${map[$k]}"
+        done | sort
+    } >"$TAGS_FILE"
+    echo "[INFO] Set Hyprland stack tags to main in $TAGS_FILE" | tee -a "$SUMMARY_LOG"
 }
 
 backup_tags() {
@@ -847,6 +872,10 @@ while [[ $# -gt 0 ]]; do
         NO_FETCH=1
         shift
         ;;
+    --follow-main)
+        FOLLOW_MAIN=1
+        shift
+        ;;
     --build-trixie)
         TRIXIE_MODE="on"
         shift
@@ -900,7 +929,15 @@ if [[ $DO_INSTALL -eq 1 && $DO_DRY_RUN -eq 1 ]]; then
 fi
 
 ensure_tags_file
-enforce_lua_branch_tag
+
+if [[ $FOLLOW_MAIN -eq 1 ]]; then
+    if [[ $FETCH_LATEST -eq 1 ]]; then
+        echo "[ERROR] --follow-main cannot be combined with --fetch-latest." | tee -a "$SUMMARY_LOG"
+        exit 2
+    fi
+    NO_FETCH=1
+    set_main_tags
+fi
 
 # Env compatibility: honor FORCE=1 as alias for --force-update
 if [[ ${FORCE:-0} -eq 1 ]]; then
