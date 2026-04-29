@@ -20,6 +20,7 @@
 - Also set whiptail to dark contrasting colors
     - Previous version often left menu unreadable
     - Will do same for the other installers
+- Fixed some scripts changing ownership of files/directories
 
 ## 20 April 2026
 

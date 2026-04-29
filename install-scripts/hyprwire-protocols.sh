@@ -41,7 +41,8 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
     # Protocol XMLs are expected under $SRC_DIR/hyprtavern/*.xml etc.
     if [ $DO_INSTALL -eq 1 ]; then
         sudo install -d "$DEST_DIR"
-        sudo cp -a "$SRC_DIR"/* "$DEST_DIR/"
+        sudo cp -r "$SRC_DIR"/* "$DEST_DIR/"
+        sudo chown -R root:root "$DEST_DIR"
         echo "${OK} Installed protocols to $DEST_DIR" | tee -a "$MLOG"
         # Synthesize a pkg-config file so CMake can discover pkgdatadir
         PC_DIR="/usr/local/lib/pkgconfig"
