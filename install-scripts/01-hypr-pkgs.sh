@@ -51,6 +51,7 @@ hypr_package=(
     wlogout
     xdg-user-dirs
     xdg-utils
+    xxd
     yad
 )
 
