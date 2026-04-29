@@ -764,7 +764,7 @@ run_stack() {
 
     for mod in "${modules[@]}"; do
         local script="$REPO_ROOT/install-scripts/$mod.sh"
-        echo "\n=== $mod ===" | tee -a "$SUMMARY_LOG"
+        printf "\n=== %s ===\n" "$mod" | tee -a "$SUMMARY_LOG"
         [[ -f "$script" ]] || {
             echo "[WARN] Missing $script" | tee -a "$SUMMARY_LOG"
             results[$mod]="MISSING"

@@ -54,6 +54,12 @@ if [ -d "$SRC_DIR" ]; then
 fi
 if git clone -b $tag "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
+  # Patch std::format usage on std::vector to avoid formatter errors on GCC/libstdc++
+  ICONS_CPP="$SRC_DIR/src/system/Icons.cpp"
+  if [ -f "$ICONS_CPP" ]; then
+    perl -0777 -pi -e 's|g_logger->log\(HT_LOG_TRACE, "CSystemIconFactory: Found \{\} as default fallback", themeDir\.value\(\)\);|g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: Found {} theme dirs as default fallback", themeDir->size());|g' "$ICONS_CPP"
+    perl -0777 -pi -e 's|g_logger->log\(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme \{\}", \*inheritTheme\);|g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme list ({} dirs)", inheritTheme->size());|g' "$ICONS_CPP"
+  fi
   BUILD_DIR="$BUILD_ROOT/hyprtoolkit"
   mkdir -p "$BUILD_DIR"
   cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR" 2>&1 | tee -a "$MLOG"
