@@ -42,8 +42,10 @@ LOG_DIR="$REPO_ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
-LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
-LUA_HYPRLAND_REPO="https://github.com/vaxerski/Hyprland"
+LUA_HYPRLAND_BRANCH="main"
+#LUA_HYPRLAND_BRANCH="lua-lua-lua-lua-lua-lua-lua"
+LUA_HYPRLAND_REPO="https://github.com/hyprwm/Hyprland"
+#LUA_HYPRLAND_REPO="https://github.com/vaxerski/Hyprland"
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
     local pkgs=(
@@ -186,7 +188,7 @@ enforce_lua_branch_tag() {
         if grep -q '^HYPRLAND_TAG=' "$TAGS_FILE"; then
             sed -i "s|^HYPRLAND_TAG=.*|HYPRLAND_TAG=$LUA_HYPRLAND_BRANCH|" "$TAGS_FILE"
         else
-            printf '\nHYPRLAND_TAG=%s\n' "$LUA_HYPRLAND_BRANCH" >> "$TAGS_FILE"
+            printf '\nHYPRLAND_TAG=%s\n' "$LUA_HYPRLAND_BRANCH" >>"$TAGS_FILE"
         fi
         echo "[INFO] Forcing HYPRLAND_TAG to Lua test branch: $LUA_HYPRLAND_BRANCH" | tee -a "$SUMMARY_LOG"
     fi
@@ -273,7 +275,7 @@ fetch_latest_tags() {
         existing[$k]="$v"
     done <"$TAGS_FILE"
 
-declare -A repos=(
+    declare -A repos=(
         [HYPRLAND_TAG]="hyprwm/Hyprland"
         [AQUAMARINE_TAG]="hyprwm/aquamarine"
         [HYPRUTILS_TAG]="hyprwm/hyprutils"
@@ -350,13 +352,13 @@ declare -A repos=(
         read -r ans || true
         ans=${ans:-Y}
         case "$ans" in
-            [nN]|[nN][oO])
-                echo "[INFO] User aborted tag update; leaving $TAGS_FILE unchanged." | tee -a "$SUMMARY_LOG"
-                # restore original copy
-                latest_bak=$(ls -1t "$TAGS_FILE".bak-* 2>/dev/null | head -n1 || true)
-                [[ -n "$latest_bak" ]] && cp "$latest_bak" "$TAGS_FILE"
-                return 0
-                ;;
+        [nN] | [nN][oO])
+            echo "[INFO] User aborted tag update; leaving $TAGS_FILE unchanged." | tee -a "$SUMMARY_LOG"
+            # restore original copy
+            latest_bak=$(ls -1t "$TAGS_FILE".bak-* 2>/dev/null | head -n1 || true)
+            [[ -n "$latest_bak" ]] && cp "$latest_bak" "$TAGS_FILE"
+            return 0
+            ;;
         esac
     else
         # non-interactive: still record changes
@@ -382,7 +384,7 @@ export_tags() {
         if [[ "$_k" == *"_TAG" || "$_k" == "WAYLAND_PROTOCOLS_TAG" ]]; then
             export "$_k"
         fi
-    done < "$TAGS_FILE"
+    done <"$TAGS_FILE"
 }
 
 # Build runner using module scripts. Uses env vars from TAGS_FILE.
@@ -945,7 +947,7 @@ if [[ $VIA_HELPER -eq 1 ]]; then
         if [[ "$_k" == *"_TAG" || "$_k" == "WAYLAND_PROTOCOLS_TAG" ]]; then
             export "$_k"
         fi
-    done < "$TAGS_FILE"
+    done <"$TAGS_FILE"
     helper="$REPO_ROOT/dry-run-build.sh"
     if [[ ! -x "$helper" ]]; then
         echo "[ERROR] dry-run-build.sh not found or not executable at $helper" | tee -a "$SUMMARY_LOG"
