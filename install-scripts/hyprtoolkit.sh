@@ -54,6 +54,26 @@ if [ -d "$SRC_DIR" ]; then
 fi
 if git clone -b $tag "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
+  printf "${NOTE} Applying hyprtoolkit format fix...\\n"
+  python3 - <<'PY' 2>&1 | tee -a "/home/dwilliams/Debian-Hyprland/$LOG"
+from pathlib import Path
+
+path = Path("src/system/Icons.cpp")
+text = path.read_text()
+
+text = text.replace(
+    'g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: Found {} as default fallback", themeDir.value());',
+    """g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: Found {} theme dirs as default fallback (first: {})", themeDir->size(),
+                              themeDir->front());""",
+)
+text = text.replace(
+    'g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme {}", *inheritTheme);',
+    """g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme (count: {}, first: {})", inheritTheme->size(),
+                              inheritTheme->front());""",
+)
+
+path.write_text(text)
+PY
   BUILD_DIR="$BUILD_ROOT/hyprtoolkit"
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
   cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR"
