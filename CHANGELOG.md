@@ -1,5 +1,11 @@
 ## CHANGELOG
 
+
+## 04 May  2026
+
+- Fixed compile issue `hyprtoolkit`
+- Updated `hyprpicker` 
+
 ## 29 April 2026
 
 - Ported fix for hyprsysteminfo from `lua-cfg-test` branch
