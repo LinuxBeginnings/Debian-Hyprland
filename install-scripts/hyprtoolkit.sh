@@ -55,7 +55,7 @@ fi
 if git clone -b $tag "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
   printf "${NOTE} Applying hyprtoolkit format fix...\\n"
-  python3 - <<'PY' 2>&1 | tee -a "/home/dwilliams/Debian-Hyprland/$LOG"
+  python3 - <<'PY' 2>&1 | tee -a "$PARENT_DIR/$LOG"
 from pathlib import Path
 
 path = Path("src/system/Icons.cpp")

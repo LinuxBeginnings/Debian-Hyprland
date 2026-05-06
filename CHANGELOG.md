@@ -1,6 +1,10 @@
 ## CHANGELOG
 
 
+## 06 May  2026
+
+- Fixed hardcode username is `hyprtoolkit`
+
 ## 04 May  2026
 
 - Fixed compile issue `hyprtoolkit`
