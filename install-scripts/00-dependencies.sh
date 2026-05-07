@@ -109,6 +109,7 @@ dependencies=(
     rsync
     scdoc
     seatd
+    socat # Needed for Tak0 scripts
     spirv-tools
     unzip
     vulkan-utility-libraries-dev
@@ -221,7 +222,10 @@ ensure_clang_21() {
 
     local llvm_suite=""
     for suite in "${suites[@]}"; do
-        llvm_repo_available_for_suite "$suite" && { llvm_suite="$suite"; break; }
+        llvm_repo_available_for_suite "$suite" && {
+            llvm_suite="$suite"
+            break
+        }
     done
 
     if [ -z "$llvm_suite" ]; then
@@ -236,9 +240,9 @@ ensure_clang_21() {
             sudo apt-get update 2>&1 | tee -a "$LOG"
             sudo apt-get install -y gnupg ca-certificates 2>&1 | tee -a "$LOG"
         fi
-        curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
-          | gpg --dearmor \
-          | sudo tee /etc/apt/keyrings/llvm.gpg >/dev/null
+        curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key |
+            gpg --dearmor |
+            sudo tee /etc/apt/keyrings/llvm.gpg >/dev/null
     fi
 
     cat <<EOF | sudo tee /etc/apt/sources.list.d/llvm-21.list >/dev/null
@@ -251,8 +255,8 @@ EOF
 # Preflight checks for common build issues
 preflight_checks() {
     # Warn on invalid custom suites (e.g., tyson)
-    if grep -RqsE '^[[:space:]]*deb .*tyson' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null || \
-       grep -RqsE '^[[:space:]]*Suites:[[:space:]].*\btyson\b' /etc/apt/sources.list.d/*.sources 2>/dev/null; then
+    if grep -RqsE '^[[:space:]]*deb .*tyson' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null ||
+        grep -RqsE '^[[:space:]]*Suites:[[:space:]].*\btyson\b' /etc/apt/sources.list.d/*.sources 2>/dev/null; then
         echo "${WARN} Detected 'tyson' APT entries. These 404 and can break updates. Please remove/comment them." | tee -a "$LOG"
     fi
 
