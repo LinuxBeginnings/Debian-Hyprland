@@ -124,7 +124,7 @@ HDMI-A-1 connected 1920x1080+0+0 (normal left inverted right x axis y axis) 600m
 
 **Script (example)**
 ```bash
-#!/bin/sh
+#!/usr/bin/env sh
 # Xsetup - run as root before the login dialog appears
 
 LOG=/var/log/sddm-xsetup.log
