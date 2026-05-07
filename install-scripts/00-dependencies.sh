@@ -15,6 +15,7 @@ dependencies=(
     cmake
     cmake-extras
     clang
+    ddcutil # Needed for ExternalBrightness script
     llvm
     pkgconf
     curl
