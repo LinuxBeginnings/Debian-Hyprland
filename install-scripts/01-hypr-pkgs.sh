@@ -22,6 +22,11 @@ hypr_package=(
     grim
     gvfs
     gvfs-backends
+    glslang-dev   # Needed to build hyprland
+    glslang-tools # Needed to build hyprland
+    lua5.5        # Needed to build Hyprland 0.55
+    liblua5.5-dev # Needed to build Hyprland 0.55
+    xxd           #  Needed to build Hyprland 0.55
     inxi
     imagemagick
     jq
@@ -82,7 +87,7 @@ force=(
 uninstall=(
     mako
     cargo
-    rofi
+    #rofi
     rofi-wayland
 )
 
