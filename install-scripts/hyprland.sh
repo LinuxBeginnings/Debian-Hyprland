@@ -149,6 +149,12 @@ EOF
         fi
     fi
 
+    # Compatibility: fix ParserUtils.cpp concatenation issue
+    PARSER_UTILS="src/config/shared/parserUtils/ParserUtils.cpp"
+    if [ -f "$PARSER_UTILS" ]; then
+        sed -ri 's/std::string\{"0x"\}\s*\+\s*value/std::string{"0x"} + std::string(value)/g' "$PARSER_UTILS" || true
+    fi
+
     # Apply patch only if it applies cleanly; otherwise skip
     if [ -f "$PARENT_DIR/assets/0001-fix-hyprland-compile-issue.patch" ]; then
         if patch -p1 --dry-run <"$PARENT_DIR/assets/0001-fix-hyprland-compile-issue.patch" >/dev/null 2>&1; then
