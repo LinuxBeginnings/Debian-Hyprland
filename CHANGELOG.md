@@ -2,6 +2,11 @@
 
 ## 09 May 2026
 
+## 06 May  2026
+
+- Fixed hardcode username is `hyprtoolkit`
+
+## 04 May  2026
 - Updated build tags for Hyprland to v0.55
 - Added new dependencies for LUA
 
