@@ -1,14 +1,24 @@
 ## CHANGELOG
 
+## 09 May 2026
 
 ## 06 May  2026
 
 - Fixed hardcode username is `hyprtoolkit`
 
 ## 04 May  2026
+- Updated build tags for Hyprland to v0.55
+- Added new dependencies for LUA
+
+## 06 May 2026
+
+- Fixed hardcode username is `hyprtoolkit`
+- Added `socat` for `Tak0 scripts`
+
+## 04 May 2026
 
 - Fixed compile issue `hyprtoolkit`
-- Updated `hyprpicker` 
+- Updated `hyprpicker`
 
 ## 29 April 2026
 
