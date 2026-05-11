@@ -24,7 +24,7 @@ hypr_package=(
     gvfs-backends
     glslang-dev   # Needed to build hyprland
     glslang-tools # Needed to build hyprland
-    lua5.4-0      # Needed to build Hyprland 0.55
+    lua5.4        # Needed to build Hyprland 0.55
     liblua5.4-dev # Needed to build Hyprland 0.55
     xxd           #  Needed to build Hyprland 0.55
     inxi
