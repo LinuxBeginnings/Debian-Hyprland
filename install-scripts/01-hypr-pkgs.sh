@@ -87,7 +87,6 @@ force=(
 uninstall=(
     mako
     cargo
-    #rofi
     rofi-wayland
 )
 
