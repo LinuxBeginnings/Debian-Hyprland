@@ -1,12 +1,24 @@
 ## CHANGELOG
 
+## 15 May 2026
+
+- Added: `install-scripts/update-deps.sh`
+    - Updates packages w/o having to re-install everything
+    - Needed for LUA migration
+- Updated Hyprland build to v0.55.2
+- Fixed: some scritps not executable
+- Fixed: LUA pkg name in trixie, fixinng installation failure errors
+
 ## 09 May 2026
 
-## 06 May  2026
+- Added missing depdendencies for Hyprland v0.55.0
+
+## 06 May 2026
 
 - Fixed hardcode username is `hyprtoolkit`
 
-## 04 May  2026
+## 04 May 2026
+
 - Updated build tags for Hyprland to v0.55
 - Added new dependencies for LUA
 
