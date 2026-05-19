@@ -34,7 +34,6 @@ dependencies=(
     libavutil-dev
     libcairo2-dev
     libdeflate-dev
-    libdisplay-info-dev
     libdrm-dev
     libegl-dev
     libegl1-mesa-dev
@@ -125,7 +124,6 @@ hyprland_dep=(
     binutils
     libc6
     libcairo2-dev
-    libdisplay-info3
     libdrm2
     libjpeg-dev
     libjxl-dev
@@ -335,30 +333,58 @@ install_dep() {
     esac
     install_package "$pkg" "$LOG"
 }
+package_available() {
+    local pkg="$1"
+    apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+}
 
-install_libdisplay_info() {
-    local candidates=(libdisplay-info2 libdisplay-info-dev libdisplay-info-bin)
-    local pkg
-    for pkg in "${candidates[@]}"; do
-        if [ "${DEBIAN_SUITE:-}" = "trixie" ]; then
+install_if_available() {
+    local pkg="$1"
+    if package_available "$pkg"; then
+        if [ "${DEBIAN_SUITE:-}" = "trixie" ] && apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"; then
             install_package_target "$pkg" "trixie-backports"
         else
             install_dep "$pkg"
         fi
-        if dpkg -l | grep -q -w "$pkg"; then
-            return 0
-        fi
-    done
-    echo "${WARN} No libdisplay-info package could be installed (tried: ${candidates[*]})." | tee -a "$LOG"
+        return 0
+    fi
+    echo "${WARN} $pkg is not available for suite '${DEBIAN_SUITE:-unknown}'." | tee -a "$LOG"
     return 1
 }
 
+install_first_available() {
+    local label="$1"
+    shift
+    local pkg
+    for pkg in "$@"; do
+        if package_available "$pkg"; then
+            install_if_available "$pkg"
+            if dpkg -l | grep -q -w "$pkg"; then
+                echo "${INFO} Using ${pkg} for ${label}." | tee -a "$LOG"
+                return 0
+            fi
+        fi
+    done
+    echo "${WARN} No ${label} package could be installed (tried: $*)." | tee -a "$LOG"
+    return 1
+}
+
+install_libdisplay_info() {
+    case "${DEBIAN_SUITE:-}" in
+    sid | forky)
+        install_first_available "libdisplay-info runtime" libdisplay-info3 libdisplay-info2 || return 1
+        ;;
+    *)
+        install_first_available "libdisplay-info runtime" libdisplay-info2 libdisplay-info3 || return 1
+        ;;
+    esac
+    install_if_available libdisplay-info-dev || true
+    install_if_available libdisplay-info-bin || true
+}
+install_libdisplay_info
+
 for PKG1 in "${dependencies[@]}" "${hyprland_dep[@]}"; do
-    if [ "$PKG1" = "libdisplay-info3" ]; then
-        install_libdisplay_info
-    else
-        install_dep "$PKG1"
-    fi
+    install_dep "$PKG1"
 done
 
 printf "\n%.0s" {1..1}

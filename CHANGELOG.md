@@ -1,34 +1,22 @@
 ## CHANGELOG
 
-## 15 May 2026
+## May 2026
 
+- Added: Debian version package awareness to ``00-depdencies.sh`
+    - Stops failed install errors as I tried to install all versions of some pkgs
+    - This framework will allow future pkg issues to be quickly resolved
 - Added: `install-scripts/update-deps.sh`
     - Updates packages w/o having to re-install everything
     - Needed for LUA migration
 - Updated Hyprland build to v0.55.2
 - Fixed: some scritps not executable
 - Fixed: LUA pkg name in trixie, fixinng installation failure errors
-
-## 09 May 2026
-
 - Added missing depdendencies for Hyprland v0.55.0
-
-## 06 May 2026
-
 - Fixed hardcode username is `hyprtoolkit`
-
-## 04 May 2026
-
 - Updated build tags for Hyprland to v0.55
 - Added new dependencies for LUA
-
-## 06 May 2026
-
 - Fixed hardcode username is `hyprtoolkit`
 - Added `socat` for `Tak0 scripts`
-
-## 04 May 2026
-
 - Fixed compile issue `hyprtoolkit`
 - Updated `hyprpicker`
 
