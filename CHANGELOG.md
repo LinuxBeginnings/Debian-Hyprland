@@ -2,23 +2,29 @@
 
 ## May 2026
 
-- Added: Debian version package awareness to ``00-depdencies.sh`
+### Added:
+
+- New depdencies to fix build errors in `Trixie`
+- Debian version package awareness to ``00-depdencies.sh`
     - Stops failed install errors as I tried to install all versions of some pkgs
     - This framework will allow future pkg issues to be quickly resolved
-- Added: `install-scripts/update-deps.sh`
+- `install-scripts/update-deps.sh`
     - Updates packages w/o having to re-install everything
     - Needed for LUA migration
-- Updated Hyprland build to v0.55.2
-- Fixed: some scritps not executable
-- Fixed: LUA pkg name in trixie, fixinng installation failure errors
-- Added missing depdendencies for Hyprland v0.55.0
-- Fixed hardcode username is `hyprtoolkit`
-- Updated build tags for Hyprland to v0.55
-- Added new dependencies for LUA
-- Fixed hardcode username is `hyprtoolkit`
-- Added `socat` for `Tak0 scripts`
+- Missing depdendencies for Hyprland v0.55.0
+- New dependencies for LUA
+- `socat` for `Tak0 scripts`
+
+### Fixed:
+
+- Some scritps not executable
+- LUA pkg name in trixie, fixinng installation failure errors
+- hardcode username is `hyprtoolkit`
 - Fixed compile issue `hyprtoolkit`
-- Updated `hyprpicker`
+
+- Updated:
+    - Hyprland build to v0.55.2
+    - `hyprpicker`
 
 ## 29 April 2026
 
@@ -31,9 +37,6 @@
     - `#include <pci/pci.h>` with `extern "C"` in `SystemInfo.cpp` so it links correctly.
     - PCI dependencies and linker flags: Added `libpci-dev` to the install check loop
     - (re_install_package) and injected `-lpci` linker flags across the CMake configuration.
-
-## 23 April 2026
-
 - Downloaded `libasl-dev`
     - Causes ABI version mismatch build failure
     - `apt-mark hold` set also
@@ -41,9 +44,6 @@
     - Previous version often left menu unreadable
     - Will do same for the other installers
 - Fixed some scripts changing ownership of files/directories
-
-## 20 April 2026
-
 - Fixed build script for `hyprsysteminfo`
     - Needed `qt6 WaylandClientPrivate`
 - Fixed build script for `hyprsysteminfo`
@@ -52,9 +52,6 @@
 - Fixed `install-ags.sh`
     - Debian Trixie has old version of `tsc`
     - Removed it from apt depdendencies added it with `npm`
-
-## 19 April 2026
-
 - Fixed preflight depdendencies check during install
     - It was called before the pkgs were installed
 - Fixed long standing bug in fastfetch copy
@@ -62,18 +59,9 @@
 - Updated:
     - Install script to support `deb822` format
     - Documentation and screen prompts to reflect this change
-
-## 18 April 2026
-
 - Update `hyprlock` to `v0.9.5`
-
-## 16 April 2026
-
 - Fixed issues install with debian packages
     - Fixed several "failed to install package" errors
-
-## 14 April 2026
-
 - Fixed polkit issues
     - Added missing QT kvantum packages
     - This prevented the escalation dialog from running
@@ -98,9 +86,6 @@
     - Currently Debian has HL v0.54.3 no iden when/if they will update it
     - Source builds can keep up to date
     - You can switch from debian package to source and vice-versa with `install.sh` script
-
-## 11 April 2026
-
 - Fixed `ags.sh` install script
 - Added option to build Hyprland from deb packages
     - Faster install
@@ -111,9 +96,6 @@
 - Fixed wallpaper issue
 - Switching to Hyprland package build left behind source built binaries
     - Caused hyprland to crash at startup with missing library
-
-## 3 April 2026
-
 - Fixed `refresh-tags.sh`
     - Wasn't updating properly
     - Added fallback to `git ls-remote`
@@ -122,9 +104,6 @@
         - Added option for GitHub token to avoid rate limits
     - Added `wayland-protocols` to hyprland tags
         - It wasn't getting updated and was three revs behind
-
-## 3 April 2026
-
 - Fixed `refresh-tags.sh`
     - Wasn't updating properly
     - Added fallback to `git ls-remote`
