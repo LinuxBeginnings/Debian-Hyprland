@@ -60,6 +60,7 @@ dependencies=(
     liblzma-dev
     libnotify-bin
     libopengl-dev
+    mesa-common-dev
     libpam0g-dev
     libpango1.0-dev
     libpipewire-0.3-dev

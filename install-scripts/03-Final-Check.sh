@@ -17,6 +17,11 @@ packages=(
     cliphist
     wlogout
     kitty
+    libopengl-dev
+    libglvnd-dev
+    libgl1-mesa-dev
+    libglx-dev
+    mesa-common-dev
 )
 
 # Essential binaries that should exist in PATH
