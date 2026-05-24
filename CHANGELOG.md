@@ -21,6 +21,10 @@
 - LUA pkg name in trixie, fixinng installation failure errors
 - hardcode username is `hyprtoolkit`
 - Fixed compile issue `hyprtoolkit`
+- `auto-install.sh`
+    - The script would got a git pull if Distro-Hyprland directory exsited
+    - If user started with JakooLit installer it would not get updated code
+    - Changed to remove `Distro-Hyprland` and do fresh git clone
 
 - Updated:
     - Hyprland build to v0.55.2
