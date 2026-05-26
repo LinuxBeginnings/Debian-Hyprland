@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ==================================================
 #  KoolDots (2026)
 #  Project URL: https://github.com/LinuxBeginnings
@@ -28,8 +28,15 @@ hypr_package=(
     liblua5.4-dev # Needed to build Hyprland 0.55
     xxd           #  Needed to build Hyprland 0.55
     inxi
+    ffmpeg
+    7zip
+    fd-find
+    fzf
     imagemagick
     jq
+    poppler-utils
+    ripgrep
+    zoxide
     kitty
     nano
     pavucontrol

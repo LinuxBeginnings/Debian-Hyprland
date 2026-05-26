@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ==================================================
 #  KoolDots (2026)
 #  Project URL: https://github.com/LinuxBeginnings
@@ -11,12 +11,20 @@
 
 packages=(
     imagemagick
+    7zip
+    fd-find
+    ffmpeg
+    fzf
+    poppler-utils
+    ripgrep
     sway-notification-center
     waybar
     wl-clipboard
     cliphist
     wlogout
     kitty
+    yazi
+    zoxide
     libopengl-dev
     libglvnd-dev
     libgl1-mesa-dev
