@@ -8,10 +8,11 @@
 # 💫 https://github.com/LinuxBeginnings 💫 #
 # Yazi file manager install #
 
-YAZI_KEY_URL="https://debian.griffo.io/debian.griffo.io.key"
-YAZI_KEY_PATH="/etc/apt/trusted.gpg.d/yazi.asc"
+YAZI_KEY_URL="https://debian.griffo.io/EA0F721D231FDD3A0A17B9AC7808B4DD62C41256.asc"
+YAZI_KEY_PATH="/etc/apt/trusted.gpg.d/debian.griffo.io.gpg"
 YAZI_REPO_FILE="/etc/apt/sources.list.d/yazi.list"
-YAZI_REPO_LINE="deb [signed-by=/etc/apt/trusted.gpg.d/yazi.asc] https://debian.griffo.io/debian stable main"
+YAZI_DISTRO="$(lsb_release -sc 2>/dev/null || echo stable)"
+YAZI_REPO_LINE="deb [signed-by=${YAZI_KEY_PATH}] https://debian.griffo.io/apt ${YAZI_DISTRO} main"
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -34,14 +35,14 @@ LOG="Install-Logs/install-$(date +%d-%H%M%S)_yazi.log"
 
 configure_yazi_repo() {
     if [ "${DRY_RUN:-0}" = "1" ]; then
-        echo "[DRY-RUN] sudo wget -qO $YAZI_KEY_PATH $YAZI_KEY_URL" | tee -a "$LOG"
+        echo "[DRY-RUN] sudo wget -qO- $YAZI_KEY_URL | sudo gpg --dearmor --yes -o $YAZI_KEY_PATH" | tee -a "$LOG"
         echo "[DRY-RUN] echo \"$YAZI_REPO_LINE\" | sudo tee $YAZI_REPO_FILE" | tee -a "$LOG"
         echo "[DRY-RUN] sudo apt update" | tee -a "$LOG"
         return 0
     fi
 
     echo "${INFO} Configuring ${YELLOW}Yazi${RESET} APT repository..." | tee -a "$LOG"
-    sudo wget -qO "$YAZI_KEY_PATH" "$YAZI_KEY_URL" 2>&1 | tee -a "$LOG"
+    sudo wget -qO- "$YAZI_KEY_URL" | sudo gpg --dearmor --yes -o "$YAZI_KEY_PATH" 2>&1 | tee -a "$LOG"
 
     if [ -f "$YAZI_REPO_FILE" ] && grep -Fxq "$YAZI_REPO_LINE" "$YAZI_REPO_FILE"; then
         echo "${INFO} Yazi apt source already configured." | tee -a "$LOG"
