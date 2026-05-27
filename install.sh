@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ==================================================
 #  KoolDots (2026)
 #  Project URL: https://github.com/LinuxBeginnings
@@ -271,8 +271,8 @@ package_available_for_suite() {
     local pkg="$1"
     local suite="$2"
     if [ "$suite" = "trixie" ]; then
-        apt-cache madison "$pkg" 2>/dev/null | grep -q "trixie-backports" \
-            || apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"
+        apt-cache madison "$pkg" 2>/dev/null | grep -q "trixie-backports" ||
+            apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"
     else
         apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
     fi
@@ -880,7 +880,7 @@ else
         done
         if [[ "$dots_selected" == "OFF" ]]; then
             if ! whiptail --title "KooL Hyprland Dot Files" --yesno \
-                "You have not selected to install the pre-configured KooL Hyprland dotfiles.\n\nKindly NOTE that if you proceed without Dots, Hyprland will start with default vanilla Hyprland configuration and I won't be able to give you support.\n\nWould you like to continue install without KooL Hyprland Dots or return to choices/options?" \
+                "You have not selected to install the pre-configured KooLDots Hyprland dotfiles.\n\nKindly NOTE that if you proceed without dotfiles, and this is a *new* install, not an *upgrade*, Hyprland will start with default vanilla Hyprland configuration and I won't be able to give you support.\n\nWould you like to continue install without KooL Hyprland Dots or return to choices/options?" \
                 --yes-button "Continue" --no-button "Return" 15 90; then
                 echo "🔙 Returning to options..." | tee -a "$LOG"
                 continue
@@ -929,13 +929,19 @@ if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
     execute_script "02-pre-cleanup.sh"
     echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "fonts.sh" || { echo "${ERROR:-[ERROR]} Fonts installation failed" | tee -a "$LOG"; exit 1; }
+    execute_script "fonts.sh" || {
+        echo "${ERROR:-[ERROR]} Fonts installation failed" | tee -a "$LOG"
+        exit 1
+    }
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from Debian repositories...${RESET}" | tee -a "$LOG"
     sleep 1
     install_debian_hyprland_stack "$DEBIAN_SUITE"
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland runtime/support packages...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "01-hypr-pkgs.sh" || { echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"; exit 1; }
+    execute_script "01-hypr-pkgs.sh" || {
+        echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"
+        exit 1
+    }
     sleep 1
     execute_script "wallust.sh"
     sleep 1
@@ -949,11 +955,17 @@ else
 
     echo "${INFO} Installing ${SKY_BLUE}necessary dependencies...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "00-dependencies.sh" || { echo "${ERROR:-[ERROR]} Dependencies installation failed" | tee -a "$LOG"; exit 1; }
+    execute_script "00-dependencies.sh" || {
+        echo "${ERROR:-[ERROR]} Dependencies installation failed" | tee -a "$LOG"
+        exit 1
+    }
 
     echo "${INFO} Installing ${SKY_BLUE}necessary fonts...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "fonts.sh" || { echo "${ERROR:-[ERROR]} Fonts installation failed" | tee -a "$LOG"; exit 1; }
+    execute_script "fonts.sh" || {
+        echo "${ERROR:-[ERROR]} Fonts installation failed" | tee -a "$LOG"
+        exit 1
+    }
 
     # Build from source
     # Optional: refresh tags before building the Hyprland stack
@@ -965,7 +977,10 @@ else
 
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from source...${RESET}" | tee -a "$LOG"
     sleep 1
-    execute_script "01-hypr-pkgs.sh" || { echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"; exit 1; }
+    execute_script "01-hypr-pkgs.sh" || {
+        echo "${ERROR:-[ERROR]} Hyprland packages installation failed" | tee -a "$LOG"
+        exit 1
+    }
     sleep 1
     execute_script "hyprutils.sh"
     sleep 1
@@ -995,7 +1010,10 @@ else
     # Build hyprwire before Hyprland (required by Hyprland >= 0.53)
     execute_script "hyprwire.sh"
     sleep 1
-    execute_script "hyprland.sh" || { echo "${ERROR:-[ERROR]} Hyprland installation failed" | tee -a "$LOG"; exit 1; }
+    execute_script "hyprland.sh" || {
+        echo "${ERROR:-[ERROR]} Hyprland installation failed" | tee -a "$LOG"
+        exit 1
+    }
     sleep 1
     execute_script "hyprpolkitagent.sh"
     sleep 1
@@ -1034,6 +1052,12 @@ else
     fi
     sudo ldconfig 2>/dev/null || true
 fi
+echo "${INFO} Installing ${SKY_BLUE}Yazi file manager...${RESET}" | tee -a "$LOG"
+sleep 1
+execute_script "yazi.sh" || {
+    echo "${ERROR:-[ERROR]} Yazi installation failed" | tee -a "$LOG"
+    exit 1
+}
 
 #execute_script "imagemagick.sh" #this is for compiling from source. 07 Sep 2024
 # execute_script "waybar-git.sh" only if waybar on repo is old
@@ -1140,7 +1164,10 @@ for option in "${options[@]}"; do
         ;;
     dots)
         echo "${INFO} Installing pre-configured ${SKY_BLUE}KooL Hyprland dotfiles...${RESET}" | tee -a "$LOG"
-        execute_script "dotfiles-branch.sh" || { echo "${ERROR:-[ERROR]} Dotfiles installation failed" | tee -a "$LOG"; exit 1; }
+        execute_script "dotfiles-branch.sh" || {
+            echo "${ERROR:-[ERROR]} Dotfiles installation failed" | tee -a "$LOG"
+            exit 1
+        }
         ;;
     *)
         echo "Unknown option: $option" | tee -a "$LOG"
@@ -1160,7 +1187,6 @@ for file in "${files_to_delete[@]}"; do
 done
 
 clear
-
 
 printf "\n%.0s" {1..2}
 # final check essential packages if it is installed

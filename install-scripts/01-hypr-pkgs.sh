@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # ==================================================
 #  KoolDots (2026)
 #  Project URL: https://github.com/LinuxBeginnings
@@ -28,8 +28,15 @@ hypr_package=(
     liblua5.4-dev # Needed to build Hyprland 0.55
     xxd           #  Needed to build Hyprland 0.55
     inxi
+    ffmpeg
+    7zip
+    fd-find
+    fzf
     imagemagick
     jq
+    poppler-utils
+    ripgrep
+    zoxide
     kitty
     nano
     pavucontrol
@@ -166,6 +173,21 @@ else
 fi
 
 printf "\n%.0s" {1..1}
+# Install yazi via dedicated repo script when missing (Debian repo may not include it)
+if ! command -v yazi >/dev/null 2>&1; then
+    YAZI_INSTALLER="$PARENT_DIR/install-scripts/yazi.sh"
+    echo "${INFO} ${YELLOW}yazi${RESET} not found. Running dedicated yazi installer..." | tee -a "$LOG"
+    if [ -x "$YAZI_INSTALLER" ]; then
+        "$YAZI_INSTALLER"
+    elif [ -f "$YAZI_INSTALLER" ]; then
+        bash "$YAZI_INSTALLER"
+    else
+        echo "${ERROR} Could not find ${YELLOW}yazi.sh${RESET} at $YAZI_INSTALLER" | tee -a "$LOG"
+        exit 1
+    fi
+else
+    echo "${INFO} ${YELLOW}yazi${RESET} is already installed. Skipping dedicated installer." | tee -a "$LOG"
+fi
 # install YAD from assets. NOTE This is downloaded from SID repo and sometimes
 # Trixie is removing YAD for some strange reasons
 # Check if yad is installed
