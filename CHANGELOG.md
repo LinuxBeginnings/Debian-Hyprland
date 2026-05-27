@@ -5,6 +5,7 @@
 ### Added:
 
 - Installer for `yazi` and my `yazi` cfg files
+    - Wired in the `yazi` installer into install and check process
 - New depdencies to fix build errors in `Trixie`
 - Debian version package awareness to ``00-depdencies.sh`
     - Stops failed install errors as I tried to install all versions of some pkgs
