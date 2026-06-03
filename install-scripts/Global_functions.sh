@@ -108,12 +108,22 @@ install_package() {
   fi
 }
 # Function for installing packages from a target release (e.g., backports)
+target_release_available_for_pkg() {
+  local pkg="$1"
+  local target="$2"
+  apt-cache policy "$pkg" 2>/dev/null | grep -Eq "[[:space:]]${target}/"
+}
 install_package_target() {
   local pkg="$1"
   local target="$2"
   if dpkg -l | grep -q -w "$pkg" ; then
     echo -e "${INFO} ${MAGENTA}$pkg${RESET} is already installed. Skipping..."
   else
+    if ! target_release_available_for_pkg "$pkg" "$target"; then
+      echo -e "${WARN} ${YELLOW}$pkg${RESET} is not available in target '${MAGENTA}$target${RESET}'. Falling back to default suite."
+      install_package "$pkg"
+      return
+    fi
     (
       stdbuf -oL sudo apt install -y -t "$target" "$pkg" 2>&1
     ) >> "$LOG" 2>&1 &

@@ -265,27 +265,30 @@ preflight_checks() {
         echo "${ERROR} Missing /usr/include/GL/gl.h (OpenGL headers). Install: mesa-common-dev libgl1-mesa-dev libglvnd-dev libopengl-dev libglx-dev" | tee -a "$LOG"
         exit 1
     fi
-    if ! dpkg -L libopengl-dev 2>/dev/null | grep -q 'OpenGLConfig\.cmake'; then
-        if ! cmake --find-package -DNAME=OpenGL -DCOMPILER_ID=GNU -DLANGUAGE=C -DMODE=EXIST >/dev/null 2>&1; then
-            echo "${ERROR} OpenGL CMake package not found by CMake. Install: libopengl-dev libglvnd-dev" | tee -a "$LOG"
-            exit 1
+    local gl_ok=0
+    if command -v pkg-config >/dev/null 2>&1; then
+        if pkg-config --exists gl || pkg-config --exists opengl; then
+            gl_ok=1
         fi
     fi
-    local ldconfig_bin=""
-    if command -v ldconfig >/dev/null 2>&1; then
-        ldconfig_bin="$(command -v ldconfig)"
-    elif [ -x /usr/sbin/ldconfig ]; then
-        ldconfig_bin="/usr/sbin/ldconfig"
-    elif [ -x /sbin/ldconfig ]; then
-        ldconfig_bin="/sbin/ldconfig"
+    if [ "$gl_ok" -eq 0 ]; then
+        local gl_paths=(
+            /usr/lib/x86_64-linux-gnu/libGL.so
+            /usr/lib/aarch64-linux-gnu/libGL.so
+            /usr/lib64/libGL.so
+            /usr/lib/libGL.so
+        )
+        local gl_path
+        for gl_path in "${gl_paths[@]}"; do
+            if [ -e "$gl_path" ]; then
+                gl_ok=1
+                break
+            fi
+        done
     fi
-    if [ -z "$ldconfig_bin" ]; then
-        echo "${WARN} ldconfig not found in PATH or /usr/sbin. Skipping libGL.so cache check." | tee -a "$LOG"
-    else
-        if ! "$ldconfig_bin" -p 2>/dev/null | grep -q 'libGL\.so'; then
-            echo "${ERROR} libGL.so not found in ldconfig cache. Reinstall: libgl1-mesa-dev libglvnd-dev" | tee -a "$LOG"
-            exit 1
-        fi
+    if [ "$gl_ok" -eq 0 ]; then
+        echo "${ERROR} OpenGL development files were not detected. Install: libopengl-dev libglvnd-dev libgl1-mesa-dev" | tee -a "$LOG"
+        exit 1
     fi
 
     # Qt6 QML modules commonly required by hyprsysteminfo

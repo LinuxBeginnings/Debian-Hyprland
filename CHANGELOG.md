@@ -1,5 +1,10 @@
 ## CHANGELOG
 
+## Jun 2026
+
+- Fixed: `install.sh` script
+    - Was failing on `trixie` due to issues handling `triie-backports` repo
+
 ## May 2026
 
 ### Added:
