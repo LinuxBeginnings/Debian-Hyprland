@@ -1,11 +1,20 @@
 ## CHANGELOG
 
+## Jun 2026
+
+- Fixed:
+    - `install.sh` script
+        - Was failing on `trixie` due to issues handling `triie-backports` repo
+    - `install.sh` wasn't showing CLI options with `-h/--help`
+
 ## May 2026
 
 ### Added:
 
 - Installer for `yazi` and my `yazi` cfg files
     - Wired in the `yazi` installer into install and check process
+    - Updated to new repo with debian/ubuntu specific versions
+    - Also check for static binaries in `/usr/local/bin` and removes them
 - New depdencies to fix build errors in `Trixie`
 - Debian version package awareness to ``00-depdencies.sh`
     - Stops failed install errors as I tried to install all versions of some pkgs

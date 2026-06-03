@@ -73,6 +73,16 @@ Notes:
 EOF
 }
 
+# Fast-path help so users can inspect options without entering prompts
+for arg in "$@"; do
+    case "$arg" in
+    -h | --help)
+        print_help
+        exit 0
+        ;;
+    esac
+done
+
 # ---------------- APT source checks (deb-src, non-free, non-free-firmware) ----------------
 _detect_codename() {
     local c
