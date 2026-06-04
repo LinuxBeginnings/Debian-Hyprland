@@ -120,9 +120,16 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
         if [ -n "$HYPRWIRE_PROTO_DIR" ] && [ -d "$HYPRWIRE_PROTO_DIR/protocols" ]; then
             HYPRWIRE_PROTO_DIR="$HYPRWIRE_PROTO_DIR/protocols"
         fi
-        # Fallback to the checked-out source if installed dir not found
+        # Fallbacks when not installed:
+        # 1) hyprwire source build (protocols)
         if [ -z "$HYPRWIRE_PROTO_DIR" ] && [ -d "$BUILD_ROOT/src/hyprwire/protocols" ]; then
             HYPRWIRE_PROTO_DIR="$BUILD_ROOT/src/hyprwire/protocols"
+        fi
+        # 2) hyprwire-protocols source checkout (protocols)
+        if [ -z "$HYPRWIRE_PROTO_DIR" ] && [ -d "$SRC_ROOT/hyprwire-protocols/protocols" ]; then
+            HYPRWIRE_PROTO_DIR="$SRC_ROOT/hyprwire-protocols/protocols"
+        elif [ -z "$HYPRWIRE_PROTO_DIR" ] && [ -d "$SRC_ROOT/hyprwire-protocols" ]; then
+            HYPRWIRE_PROTO_DIR="$SRC_ROOT/hyprwire-protocols"
         fi
     fi
 
@@ -163,6 +170,10 @@ EOF
             fi
             if [ -d "/usr/local/share/hyprwire-protocols/protocols" ]; then
                 HYPRWIRE_PROTO_DIR="/usr/local/share/hyprwire-protocols/protocols"
+            fi
+            # If still missing (dry-run), use the freshly cloned source tree
+            if [ -z "$HYPRWIRE_PROTO_DIR" ] && [ -d "$SRC_ROOT/hyprwire-protocols/protocols" ]; then
+                HYPRWIRE_PROTO_DIR="$SRC_ROOT/hyprwire-protocols/protocols"
             fi
         fi
     fi
