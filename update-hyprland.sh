@@ -645,6 +645,13 @@ run_stack() {
 
     # Optionally install dependencies (not dry-run)
     if [[ $WITH_DEPS -eq 1 ]]; then
+        SUITE="$(detect_suite)"
+        export DEBIAN_SUITE="$SUITE"
+        if [[ "$SUITE" == "trixie" ]]; then
+            ensure_trixie_backports_repo "$SUITE"
+            echo "[INFO] Refreshing APT metadata after backports check." | tee -a "$SUMMARY_LOG"
+            sudo apt-get update | tee -a "$SUMMARY_LOG"
+        fi
         echo "[INFO] Installing dependencies via 00-dependencies.sh" | tee -a "$SUMMARY_LOG"
         if ! "$REPO_ROOT/install-scripts/00-dependencies.sh"; then
             echo "[ERROR] Dependencies installation failed." | tee -a "$SUMMARY_LOG"
