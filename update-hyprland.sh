@@ -257,10 +257,10 @@ DEFAULT_MODULES=(
     hyprlang
     hyprcursor
     hyprtoolkit
-    wayland-protocols-src
     aquamarine
     hyprgraphics
     hyprwayland-scanner
+    wayland-protocols-src
     hyprland-protocols
     hyprland-qt-support
     hyprland-guiutils

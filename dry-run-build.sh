@@ -34,10 +34,10 @@ DEFAULT_MODULES=(
   hyprutils
   hyprlang
   hyprcursor
-  wayland-protocols-src
   aquamarine
   hyprgraphics
   hyprwayland-scanner
+  wayland-protocols-src
   hyprland-protocols
   hyprland-qt-support
   hyprland-qtutils

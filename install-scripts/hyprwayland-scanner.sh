@@ -11,6 +11,10 @@
 
 scan_depend=(
     libpugixml-dev
+    wayland
+    libwayland-bin
+    libexpat1-dev
+    libffi-dev
 )
 
 #specific branch or release
@@ -44,8 +48,8 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
 fi
 
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprwayland-scanner.log"
-MLOG="install-$(date +%d-%H%M%S)_hyprwayland-scanner2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprwayland-scanner.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprwayland-scanner2.log"
 
 ##
 # Installation of dependencies
@@ -58,6 +62,96 @@ for PKG1 in "${scan_depend[@]}"; do
     exit 1
   fi
 done
+
+get_wayland_scanner_version() {
+  local ver=""
+  ver="$(pkg-config --modversion wayland-scanner 2>/dev/null || true)"
+  if [ -z "$ver" ] && command -v wayland-scanner >/dev/null 2>&1; then
+    ver="$(wayland-scanner --version 2>/dev/null | awk '{print $NF}' || true)"
+  fi
+  printf "%s" "$ver"
+}
+
+bootstrap_wayland_scanner() {
+  local wtag="${WAYLAND_SCANNER_BOOTSTRAP_TAG:-1.25.0}"
+  local repo="https://gitlab.freedesktop.org/wayland/wayland.git"
+  local wsrc="$SRC_ROOT/wayland"
+  local wbuild="$BUILD_ROOT/wayland"
+
+  printf "${NOTE} Bootstrapping ${YELLOW}wayland-scanner${RESET} from Wayland ${YELLOW}${wtag}${RESET} ...\n" | tee -a "$LOG"
+
+  [ -d "$wsrc" ] && rm -rf "$wsrc"
+  if ! git clone --depth=1 --filter=blob:none "$repo" "$wsrc" >>"$LOG" 2>&1; then
+    echo "${ERROR} Failed to clone Wayland source for scanner bootstrap." | tee -a "$LOG"
+    return 1
+  fi
+
+  cd "$wsrc" || return 1
+  git fetch --tags --depth=1 >/dev/null 2>&1 || true
+  local checked_out=0
+  local candidate
+  for candidate in "$wtag" "v$wtag"; do
+    if git rev-parse -q --verify "refs/tags/$candidate" >/dev/null; then
+      git checkout -q "refs/tags/$candidate" >>"$LOG" 2>&1
+      checked_out=1
+      break
+    fi
+  done
+  if [ "$checked_out" -ne 1 ]; then
+    echo "${ERROR} Wayland tag $wtag not found in $repo" | tee -a "$LOG"
+    return 1
+  fi
+
+  rm -rf "$wbuild" && mkdir -p "$wbuild"
+  if ! meson setup "$wbuild" --prefix=/usr/local -Ddocumentation=false -Dtests=false >>"$LOG" 2>&1; then
+    echo "${ERROR} Failed meson setup for Wayland scanner bootstrap." | tee -a "$LOG"
+    return 1
+  fi
+  if ! meson compile -C "$wbuild" -j"$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" >>"$LOG" 2>&1; then
+    echo "${ERROR} Failed compiling Wayland scanner bootstrap." | tee -a "$LOG"
+    return 1
+  fi
+
+  if [ "$DO_INSTALL" -eq 1 ]; then
+    if ! sudo meson install -C "$wbuild" >>"$LOG" 2>&1; then
+      echo "${ERROR} Failed installing Wayland scanner bootstrap." | tee -a "$LOG"
+      return 1
+    fi
+  else
+    local stagedir="$wbuild/stage"
+    local staged_pc_paths="$stagedir/usr/local/lib/pkgconfig:$stagedir/usr/local/share/pkgconfig"
+    local multiarch=""
+    rm -rf "$stagedir" && mkdir -p "$stagedir"
+    if ! meson install -C "$wbuild" --destdir "$stagedir" >>"$LOG" 2>&1; then
+      echo "${ERROR} Failed staging Wayland scanner bootstrap for dry run." | tee -a "$LOG"
+      return 1
+    fi
+    if command -v dpkg-architecture >/dev/null 2>&1; then
+      multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+    fi
+    if [ -n "$multiarch" ] && [ -d "$stagedir/usr/local/lib/$multiarch/pkgconfig" ]; then
+      staged_pc_paths="$stagedir/usr/local/lib/$multiarch/pkgconfig:$staged_pc_paths"
+    fi
+    export PATH="$stagedir/usr/local/bin:${PATH}"
+    export PKG_CONFIG_PATH="$staged_pc_paths:${PKG_CONFIG_PATH:-}"
+    echo "${NOTE} DRY RUN: using staged wayland-scanner from $stagedir/usr/local/bin" | tee -a "$LOG"
+  fi
+
+  cd "$PARENT_DIR" || return 1
+  return 0
+}
+
+need_wayland_scanner_bootstrap=0
+if [ -n "${WAYLAND_PROTOCOLS_TAG:-}" ] && [ "$(printf '%s\n' "1.49" "${WAYLAND_PROTOCOLS_TAG}" | sort -V | head -n1)" = "1.49" ]; then
+  need_wayland_scanner_bootstrap=1
+fi
+if [ "$need_wayland_scanner_bootstrap" -eq 1 ]; then
+  have_wayland_scanner_ver="$(get_wayland_scanner_version)"
+  if [ -z "$have_wayland_scanner_ver" ] || [ "$(printf '%s\n' "1.25.0" "$have_wayland_scanner_ver" | sort -V | head -n1)" != "1.25.0" ]; then
+    echo "${WARN} wayland-scanner ${have_wayland_scanner_ver:-unknown} is too old for wayland-protocols ${WAYLAND_PROTOCOLS_TAG} (requires >= 1.25.0)." | tee -a "$LOG"
+    bootstrap_wayland_scanner || exit 1
+  fi
+fi
 
 printf "${NOTE} Installing hyprwayland-scanner...\n"  
 
@@ -86,7 +180,7 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprwayland-scanner.g
         echo "${NOTE} DRY RUN: Skipping installation of hyprwayland-scanner $tag."
     fi
     #moving the addional logs to Install-Logs directory
-    [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/"
+    [ -f "$MLOG" ] || true
     cd ..
 else
     echo -e "${ERROR} Download failed for hyprwayland-scanner. Please check log." 2>&1 | tee -a "$LOG"

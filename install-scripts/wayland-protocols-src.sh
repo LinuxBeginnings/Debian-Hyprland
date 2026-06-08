@@ -58,6 +58,7 @@ for PKG in "${build_deps[@]}"; do
     install_package "$PKG" "$LOG"
 done
 
+
 # Clean previous clone (under build/src)
 SRC_DIR="$SRC_ROOT/wayland-protocols"
 if [ -d "$SRC_DIR" ]; then

@@ -7,6 +7,13 @@
         - Was failing on `trixie` due to issues handling `triie-backports` repo
     - `install.sh` wasn't showing CLI options with `-h/--help`
     - Verified `update.sh` follows this fix and added more defensive code
+- Updated: 
+ - Hyprland v0.55.3 
+ - Wayland Protocols v1.49 
+ - Wayland Scanner v1.25 
+   - Re-ordered build sequence to build Wayland scanner before Wayland Protocols 
+
+
 
 ## May 2026
 
