@@ -13,8 +13,6 @@
  - Wayland Scanner v1.25 
    - Re-ordered build sequence to build Wayland scanner before Wayland Protocols 
 
-
-
 ## May 2026
 
 ### Added:
