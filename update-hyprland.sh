@@ -619,7 +619,15 @@ run_stack() {
 
     # Ensure toolchain paths prefer /usr/local for pkg-config and cmake finds
     export PATH="/usr/local/bin:${PATH}"
-    export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+    local local_pkgconfig_paths="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig"
+    if command -v dpkg-architecture >/dev/null 2>&1; then
+        local _multiarch
+        _multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
+        if [[ -n "$_multiarch" ]]; then
+            local_pkgconfig_paths="/usr/local/lib/${_multiarch}/pkgconfig:${local_pkgconfig_paths}"
+        fi
+    fi
+    export PKG_CONFIG_PATH="${local_pkgconfig_paths}:${PKG_CONFIG_PATH:-}"
     export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
 
     # Auto-detect Debian trixie unless explicitly overridden.
@@ -666,13 +674,13 @@ run_stack() {
     else
         if [[ $MINIMAL -eq 1 ]]; then
             modules=(
+                hyprwayland-scanner
                 wayland-protocols-src
                 hyprland-protocols
                 hyprutils
                 hyprlang
                 aquamarine
                 hyprgraphics
-                hyprwayland-scanner
                 hyprwire
                 hyprland
             )
@@ -713,7 +721,14 @@ run_stack() {
                 export_tags
             fi
         fi
-        local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_cursor=0 has_hlprot=0
+        local wp_tag="${WAYLAND_PROTOCOLS_TAG:-}"
+        wp_tag="${wp_tag#v}"
+        local require_hws_before_wp=0
+        if [[ -n "$wp_tag" ]] && [[ "$(printf '%s\n' "1.49" "$wp_tag" | sort -V | head -n1)" == "1.49" ]]; then
+            require_hws_before_wp=1
+        fi
+
+        local has_hl=0 has_aqua=0 has_wp=0 has_utils=0 has_lang=0 has_cursor=0 has_hlprot=0 has_hws=0
         for m in "${modules[@]}"; do
             [[ "$m" == "hyprland" ]] && has_hl=1
             [[ "$m" == "aquamarine" ]] && has_aqua=1
@@ -722,6 +737,7 @@ run_stack() {
             [[ "$m" == "hyprutils" ]] && has_utils=1
             [[ "$m" == "hyprlang" ]] && has_lang=1
             [[ "$m" == "hyprcursor" ]] && has_cursor=1
+            [[ "$m" == "hyprwayland-scanner" ]] && has_hws=1
         done
         if [[ $has_hl -eq 1 ]]; then
             # When using system libs, ensure required libs will be built if missing/outdated
@@ -750,6 +766,7 @@ run_stack() {
             [[ $has_lang -eq 0 ]] && modules=("hyprlang" "${modules[@]}")
             [[ $has_cursor -eq 0 ]] && modules=("hyprcursor" "${modules[@]}")
             [[ $has_aqua -eq 0 ]] && modules=("aquamarine" "${modules[@]}")
+            [[ $require_hws_before_wp -eq 1 && $has_wp -eq 1 && $has_hws -eq 0 ]] && modules=("hyprwayland-scanner" "${modules[@]}")
 
             # Reorder to exact sequence before hyprland
             # Remove existing occurrences and rebuild in correct order
@@ -883,6 +900,34 @@ run_stack() {
                 fi
             done
             modules=("${tmp[@]}")
+
+            if [[ $require_hws_before_wp -eq 1 ]]; then
+                local has_wp_module=0
+                for m in "${modules[@]}"; do
+                    if [[ "$m" == "wayland-protocols-src" ]]; then
+                        has_wp_module=1
+                        break
+                    fi
+                done
+                if [[ $has_wp_module -eq 1 ]]; then
+                    echo "[INFO] Ensuring hyprwayland-scanner runs before wayland-protocols-src for wayland-protocols ${WAYLAND_PROTOCOLS_TAG}." | tee -a "$SUMMARY_LOG"
+                    local without_hws=()
+                    for m in "${modules[@]}"; do
+                        [[ "$m" == "hyprwayland-scanner" ]] && continue
+                        without_hws+=("$m")
+                    done
+                    local ordered=()
+                    local inserted_hws=0
+                    for m in "${without_hws[@]}"; do
+                        if [[ "$m" == "wayland-protocols-src" && $inserted_hws -eq 0 ]]; then
+                            ordered+=("hyprwayland-scanner")
+                            inserted_hws=1
+                        fi
+                        ordered+=("$m")
+                    done
+                    modules=("${ordered[@]}")
+                fi
+            fi
         fi
     fi
 
