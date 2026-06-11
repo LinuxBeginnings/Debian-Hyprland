@@ -8,7 +8,8 @@
     - `install.sh` wasn't showing CLI options with `-h/--help`
     - Verified `update.sh` follows this fix and added more defensive code
 - Updated:
-- Hyprland v0.55.3
+- Hyprland v0.55.4
+- Aquamarine v12.1
 - Wayland Protocols v1.49
 - Wayland Scanner v1.25
     - Re-ordered build sequence to build Wayland scanner before Wayland Protocols
