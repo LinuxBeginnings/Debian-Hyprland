@@ -84,6 +84,11 @@ hypr_package_2=(
     pamixer
     qalculate-gtk
 )
+# Optional packages used by some dotfiles/features.
+# These are installed when available in current APT sources.
+hypr_optional_package=(
+    qml6-module-org-hyprland-style # Provides org.hyprland.style for QT_QUICK_CONTROLS_STYLE
+)
 
 # packages to force reinstall (only when HYPR_FORCE_REINSTALL=1)
 force=(
@@ -120,6 +125,23 @@ get_rofi_version() {
     if command -v rofi >/dev/null 2>&1; then
         rofi -version 2>/dev/null | awk 'NR==1 {print $2}'
     fi
+}
+
+package_has_candidate() {
+    apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+}
+
+detect_suite() {
+    local c=""
+    if [[ -r /etc/os-release ]]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release 2>/dev/null || true
+        c="${DEBIAN_CODENAME:-${VERSION_CODENAME:-}}"
+    fi
+    if [[ -z "$c" ]] && command -v lsb_release >/dev/null 2>&1; then
+        c="$(lsb_release -cs 2>/dev/null || true)"
+    fi
+    printf '%s' "$c"
 }
 
 rofi_installed_ver="$(get_rofi_version || true)"
@@ -159,6 +181,23 @@ for PKG1 in "${hypr_package[@]}" "${hypr_package_2[@]}" "${Extra[@]}"; do
         install_package_target "$PKG1" "trixie-backports"
     else
         install_package "$PKG1" "$LOG"
+    fi
+done
+
+# Optional package installs (non-fatal when unavailable in the current suite)
+CURRENT_SUITE="${DEBIAN_SUITE:-$(detect_suite)}"
+for PKG_OPT in "${hypr_optional_package[@]}"; do
+    if package_has_candidate "$PKG_OPT"; then
+        if [ "${HYPR_INSTALL_MODE:-}" = "debian" ] && [ "${CURRENT_SUITE:-}" = "trixie" ] && target_release_available_for_pkg "$PKG_OPT" "trixie-backports"; then
+            install_package_target "$PKG_OPT" "trixie-backports"
+        else
+            install_package "$PKG_OPT" "$LOG"
+        fi
+    elif [ "${CURRENT_SUITE:-}" = "trixie" ] && target_release_available_for_pkg "$PKG_OPT" "trixie-backports"; then
+        echo "${INFO} Optional package ${YELLOW}$PKG_OPT${RESET} is not available in trixie main. Falling back to trixie-backports." | tee -a "$LOG"
+        install_package_target "$PKG_OPT" "trixie-backports"
+    else
+        echo "${NOTE} Optional package ${YELLOW}$PKG_OPT${RESET} is not available in current APT sources. Skipping." | tee -a "$LOG"
     fi
 done
 

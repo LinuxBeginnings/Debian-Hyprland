@@ -21,6 +21,8 @@
     - Added it to package cleanup/purge list.
     - install-scripts/02-pre-cleanup.sh
     - Added qml6-module-org-hyprland-style to uninstall list.
+    - For trixie if pkg not found check `trixie-backports`
+    - Run: `install-scripts/update-deps.sh`
 
 ## May 2026
 
