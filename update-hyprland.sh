@@ -138,6 +138,7 @@ debian_hypr_optional_packages=(
     hyprland-protocols
     hyprland-guiutils
     hyprland-qtutils
+    qml6-module-org-hyprland-style
     hyprwayland-scanner
     hyprcursor-util
     hyprlauncher
@@ -222,7 +223,7 @@ install_debian_hypr_packages() {
 remove_deb_hypr_packages() {
     local pkgs=(
         hyprland hyprland-plugins hyprland-session
-        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils
+        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils qml6-module-org-hyprland-style
         hyprutils libhyprutils0 libhyprutils-dev
         hyprlang libhyprlang0 libhyprlang-dev
         hyprgraphics libhyprgraphics0 libhyprgraphics-dev

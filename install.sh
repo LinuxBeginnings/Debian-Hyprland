@@ -271,6 +271,7 @@ debian_hypr_optional_packages=(
     hyprland-protocols
     hyprland-guiutils
     hyprland-qtutils
+    qml6-module-org-hyprland-style
     hyprwayland-scanner
     hyprcursor-util
     hyprlauncher
@@ -546,7 +547,7 @@ purge_deb_hyprland_packages() {
     echo "${INFO} Checking for Hyprland Debian packages..." | tee -a "$LOG"
     local hyprland_packages=(
         hyprland hyprland-plugins hyprland-session
-        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils
+        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils qml6-module-org-hyprland-style
         hyprutils libhyprutils0 libhyprutils-dev
         hyprlang libhyprlang0 libhyprlang-dev
         hyprgraphics libhyprgraphics0 libhyprgraphics-dev
