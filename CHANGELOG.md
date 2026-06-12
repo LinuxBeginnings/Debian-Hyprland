@@ -3,6 +3,7 @@
 ## Jun 2026
 
 - Fixed:
+  = Build issue with `hypertookkit`
     - `install.sh` script
         - Was failing on `trixie` due to issues handling `triie-backports` repo
     - `install.sh` wasn't showing CLI options with `-h/--help`

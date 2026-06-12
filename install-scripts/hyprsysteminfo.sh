@@ -104,7 +104,10 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
             echo "${NOTE} Adding Qt6 WaylandClientPrivate component to satisfy Debian Qt6 packaging." | tee -a "$MLOG"
             sed -i 's/WaylandClient)/WaylandClient WaylandClientPrivate)/' CMakeLists.txt
         fi
-        cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS="-lpci" -DCMAKE_SHARED_LINKER_FLAGS="-lpci" -DCMAKE_MODULE_LINKER_FLAGS="-lpci" 2>&1 | tee -a "$MLOG"
+        cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_EXE_LINKER_FLAGS="${LDFLAGS:-} -lpci" \
+            -DCMAKE_SHARED_LINKER_FLAGS="${LDFLAGS:-} -lpci" \
+            -DCMAKE_MODULE_LINKER_FLAGS="${LDFLAGS:-} -lpci" 2>&1 | tee -a "$MLOG"
         cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" 2>&1 | tee -a "$MLOG"
         build_rc=${PIPESTATUS[0]}
         if [ $build_rc -ne 0 ]; then

@@ -581,6 +581,8 @@ remove_source_hyprland_artifacts() {
         "/usr/local/bin/hyprpm"
         "/usr/local/share/wayland-sessions/hyprland.desktop"
         "/usr/local/share/wayland-sessions/hyprland-uwsm.desktop"
+        "/usr/local/lib/pkgconfig/hyprtoolkit.pc"
+        "/usr/local/share/pkgconfig/hyprtoolkit.pc"
     )
     local binary
     for binary in "${hyprland_binaries[@]}"; do
@@ -593,12 +595,14 @@ remove_source_hyprland_artifacts() {
     sudo rmdir /usr/local/share/wayland-sessions 2>/dev/null || true
 
     # Remove development files from /usr/local
-    if [ -d "/usr/local/include/hyprland" ] || [ -d "/usr/local/lib/libhypr" ]; then
+    if [ -d "/usr/local/include/hyprland" ] || [ -d "/usr/local/include/hyprtoolkit" ] || [ -d "/usr/local/lib/libhypr" ] || [ -d "/usr/local/lib/cmake/hyprtoolkit" ]; then
         echo "${INFO} Removing development files from /usr/local..." | tee -a "$LOG"
         sudo rm -rf /usr/local/include/hyprland* 2>/dev/null || true
+        sudo rm -rf /usr/local/include/hyprtoolkit* 2>/dev/null || true
         sudo rm -rf /usr/local/lib/libhypr* 2>/dev/null || true
         sudo rm -rf /usr/local/lib/libaquamarine* 2>/dev/null || true
         sudo rm -rf /usr/local/lib/libypr* 2>/dev/null || true
+        sudo rm -rf /usr/local/lib/cmake/hyprtoolkit 2>/dev/null || true
         sudo ldconfig 2>/dev/null || true
     fi
 

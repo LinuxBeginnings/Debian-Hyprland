@@ -182,6 +182,11 @@ remove_source_hypr_artifacts() {
         /usr/local/share/wayland-sessions/hyprland.desktop
         /usr/local/share/wayland-sessions/hyprland-uwsm.desktop
         /usr/local/include/hyprland
+        /usr/local/include/hyprtoolkit
+        /usr/local/include/hyprtoolkit/*
+        /usr/local/lib/pkgconfig/hyprtoolkit.pc
+        /usr/local/share/pkgconfig/hyprtoolkit.pc
+        /usr/local/lib/cmake/hyprtoolkit
     )
     local removed=0
     for p in "${source_paths[@]}"; do
