@@ -30,6 +30,7 @@ uninstall=(
   hyprland-guiutils
   hyprland-qt-support
   hyprland-qtutils
+  qml6-module-org-hyprland-style
   hyprutils
   libhyprutils-dev
   libhyprutils0
