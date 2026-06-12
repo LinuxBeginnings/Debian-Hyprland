@@ -12,7 +12,15 @@
 - Aquamarine v12.1
 - Wayland Protocols v1.49
 - Wayland Scanner v1.25
-    - Re-ordered build sequence to build Wayland scanner before Wayland Protocols
+    - Re-ordered build sequence to build Wayland scanner before Wayland Protocols\
+- Issue with QT variables that prevented apps like KDENLINE from running
+    - Added qml6-module-org-hyprland-style to Debian package-mode optional install list.
+    - Added it to purge list used when removing Debian Hyprland packages.
+    - update-hyprland.sh
+    - Added qml6-module-org-hyprland-style to Debian package-mode optional install list.
+    - Added it to package cleanup/purge list.
+    - install-scripts/02-pre-cleanup.sh
+    - Added qml6-module-org-hyprland-style to uninstall list.
 
 ## May 2026
 
