@@ -262,9 +262,9 @@ DEFAULT_MODULES=(
     hyprutils
     hyprlang
     hyprcursor
-    hyprtoolkit
     aquamarine
     hyprgraphics
+    hyprtoolkit
     hyprwayland-scanner
     wayland-protocols-src
     hyprland-protocols

@@ -36,6 +36,7 @@ DEFAULT_MODULES=(
   hyprcursor
   aquamarine
   hyprgraphics
+  hyprtoolkit
   hyprwayland-scanner
   wayland-protocols-src
   hyprland-protocols

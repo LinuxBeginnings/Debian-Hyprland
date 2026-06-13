@@ -40,8 +40,8 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
 fi
 
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprtoolkit.log"
-MLOG="install-$(date +%d-%H%M%S)_hyprtoolkit2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprtoolkit.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprtoolkit2.log"
 
 # Clone, build, and install using Cmake
 printf "${NOTE} Cloning hyprtoolkit...\n"
@@ -50,12 +50,12 @@ printf "${NOTE} Cloning hyprtoolkit...\n"
 SRC_DIR="$SRC_ROOT/hyprtoolkit"
 if [ -d "$SRC_DIR" ]; then
   printf "${NOTE} Removing existing hyprtoolkit folder...\n"
-  rm -rf "$SRC_DIR" 2>&1 | tee -a "$LOG"
+  rm -rf "$SRC_DIR" >> "$LOG" 2>&1
 fi
-if git clone -b $tag "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR"; then
+if git clone -b "$tag" "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR" >> "$LOG" 2>&1; then
   cd "$SRC_DIR" || exit 1
   printf "${NOTE} Applying hyprtoolkit format fix...\\n"
-  python3 - <<'PY' 2>&1 | tee -a "$PARENT_DIR/$LOG"
+  python3 - <<'PY' >> "$LOG" 2>&1
 from pathlib import Path
 
 path = Path("src/system/Icons.cpp")
@@ -76,23 +76,29 @@ path.write_text(text)
 PY
   BUILD_DIR="$BUILD_ROOT/hyprtoolkit"
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
-  cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR"
-  cmake --build "$BUILD_DIR" --config Release --target all -j`nproc 2>/dev/null || getconf _NPROCESSORS_CONF`
+  if ! cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR" >> "$MLOG" 2>&1; then
+    echo -e "${ERROR} CMake configure failed for hyprtoolkit. See: $MLOG" | tee -a "$MLOG"
+    exit 1
+  fi
+  if ! cmake --build "$BUILD_DIR" --config Release --target all -j"$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" >> "$MLOG" 2>&1; then
+    echo -e "${ERROR} Build failed for hyprtoolkit. See: $MLOG" | tee -a "$MLOG"
+    exit 1
+  fi
   if [ $DO_INSTALL -eq 1 ]; then
-    if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then
+    if sudo cmake --install "$BUILD_DIR" >> "$MLOG" 2>&1; then
       printf "${OK} hyprtoolkit installed successfully.\n" 2>&1 | tee -a "$MLOG"
     else
       echo -e "${ERROR} Installation failed for hyprtoolkit." 2>&1 | tee -a "$MLOG"
+      exit 1
     fi
   else
-    echo "${NOTE} DRY RUN: Skipping installation of hyprtoolkit $tag."
+    echo "${NOTE} DRY RUN: Skipping installation of hyprtoolkit $tag." | tee -a "$MLOG"
   fi
-  [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/"
   cd ..
 else
   echo -e "${ERROR} Download failed for hyprtoolkit" 2>&1 | tee -a "$LOG"
+  exit 1
 fi
 
 printf "\n%.0s" {1..2}
-
 
