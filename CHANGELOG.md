@@ -8,6 +8,7 @@
         - Was failing on `trixie` due to issues handling `triie-backports` repo
     - `install.sh` wasn't showing CLI options with `-h/--help`
     - Verified `update.sh` follows this fix and added more defensive code
+
 - Updated:
 - Hyprland v0.55.4
 - Aquamarine v12.1
@@ -24,6 +25,16 @@
     - Added qml6-module-org-hyprland-style to uninstall list.
     - For trixie if pkg not found check `trixie-backports`
     - Run: `install-scripts/update-deps.sh`
+
+## Added: 
+  - `install.sh` and `update-hyprland.sh` have menus
+     - They now check
+        - debian pkg version of hyprland 
+        - local repo version, defined in `hypr-tags.env` file 
+        - Checks hyprland Github for most current version 
+     - You then can select which you wish to install or upgrade to 
+     - Currently `trixie` and `forky` are at v55.2
+     - `SID` is at v55.4 
 
 ## May 2026
 

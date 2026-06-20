@@ -26,6 +26,8 @@
 #   ./update-hyprland.sh --force-update --install      # override pinned versions (equivalent to FORCE=1)
 #   ./update-hyprland.sh --package-cleanup --install   # purge Debian Hyprland packages before building
 #   ./update-hyprland.sh --mode debian --install       # switch to Debian package mode and install
+#   ./update-hyprland.sh --mode auto --install         # prompt package vs source with version visibility
+#   ./update-hyprland.sh --show-versions               # query Debian/local/upstream Hyprland versions
 #   ./update-hyprland.sh --debian-remove               # remove Debian Hyprland packages
 #   ./update-hyprland.sh --help                        # show this help
 #
@@ -47,9 +49,18 @@ LOG_DIR="$REPO_ROOT/Install-Logs"
 mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
-MODE="source"
+MODE="auto"
 DEBIAN_REMOVE=0
 DEBIAN_INSTALL=0
+SHOW_VERSIONS=0
+HYPR_REFRESH_ALL_TAGS=0
+APT_VERSION_PREP_DONE=0
+HYPR_VERSIONS_COLLECTED=0
+HYPR_UPSTREAM_RELEASE_URL="https://api.github.com/repos/hyprwm/Hyprland/releases/latest"
+HYPR_DEBIAN_VERSION="unknown"
+HYPR_LOCAL_HYPRLAND_TAG="unknown"
+HYPR_UPSTREAM_HYPRLAND_TAG="unknown"
+HYPR_UPSTREAM_IS_NEWER=0
 
 detect_suite() {
     local c=""
@@ -170,6 +181,147 @@ verify_debian_hypr_packages() {
         return 1
     fi
     return 0
+}
+
+prepare_debian_version_metadata() {
+    local suite="$1"
+    if [[ "${APT_VERSION_PREP_DONE:-0}" -eq 1 ]]; then
+        return 0
+    fi
+    if [[ "$suite" == "trixie" ]]; then
+        ensure_trixie_backports_repo "$suite"
+    fi
+    echo "[INFO] Refreshing APT metadata for Hyprland version discovery." | tee -a "$SUMMARY_LOG"
+    sudo apt-get update | tee -a "$SUMMARY_LOG"
+    APT_VERSION_PREP_DONE=1
+}
+
+get_debian_hyprland_candidate_version() {
+    local version
+    version=$(apt-cache policy hyprland 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
+    if [[ -z "$version" || "$version" == "(none)" ]]; then
+        version=$(apt-cache madison hyprland 2>/dev/null | awk 'NR==1 {print $3; exit}')
+    fi
+    if [[ -z "$version" || "$version" == "(none)" ]]; then
+        version="unavailable"
+    fi
+    printf '%s' "$version"
+}
+
+get_local_hyprland_tag() {
+    local tag
+    if [[ ! -f "$TAGS_FILE" ]]; then
+        printf '%s' "missing"
+        return 0
+    fi
+    tag=$(awk -F'=' '/^HYPRLAND_TAG=/{print $2; exit}' "$TAGS_FILE")
+    if [[ -z "$tag" ]]; then
+        tag="unset"
+    fi
+    printf '%s' "$tag"
+}
+
+fetch_latest_hyprland_repo_tag() {
+    local release_url="$1"
+    local body tag
+    body=$(curl -fsSL --retry 3 --retry-delay 1 \
+        -H "User-Agent: Debian-Hyprland/update-hyprland.sh" \
+        -H "Accept: application/vnd.github+json" \
+        "$release_url" 2>/dev/null || true)
+    if [[ -n "$body" ]]; then
+        if command -v jq >/dev/null 2>&1; then
+            tag=$(printf '%s' "$body" | jq -r '.tag_name // empty')
+        else
+            tag=$(printf '%s' "$body" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+        fi
+    fi
+    if [[ -z "${tag:-}" ]]; then
+        tag=$(git ls-remote --tags --refs "https://github.com/hyprwm/Hyprland.git" 2>/dev/null | awk -F/ '{print $NF}' | sort -V | tail -n1)
+    fi
+    if [[ -z "$tag" ]]; then
+        tag="unknown"
+    fi
+    printf '%s' "$tag"
+}
+
+normalize_version_for_compare() {
+    local value="$1"
+    value="${value#v}"
+    printf '%s' "$value"
+}
+
+repo_tag_is_newer_than_local() {
+    local repo_tag="$1"
+    local local_tag="$2"
+    local normalized_repo normalized_local highest
+    case "$repo_tag" in
+    "" | unknown | unset | missing | auto | latest) return 1 ;;
+    esac
+    case "$local_tag" in
+    "" | unknown | unset | missing | auto | latest) return 0 ;;
+    esac
+    normalized_repo="$(normalize_version_for_compare "$repo_tag")"
+    normalized_local="$(normalize_version_for_compare "$local_tag")"
+    if [[ "$normalized_repo" == "$normalized_local" ]]; then
+        return 1
+    fi
+    highest=$(printf '%s\n%s\n' "$normalized_repo" "$normalized_local" | sort -V | tail -n1)
+    [[ "$highest" == "$normalized_repo" ]]
+}
+
+collect_hyprland_version_info() {
+    local suite="$1"
+    if [[ "${HYPR_VERSIONS_COLLECTED:-0}" -eq 1 ]]; then
+        return 0
+    fi
+    prepare_debian_version_metadata "$suite"
+    HYPR_DEBIAN_VERSION="$(get_debian_hyprland_candidate_version)"
+    HYPR_LOCAL_HYPRLAND_TAG="$(get_local_hyprland_tag)"
+    HYPR_UPSTREAM_HYPRLAND_TAG="$(fetch_latest_hyprland_repo_tag "$HYPR_UPSTREAM_RELEASE_URL")"
+    if repo_tag_is_newer_than_local "$HYPR_UPSTREAM_HYPRLAND_TAG" "$HYPR_LOCAL_HYPRLAND_TAG"; then
+        HYPR_UPSTREAM_IS_NEWER=1
+    else
+        HYPR_UPSTREAM_IS_NEWER=0
+    fi
+    HYPR_VERSIONS_COLLECTED=1
+}
+
+show_hyprland_version_summary() {
+    printf "\n[INFO] Hyprland versions detected:\n" | tee -a "$SUMMARY_LOG"
+    printf "  Debian package (hyprland): %s\n" "$HYPR_DEBIAN_VERSION" | tee -a "$SUMMARY_LOG"
+    printf "  Local hypr-tags.env (HYPRLAND_TAG): %s\n" "$HYPR_LOCAL_HYPRLAND_TAG" | tee -a "$SUMMARY_LOG"
+    printf "  Upstream Hyprland (%s): %s\n\n" "$HYPR_UPSTREAM_RELEASE_URL" "$HYPR_UPSTREAM_HYPRLAND_TAG" | tee -a "$SUMMARY_LOG"
+}
+
+prompt_mode_selection_with_versions() {
+    local mode_prompt
+    collect_hyprland_version_info "$1"
+    show_hyprland_version_summary
+    echo "Select Hyprland update mode:"
+    echo "  1) Debian package mode (hyprland: $HYPR_DEBIAN_VERSION)"
+    echo "  2) Source mode from local hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)"
+    if [[ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]]; then
+        echo "  3) Source mode using latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) and refresh all tags"
+        mode_prompt="[1/2/3]"
+    else
+        mode_prompt="[1/2]"
+    fi
+    read -r -p "Choose ${mode_prompt} (default 2): " _mode
+    case "${_mode,,}" in
+    1 | d | debian)
+        MODE="debian"
+        ;;
+    3 | l | latest)
+        MODE="source"
+        if [[ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]]; then
+            HYPR_REFRESH_ALL_TAGS=1
+        fi
+        ;;
+    2 | s | source | "" | *)
+        MODE="source"
+        ;;
+    esac
+    echo "[INFO] Selected mode: $MODE" | tee -a "$SUMMARY_LOG"
 }
 
 remove_source_hypr_artifacts() {
@@ -309,7 +461,11 @@ TRIXIE_MODE="auto"
 
 usage() {
     # Print the header comments (quick reference) followed by explicit flags overview
-    sed -n '2,140p' "$0" | sed -n '/^# /p' | sed 's/^# \{0,1\}//'
+    awk '
+        NR == 1 { next }
+        /^#/ { sub(/^# ?/, "", $0); print; next }
+        { exit }
+    ' "$0"
     cat <<EOF
 
 Options:
@@ -327,7 +483,9 @@ Options:
       --via-helper      Use dry-run-build.sh to summarize a dry-run
       --minimal         Build minimal stack before hyprland
       --package-cleanup Purge Debian Hyprland packages before building
-      --mode MODE       Select mode: source (default) or debian
+      --mode MODE       Select mode: auto (default), source, or debian
+      --show-versions   Query Debian/local/upstream Hyprland versions and print them
+      --versions        Alias for --show-versions
       --debian-install  Install Hyprland stack from Debian repos and skip source build
       --debian-remove   Remove Debian Hyprland stack packages and exit
       --no-fetch        Do not auto-fetch tags on install
@@ -1064,6 +1222,10 @@ while [[ $# -gt 0 ]]; do
         MODE=${2:-}
         shift 2
         ;;
+    --show-versions | --versions)
+        SHOW_VERSIONS=1
+        shift
+        ;;
     --debian-install)
         MODE="debian"
         DEBIAN_INSTALL=1
@@ -1129,8 +1291,8 @@ if [[ $DO_INSTALL -eq 1 && $DO_DRY_RUN -eq 1 ]]; then
     echo "[ERROR] Use either --dry-run or --install, not both." | tee -a "$SUMMARY_LOG"
     exit 2
 fi
-if [[ "$MODE" != "source" && "$MODE" != "debian" ]]; then
-    echo "[ERROR] Invalid mode '$MODE'. Use --mode source|debian." | tee -a "$SUMMARY_LOG"
+if [[ "$MODE" != "source" && "$MODE" != "debian" && "$MODE" != "auto" ]]; then
+    echo "[ERROR] Invalid mode '$MODE'. Use --mode auto|source|debian." | tee -a "$SUMMARY_LOG"
     exit 2
 fi
 
@@ -1151,6 +1313,32 @@ fi
 if [[ $FETCH_LATEST -eq 1 ]]; then
     fetch_latest_tags
 fi
+SUITE="$(detect_suite)"
+
+if [[ $SHOW_VERSIONS -eq 1 ]]; then
+    collect_hyprland_version_info "$SUITE"
+    show_hyprland_version_summary
+    if [[ $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 && $DEBIAN_INSTALL -eq 0 && $DEBIAN_REMOVE -eq 0 && $PACKAGE_CLEANUP -eq 0 && $VIA_HELPER -eq 0 ]]; then
+        echo "[INFO] Version query completed." | tee -a "$SUMMARY_LOG"
+        exit 0
+    fi
+fi
+
+if [[ "$MODE" == "auto" ]]; then
+    if [[ -t 0 ]]; then
+        prompt_mode_selection_with_versions "$SUITE"
+    else
+        MODE="source"
+        echo "[INFO] --mode auto in non-interactive context; defaulting to source mode." | tee -a "$SUMMARY_LOG"
+    fi
+fi
+
+if [[ "$MODE" == "source" && "${HYPR_REFRESH_ALL_TAGS:-0}" -eq 1 ]]; then
+    echo "[INFO] Refreshing hypr-tags.env to latest upstream tags before source build/update." | tee -a "$SUMMARY_LOG"
+    FORCE_UPDATE=1
+    fetch_latest_tags
+    NO_FETCH=1
+fi
 
 # Run the stack
 # If only cleanup was requested, perform it and exit (no build).
@@ -1160,12 +1348,15 @@ if [[ $PACKAGE_CLEANUP -eq 1 && $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 ]]; then
 fi
 
 if [[ "$MODE" == "debian" ]]; then
-    SUITE="$(detect_suite)"
-    if [[ "$SUITE" == "trixie" ]]; then
-        ensure_trixie_backports_repo "$SUITE"
+    if [[ "${APT_VERSION_PREP_DONE:-0}" -eq 1 ]]; then
+        echo "[INFO] APT metadata already refreshed during Hyprland version discovery." | tee -a "$SUMMARY_LOG"
+    else
+        if [[ "$SUITE" == "trixie" ]]; then
+            ensure_trixie_backports_repo "$SUITE"
+        fi
+        echo "[INFO] Refreshing APT metadata for Debian package mode." | tee -a "$SUMMARY_LOG"
+        sudo apt-get update | tee -a "$SUMMARY_LOG"
     fi
-    echo "[INFO] Refreshing APT metadata for Debian package mode." | tee -a "$SUMMARY_LOG"
-    sudo apt-get update | tee -a "$SUMMARY_LOG"
 
     if [[ $DEBIAN_REMOVE -eq 1 ]]; then
         remove_deb_hypr_packages

@@ -152,6 +152,91 @@ _enable_deb_src_conservatively() {
     fi
 }
 
+get_debian_hyprland_candidate_version() {
+    local version
+    version=$(apt-cache policy hyprland 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
+    if [ -z "$version" ] || [ "$version" = "(none)" ]; then
+        version=$(apt-cache madison hyprland 2>/dev/null | awk 'NR==1 {print $3; exit}')
+    fi
+    if [ -z "$version" ] || [ "$version" = "(none)" ]; then
+        version="unavailable"
+    fi
+    printf '%s' "$version"
+}
+
+get_local_hyprland_tag() {
+    local tags_file="./hypr-tags.env"
+    local tag
+    if [ ! -f "$tags_file" ]; then
+        printf '%s' "missing"
+        return 0
+    fi
+    tag=$(awk -F'=' '/^HYPRLAND_TAG=/{print $2; exit}' "$tags_file")
+    if [ -z "$tag" ]; then
+        tag="unset"
+    fi
+    printf '%s' "$tag"
+}
+
+fetch_latest_hyprland_repo_tag() {
+    local release_url="$1"
+    local body tag
+    body=$(curl -fsSL --retry 3 --retry-delay 1 \
+        -H "User-Agent: Debian-Hyprland/install.sh" \
+        -H "Accept: application/vnd.github+json" \
+        "$release_url" 2>/dev/null || true)
+    if [ -n "$body" ]; then
+        if command -v jq >/dev/null 2>&1; then
+            tag=$(printf '%s' "$body" | jq -r '.tag_name // empty')
+        else
+            tag=$(printf '%s' "$body" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)
+        fi
+    fi
+    if [ -z "${tag:-}" ]; then
+        tag=$(git ls-remote --tags --refs "https://github.com/hyprwm/Hyprland.git" 2>/dev/null | awk -F/ '{print $NF}' | sort -V | tail -n1)
+    fi
+    if [ -z "$tag" ]; then
+        tag="unknown"
+    fi
+    printf '%s' "$tag"
+}
+
+normalize_version_for_compare() {
+    local value="$1"
+    value="${value#v}"
+    printf '%s' "$value"
+}
+
+repo_tag_is_newer_than_local() {
+    local repo_tag="$1"
+    local local_tag="$2"
+    local normalized_repo normalized_local highest
+    case "$repo_tag" in
+    "" | unknown | unset | missing | auto | latest) return 1 ;;
+    esac
+    case "$local_tag" in
+    "" | unknown | unset | missing | auto | latest) return 0 ;;
+    esac
+    normalized_repo="$(normalize_version_for_compare "$repo_tag")"
+    normalized_local="$(normalize_version_for_compare "$local_tag")"
+    if [ "$normalized_repo" = "$normalized_local" ]; then
+        return 1
+    fi
+    highest=$(printf '%s\n%s\n' "$normalized_repo" "$normalized_local" | sort -V | tail -n1)
+    [ "$highest" = "$normalized_repo" ]
+}
+
+show_hyprland_version_summary() {
+    local debian_version="$1"
+    local local_tag="$2"
+    local upstream_tag="$3"
+    local upstream_url="$4"
+    printf "\n${INFO} Hyprland versions detected:\n" | tee -a "$LOG"
+    printf "  Debian package (hyprland): %s\n" "$debian_version" | tee -a "$LOG"
+    printf "  Local hypr-tags.env (HYPRLAND_TAG): %s\n" "$local_tag" | tee -a "$LOG"
+    printf "  Upstream Hyprland (%s): %s\n\n" "$upstream_url" "$upstream_tag" | tee -a "$LOG"
+}
+
 _write_nonfree_overlay_sources() {
     # Create/refresh a small overlay sources file enabling ONLY missing components.
     # This prevents duplicate APT targets when some components are already present elsewhere.
@@ -428,6 +513,8 @@ fi
 TRIXIE_MODE="auto"
 PRESET_FILE=""
 HYPR_INSTALL_MODE="auto"
+HYPR_REFRESH_ALL_TAGS=0
+APT_PREP_DONE=0
 
 # Parse a small set of supported CLI args (order-independent)
 # NOTE: install.sh historically used "$1"/"$2" for --preset; this keeps that working.
@@ -513,22 +600,70 @@ echo -e "\e[35m
 printf "\n%.0s" {1..1}
 
 DEBIAN_SUITE="$(detect_suite)"
+HYPR_UPSTREAM_RELEASE_URL="https://api.github.com/repos/hyprwm/Hyprland/releases/latest"
+
+echo "${INFO} Verifying APT sources (deb-src, non-free, non-free-firmware) before Hyprland version checks..." | tee -a "$LOG"
+verify_and_offer_fix_apt_sources
+if [ "$DEBIAN_SUITE" = "trixie" ]; then
+    ensure_trixie_backports_repo "$DEBIAN_SUITE"
+fi
+echo "${INFO} Running apt update to discover available Hyprland Debian package version..." | tee -a "$LOG"
+sudo apt update
+APT_PREP_DONE=1
+
+HYPR_DEBIAN_VERSION="$(get_debian_hyprland_candidate_version)"
+HYPR_LOCAL_HYPRLAND_TAG="$(get_local_hyprland_tag)"
+HYPR_UPSTREAM_HYPRLAND_TAG="$(fetch_latest_hyprland_repo_tag "$HYPR_UPSTREAM_RELEASE_URL")"
+if repo_tag_is_newer_than_local "$HYPR_UPSTREAM_HYPRLAND_TAG" "$HYPR_LOCAL_HYPRLAND_TAG"; then
+    HYPR_UPSTREAM_IS_NEWER=1
+else
+    HYPR_UPSTREAM_IS_NEWER=0
+fi
+show_hyprland_version_summary "$HYPR_DEBIAN_VERSION" "$HYPR_LOCAL_HYPRLAND_TAG" "$HYPR_UPSTREAM_HYPRLAND_TAG" "$HYPR_UPSTREAM_RELEASE_URL"
 if [ "$HYPR_INSTALL_MODE" = "auto" ]; then
     if [ "$TTY_MODE" -eq 1 ]; then
         echo "Select Hyprland install method:"
-        echo "  s) Build from source (Recommended)"
-        echo "  d) Debian packages"
-        read -r -p "Choose [s/d] (default s): " _mode
+        echo "  1) Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)"
+        echo "  2) Build from source using local hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)"
+        if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
+            echo "  3) Build from source using latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) and update hypr-tags.env (refresh all tags)"
+            mode_prompt="[1/2/3]"
+        else
+            mode_prompt="[1/2]"
+        fi
+        read -r -p "Choose ${mode_prompt} (default 2): " _mode
         case "${_mode,,}" in
-        d | debian) HYPR_INSTALL_MODE="debian" ;;
-        s | source | "" | *) HYPR_INSTALL_MODE="source" ;;
+        1 | d | debian) HYPR_INSTALL_MODE="debian" ;;
+        3 | l | latest)
+            if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
+                HYPR_INSTALL_MODE="source"
+                HYPR_REFRESH_ALL_TAGS=1
+            else
+                HYPR_INSTALL_MODE="source"
+            fi
+            ;;
+        2 | s | source | "" | *) HYPR_INSTALL_MODE="source" ;;
         esac
     else
-        choice=$(whiptail --title "Hyprland install method" --menu "Select installation source" 15 70 5 \
-            s "Build from source (Recommended)" \
-            d "Debian packages" 3>&1 1>&2 2>&3) || true
+        menu_text="Detected versions:\nDebian package: $HYPR_DEBIAN_VERSION\nLocal hypr-tags.env (HYPRLAND_TAG): $HYPR_LOCAL_HYPRLAND_TAG\nUpstream latest: $HYPR_UPSTREAM_HYPRLAND_TAG\n\nSelect installation source"
+        if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
+            choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 20 98 8 \
+                d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
+                s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" \
+                l "Build latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) + refresh all tags" 3>&1 1>&2 2>&3) || true
+        else
+            choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 18 98 6 \
+                d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
+                s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" 3>&1 1>&2 2>&3) || true
+        fi
         case "$choice" in
         d) HYPR_INSTALL_MODE="debian" ;;
+        l)
+            HYPR_INSTALL_MODE="source"
+            if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
+                HYPR_REFRESH_ALL_TAGS=1
+            fi
+            ;;
         s | *) HYPR_INSTALL_MODE="source" ;;
         esac
     fi
@@ -702,29 +837,51 @@ execute_script() {
 }
 
 # Load centralized Hyprland stack tags if present and export for child scripts
-if [ -f "./hypr-tags.env" ]; then
-    # shellcheck disable=SC1091
-    source "./hypr-tags.env"
-    # If core tags are set to auto/latest, refresh to resolve concrete versions
-    if [ "${HYPRUTILS_TAG:-}" = "auto" ] || [ "${HYPRUTILS_TAG:-}" = "latest" ] || [ -z "${HYPRUTILS_TAG:-}" ] ||
-        [ "${HYPRLANG_TAG:-}" = "auto" ] || [ "${HYPRLANG_TAG:-}" = "latest" ] || [ -z "${HYPRLANG_TAG:-}" ]; then
-        if [ -f ./refresh-hypr-tags.sh ]; then
-            chmod +x ./refresh-hypr-tags.sh || true
-            ./refresh-hypr-tags.sh
-            # reload after refresh
-            # shellcheck disable=SC1091
-            source "./hypr-tags.env"
-        fi
-    fi
-    # Export all *_TAG variables and WAYLAND_PROTOCOLS_TAG for child scripts
+export_hypr_tags_from_file() {
+    local tags_file="./hypr-tags.env"
+    [ -f "$tags_file" ] || return 0
     while IFS='=' read -r _k _v; do
         [ -z "${_k:-}" ] && continue
         case "$_k" in
-        *"_TAG" | WAYLAND_PROTOCOLS_TAG)
+        \#*) continue ;;
+        *_TAG | WAYLAND_PROTOCOLS_TAG)
             export "$_k"
             ;;
         esac
-    done <"./hypr-tags.env"
+    done <"$tags_file"
+}
+
+reload_hypr_tags() {
+    local tags_file="./hypr-tags.env"
+    [ -f "$tags_file" ] || return 1
+    # shellcheck disable=SC1091
+    source "$tags_file"
+    export_hypr_tags_from_file
+}
+
+refresh_hypr_tags_if_available() {
+    local force_all="${1:-0}"
+    if [ ! -f ./refresh-hypr-tags.sh ]; then
+        echo "${WARN} refresh-hypr-tags.sh not found; skipping tag refresh." | tee -a "$LOG"
+        return 1
+    fi
+    chmod +x ./refresh-hypr-tags.sh || true
+    if [ "$force_all" = "1" ]; then
+        FORCE=1 ./refresh-hypr-tags.sh --force-update
+    else
+        ./refresh-hypr-tags.sh
+    fi
+    reload_hypr_tags
+}
+
+# Load centralized Hyprland stack tags if present and export for child scripts
+if [ -f "./hypr-tags.env" ]; then
+    reload_hypr_tags
+    # If core tags are set to auto/latest, refresh to resolve concrete versions
+    if [ "${HYPRUTILS_TAG:-}" = "auto" ] || [ "${HYPRUTILS_TAG:-}" = "latest" ] || [ -z "${HYPRUTILS_TAG:-}" ] ||
+        [ "${HYPRLANG_TAG:-}" = "auto" ] || [ "${HYPRLANG_TAG:-}" = "latest" ] || [ -z "${HYPRLANG_TAG:-}" ]; then
+        refresh_hypr_tags_if_available 0 || true
+    fi
 fi
 
 #################
@@ -922,14 +1079,17 @@ fi
 printf "\n%.0s" {1..1}
 
 # Verify APT sources before updating (deb-src + non-free components)
-echo "${INFO} Verifying APT sources (deb-src, non-free, non-free-firmware)..." | tee -a "$LOG"
-verify_and_offer_fix_apt_sources
-if [ "$DEBIAN_SUITE" = "trixie" ]; then
-    ensure_trixie_backports_repo "$DEBIAN_SUITE"
+if [ "${APT_PREP_DONE:-0}" -eq 1 ]; then
+    echo "${INFO} APT sources and package lists were already refreshed during Hyprland version discovery." | tee -a "$LOG"
+else
+    echo "${INFO} Verifying APT sources (deb-src, non-free, non-free-firmware)..." | tee -a "$LOG"
+    verify_and_offer_fix_apt_sources
+    if [ "$DEBIAN_SUITE" = "trixie" ]; then
+        ensure_trixie_backports_repo "$DEBIAN_SUITE"
+    fi
+    echo "${INFO} Running a ${SKY_BLUE}full system update...${RESET}" | tee -a "$LOG"
+    sudo apt update
 fi
-
-echo "${INFO} Running a ${SKY_BLUE}full system update...${RESET}" | tee -a "$LOG"
-sudo apt update
 
 sleep 1
 if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
@@ -985,9 +1145,11 @@ else
     # Build from source
     # Optional: refresh tags before building the Hyprland stack
     # Set FETCH_LATEST=1 to opt-in (default is no-refresh to honor pinned tags)
-    if [ "${FETCH_LATEST:-0}" = "1" ] && [ -f ./refresh-hypr-tags.sh ]; then
-        chmod +x ./refresh-hypr-tags.sh || true
-        ./refresh-hypr-tags.sh
+    if [ "${HYPR_REFRESH_ALL_TAGS:-0}" = "1" ]; then
+        echo "${INFO} Updating hypr-tags.env to latest upstream tags before source build..." | tee -a "$LOG"
+        refresh_hypr_tags_if_available 1 || true
+    elif [ "${FETCH_LATEST:-0}" = "1" ]; then
+        refresh_hypr_tags_if_available 0 || true
     fi
 
     echo "${INFO} Installing ${SKY_BLUE}KooL Hyprland packages from source...${RESET}" | tee -a "$LOG"
