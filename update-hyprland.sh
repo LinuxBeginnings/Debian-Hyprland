@@ -61,6 +61,7 @@ HYPR_DEBIAN_VERSION="unknown"
 HYPR_LOCAL_HYPRLAND_TAG="unknown"
 HYPR_UPSTREAM_HYPRLAND_TAG="unknown"
 HYPR_UPSTREAM_IS_NEWER=0
+INTERACTIVE_MODE_SELECTED=0
 
 detect_suite() {
     local c=""
@@ -321,6 +322,7 @@ prompt_mode_selection_with_versions() {
         MODE="source"
         ;;
     esac
+    INTERACTIVE_MODE_SELECTED=1
     echo "[INFO] Selected mode: $MODE" | tee -a "$SUMMARY_LOG"
 }
 
@@ -1338,6 +1340,11 @@ if [[ "$MODE" == "source" && "${HYPR_REFRESH_ALL_TAGS:-0}" -eq 1 ]]; then
     FORCE_UPDATE=1
     fetch_latest_tags
     NO_FETCH=1
+fi
+
+if [[ "${INTERACTIVE_MODE_SELECTED:-0}" -eq 1 && $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 && $DEBIAN_INSTALL -eq 0 && $DEBIAN_REMOVE -eq 0 ]]; then
+    DO_INSTALL=1
+    echo "[INFO] No --install/--dry-run flag provided; defaulting to install for the selected interactive mode." | tee -a "$SUMMARY_LOG"
 fi
 
 # Run the stack
