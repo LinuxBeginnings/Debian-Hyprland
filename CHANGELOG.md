@@ -1,5 +1,17 @@
 ## CHANGELOG
 
+## Jul 2026
+
+- Fixed:
+  `dry-run` caused errors
+
+- Added:
+    - Option to build from source or debian pkgs
+        - Currently Trixie is v0.55.2 from trixie-backports
+        - Testing+ is v0.55.4
+    - Quickshell v0.3.0 debian package
+        - Not wired in yet still testing
+
 ## Jun 2026
 
 - Fixed:
@@ -26,15 +38,16 @@
     - For trixie if pkg not found check `trixie-backports`
     - Run: `install-scripts/update-deps.sh`
 
-## Added: 
-  - `install.sh` and `update-hyprland.sh` have menus
-     - They now check
-        - debian pkg version of hyprland 
-        - local repo version, defined in `hypr-tags.env` file 
-        - Checks hyprland Github for most current version 
-     - You then can select which you wish to install or upgrade to 
-     - Currently `trixie` and `forky` are at v55.2
-     - `SID` is at v55.4 
+## Added:
+
+- `install.sh` and `update-hyprland.sh` have menus
+    - They now check
+        - debian pkg version of hyprland
+        - local repo version, defined in `hypr-tags.env` file
+        - Checks hyprland Github for most current version
+    - You then can select which you wish to install or upgrade to
+    - Currently `trixie` and `forky` are at v55.2
+    - `SID` is at v55.4
 
 ## May 2026
 
