@@ -23,7 +23,7 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
     exit 1
 fi
 
-# Prefer /usr/local for pkg-config and CMake (for locally built libs like Breakpad)
+# Prefer /usr/local for pkg-config and CMake
 export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
 export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
 
@@ -87,6 +87,9 @@ DEPS=(
     libqt6svg6-dev
     # Third-party libs used by Quickshell
     libcli11-dev
+    # Crash handler (cpptrace vendoring still requires unwind libs)
+    libunwind-dev
+    libdwarf-dev
     # Qt Quick runtime QML modules required at runtime (RectangularShadow, etc.)
     qml6-module-qtquick-effects
     qml6-module-qtquick-shapes
@@ -120,57 +123,9 @@ for bin in cmake ninja pkg-config; do
     fi
 done
 
-# Build Google Breakpad from source if pkg-config 'breakpad' is missing
-if ! pkg-config --exists breakpad; then
-  note "Building Google Breakpad from source..."
-  BP_DIR="$SRC_ROOT/breakpad"
-  rm -rf "$BP_DIR"
-  mkdir -p "$BP_DIR"
-  (
-    set -Eeuo pipefail
-    cd "$BP_DIR"
-    # Clone Breakpad into the root of BP_DIR (expected layout: ./src)
-    git clone --depth=1 https://chromium.googlesource.com/breakpad/breakpad . 2>&1 | tee -a "$MLOG"
-    # lss must live at src/third_party/lss relative to Breakpad root
-    git clone --depth=1 https://chromium.googlesource.com/linux-syscall-support src/third_party/lss 2>&1 | tee -a "$MLOG" || true
-    # Autotools bootstrap if needed (at Breakpad root)
-    if [ ! -x ./configure ]; then
-      autoreconf -fi 2>&1 | tee -a "$MLOG"
-    fi
-    ./configure --prefix=/usr/local 2>&1 | tee -a "$MLOG"
-    make -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN)" 2>&1 | tee -a "$MLOG"
-    sudo make install 2>&1 | tee -a "$MLOG"
-  ) || { echo "${ERROR} Breakpad build failed." | tee -a "$LOG"; exit 1; }
-
-    # Provide pkg-config file if upstream didn't install one under the name 'breakpad'
-    if ! pkg-config --exists breakpad; then
-        if pkg-config --exists breakpad-client; then
-            sudo mkdir -p /usr/local/lib/pkgconfig
-            sudo ln -sf /usr/local/lib/pkgconfig/breakpad-client.pc /usr/local/lib/pkgconfig/breakpad.pc
-        elif [ -f /usr/local/lib/libbreakpad_client.a ] || [ -f /usr/local/lib/libbreakpad_client.so ]; then
-            TMP_PC="/tmp/breakpad.pc.$$"
-            cat >"$TMP_PC" <<'PCEOF'
-prefix=/usr/local
-exec_prefix=${prefix}
-includedir=${prefix}/include
-libdir=${exec_prefix}/lib
-Name: breakpad
-Description: Google Breakpad client library
-Version: 0
-Libs: -L${libdir} -lbreakpad_client
-Cflags: -I${includedir}
-PCEOF
-            sudo mkdir -p /usr/local/lib/pkgconfig
-            sudo install -m 644 "$TMP_PC" /usr/local/lib/pkgconfig/breakpad.pc
-            rm -f "$TMP_PC"
-        fi
-    fi
-
-    if ! pkg-config --exists breakpad; then
-        echo "${ERROR} breakpad pkg-config entry not found after installation." | tee -a "$LOG"
-        exit 1
-    fi
-fi
+# Quickshell switched from Breakpad to cpptrace.
+# Prefer vendoring cpptrace to avoid distro package mismatches/missing cmake configs.
+note "Using vendored cpptrace (-DVENDOR_CPPTRACE=ON)."
 
 # Clone source (prefer upstream forgejo; mirror available at github:quickshell-mirror/quickshell)
 SRC_DIR="$SRC_ROOT/quickshell-src"
@@ -192,6 +147,7 @@ CMAKE_FLAGS=(
     -GNinja
     -DCMAKE_BUILD_TYPE=RelWithDebInfo
     -DDISTRIBUTOR="Debian-Hyprland installer"
+    -DVENDOR_CPPTRACE=ON
 )
 
 note "Configuring Quickshell (CMake)..."
@@ -199,8 +155,12 @@ note "Configuring Quickshell (CMake)..."
 BUILD_DIR="$BUILD_ROOT/quickshell"
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" 2>&1 | tee -a "$MLOG"; then
-    echo "${ERROR} CMake configure failed. See log: $MLOG" | tee -a "$LOG"
-    exit 1
+    note "Initial CMake configure failed; retrying with -DCRASH_HANDLER=OFF"
+    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
+    if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" -DCRASH_HANDLER=OFF 2>&1 | tee -a "$MLOG"; then
+        echo "${ERROR} CMake configure failed (including fallback). See log: $MLOG" | tee -a "$LOG"
+        exit 1
+    fi
 fi
 
 # Ensure build files exist before invoking ninja
