@@ -15,6 +15,15 @@
 ## Jun 2026
 
 - Fixed:
+    - `swww` doesn't build anymore
+        - Replaced `swww` with `awww`
+        - `swww.sh` script now builds `awww` `awww-daemon`
+        - Removes `swww`
+    - Build issue with `hypertookkit`
+        - `install.sh` script
+            - Was failing on `trixie` due to issues handling `triie-backports` repo
+        - `install.sh` wasn't showing CLI options with `-h/--help`
+        - Verified `update.sh` follows this fix and added more defensive code
   = Build issue with `hypertookkit`
     - `install.sh` script
         - Was failing on `trixie` due to issues handling `triie-backports` repo
