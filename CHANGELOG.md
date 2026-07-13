@@ -1,5 +1,17 @@
 ## CHANGELOG
 
+## Jul 2026
+
+- Fixed:
+  `dry-run` caused errors
+
+- Added:
+    - Option to build from source or debian pkgs
+        - Currently Trixie is v0.55.2 from trixie-backports
+        - Testing+ is v0.55.4
+    - Quickshell v0.3.0 debian package
+        - Not wired in yet still testing
+
 ## Jun 2026
 
 - Fixed:
@@ -12,6 +24,11 @@
             - Was failing on `trixie` due to issues handling `triie-backports` repo
         - `install.sh` wasn't showing CLI options with `-h/--help`
         - Verified `update.sh` follows this fix and added more defensive code
+  = Build issue with `hypertookkit`
+    - `install.sh` script
+        - Was failing on `trixie` due to issues handling `triie-backports` repo
+    - `install.sh` wasn't showing CLI options with `-h/--help`
+    - Verified `update.sh` follows this fix and added more defensive code
 
 - Updated:
 - Hyprland v0.55.4
