@@ -8,12 +8,20 @@
     - Replaced `swww` with `awww`
     - `swww.sh` script now builds `awww` `awww-daemon`
     - Removes `swww`
+    - `update-hyprland.sh` build issue 
 - Added:
     - Option to build from source or debian pkgs
         - Currently Trixie is v0.55.2 from trixie-backports
         - Testing+ is v0.55.4
     - Quickshell v0.3.0 debian package
         - Not wired in yet still testing
+    - `--source` and `--deb-pkg` flags to bypass propmpt 
+- Updated:
+    - HOWTO guides to include all the new flags / options
+    - Aquamarine - v13.0 
+    - XDPH - v1.4.0 
+    - hyprutils - v14.0 
+    - hyprsunset - v0.4.0
 
 ## Jun 2026
 

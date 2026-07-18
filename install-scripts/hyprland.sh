@@ -155,6 +155,101 @@ EOF
         sed -ri 's/std::string\{"0x"\}\s*\+\s*value/std::string{"0x"} + std::string(value)/g' "$PARSER_UTILS" || true
     fi
 
+    # Compatibility: Hyprutils pointers now require explicit bool conversion in several call sites.
+    LAYER_SURFACE_HPP="src/desktop/view/LayerSurface.hpp"
+    if [ -f "$LAYER_SURFACE_HPP" ]; then
+        sed -ri 's/return[[:space:]]+l[[:space:]]*;/return static_cast<bool>(l);/g' "$LAYER_SURFACE_HPP" || true
+    fi
+
+    DRM_SYNCOBJ_HPP="src/protocols/DRMSyncobj.hpp"
+    if [ -f "$DRM_SYNCOBJ_HPP" ]; then
+        sed -ri 's/return[[:space:]]+m_timeline[[:space:]]*;/return static_cast<bool>(m_timeline);/g' "$DRM_SYNCOBJ_HPP" || true
+    fi
+    CONFIG_ACTIONS_CPP="src/config/shared/actions/ConfigActions.cpp"
+    if [ -f "$CONFIG_ACTIONS_CPP" ]; then
+        sed -ri 's/const[[:space:]]+bool[[:space:]]+ISWINDOWGROUP[[:space:]]*=[[:space:]]*window->m_group[[:space:]]*;/const bool ISWINDOWGROUP = static_cast<bool>(window->m_group);/g' "$CONFIG_ACTIONS_CPP" || true
+    fi
+    SESSION_LOCK_CPP="src/desktop/view/SessionLock.cpp"
+    if [ -f "$SESSION_LOCK_CPP" ]; then
+        perl -0777 -i -pe 's@return e == m_self;@return e == m_self.lock();@g' "$SESSION_LOCK_CPP" || true
+    fi
+    WL_SURFACE_CPP="src/desktop/view/WLSurface.cpp"
+    if [ -f "$WL_SURFACE_CPP" ]; then
+        perl -0777 -i -pe 's@bool CWLSurface::exists\(\) const \{\n    return m_resource;\n\}@bool CWLSurface::exists() const {\n    return static_cast<bool>(m_resource);\n}@g' "$WL_SURFACE_CPP" || true
+    fi
+    WINDOW_CPP="src/desktop/view/Window.cpp"
+    if [ -f "$WINDOW_CPP" ]; then
+        perl -0777 -i -pe 's@g_layoutManager->dragController\(\)->target\(\) == m_self@g_layoutManager->dragController()->target() == m_target@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@m_self\.lock\(\) == g_layoutManager->dragController\(\)->target\(\)@m_target == g_layoutManager->dragController()->target()@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@bool hasSizeHints = m_xwaylandSurface \? m_xwaylandSurface->m_sizeHints : false;@bool hasSizeHints = m_xwaylandSurface ? static_cast<bool>(m_xwaylandSurface->m_sizeHints) : false;@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@bool hasTopLevel  = m_xdgSurface \? m_xdgSurface->m_toplevel : false;@bool hasTopLevel  = m_xdgSurface ? static_cast<bool>(m_xdgSurface->m_toplevel) : false;@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@bool        isGroup               = m_group;@bool        isGroup               = static_cast<bool>(m_group);@g' "$WINDOW_CPP" || true
+    fi
+    ANR_MANAGER_CPP="src/managers/ANRManager.cpp"
+    if [ -f "$ANR_MANAGER_CPP" ]; then
+        perl -0777 -i -pe 's@std::erase_if\(m_data, \[&window\]\(auto& w\) \{ return w == window; \}\);@std::erase_if(m_data, [&window](auto& w) { return w->fitsWindow(window); });@g' "$ANR_MANAGER_CPP" || true
+    fi
+    SCROLLING_ALGO_CPP="src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp"
+    if [ -f "$SCROLLING_ALGO_CPP" ]; then
+        perl -0777 -i -pe 's@TARGET->target->setPositionGlobal\(targetBoxWithGaps\(TARGET->layoutBox, i, j, FS\)\);@TARGET->target->setPositionGlobal(targetBoxWithGaps(TARGET->layoutBox, i, j, static_cast<bool>(FS)));@g' "$SCROLLING_ALGO_CPP" || true
+    fi
+    INPUT_MANAGER_CPP="src/managers/input/InputManager.cpp"
+    if [ -f "$INPUT_MANAGER_CPP" ]; then
+        perl -0777 -i -pe 's@if \(g_layoutManager->dragController\(\)->target\(\) && pFoundWindow != g_layoutManager->dragController\(\)->target\(\)\) \{@if (g_layoutManager->dragController()->target() && (!pFoundWindow || pFoundWindow->layoutTarget() != g_layoutManager->dragController()->target())) {@g' "$INPUT_MANAGER_CPP" || true
+    fi
+    COLOR_MANAGEMENT_CPP="src/protocols/ColorManagement.cpp"
+    if [ -f "$COLOR_MANAGEMENT_CPP" ]; then
+        perl -0777 -i -pe 's@\(uintptr_t\)m_surface@\(uintptr_t\)m_surface.get\(\)@g' "$COLOR_MANAGEMENT_CPP" || true
+        perl -0777 -i -pe 's@return m_resource && m_resource->resource\(\);@return static_cast<bool>(m_resource) && m_resource->resource();@g' "$COLOR_MANAGEMENT_CPP" || true
+    fi
+    EXT_WORKSPACE_CPP="src/protocols/ExtWorkspace.cpp"
+    if [ -f "$EXT_WORKSPACE_CPP" ]; then
+        perl -0777 -i -pe 's@return m_resource;@return static_cast<bool>(m_resource);@g' "$EXT_WORKSPACE_CPP" || true
+    fi
+    FIFO_CPP="src/protocols/Fifo.cpp"
+    if [ -f "$FIFO_CPP" ]; then
+        perl -0777 -i -pe 's@\(uintptr_t\)RESOURCE@\(uintptr_t\)RESOURCE.get\(\)@g' "$FIFO_CPP" || true
+    fi
+    LAYER_SHELL_CPP="src/protocols/LayerShell.cpp"
+    if [ -f "$LAYER_SHELL_CPP" ]; then
+        perl -0777 -i -pe 's@bool attachedBuffer = m_surface->m_current.texture;@bool attachedBuffer = static_cast<bool>(m_surface->m_current.texture);@g' "$LAYER_SHELL_CPP" || true
+        perl -0777 -i -pe 's@return m_resource->resource\(\);@return static_cast<bool>(m_resource->resource());@g' "$LAYER_SHELL_CPP" || true
+    fi
+    BUFFER_CPP="src/protocols/types/Buffer.cpp"
+    if [ -f "$BUFFER_CPP" ]; then
+        perl -0777 -i -pe 's@SP<IHLBuffer> CHLBufferReference::operator->\(\) const \{\n    return static_cast<bool>\(m_buffer\);\n\}@SP<IHLBuffer> CHLBufferReference::operator->() const {\n    return m_buffer;\n}@g' "$BUFFER_CPP" || true
+        perl -0777 -i -pe 's@CHLBufferReference::operator bool\(\) const \{\n    return m_buffer;\n\}@CHLBufferReference::operator bool() const {\n    return static_cast<bool>(m_buffer);\n}@g' "$BUFFER_CPP" || true
+    fi
+    DATA_DEVICE_CPP="src/protocols/core/DataDevice.cpp"
+    if [ -f "$DATA_DEVICE_CPP" ]; then
+        perl -0777 -i -pe 's@\(uintptr_t\)dragSurface@\(uintptr_t\)dragSurface.get\(\)@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@\(uintptr_t\)origin@\(uintptr_t\)origin.get\(\)@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@if \(m_dnd.dndSurface->m_current.texture <= 0 && m_dnd.dndSurface->m_mapped\) \{@if (!static_cast<bool>(m_dnd.dndSurface->m_current.texture) && m_dnd.dndSurface->m_mapped) {@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@return m_dnd.currentSource;@return static_cast<bool>(m_dnd.currentSource);@g' "$DATA_DEVICE_CPP" || true
+    fi
+    GL_RENDERER_CPP="src/render/GLRenderer.cpp"
+    if [ -f "$GL_RENDERER_CPP" ]; then
+        perl -0777 -i -pe 's@return m_currentRenderbuffer;@return static_cast<bool>(m_currentRenderbuffer);@g' "$GL_RENDERER_CPP" || true
+    fi
+    OPENGL_CPP="src/render/OpenGL.cpp"
+    if [ -f "$OPENGL_CPP" ]; then
+        perl -0777 -i -pe 's@m_fakeFrame = fb;@m_fakeFrame = static_cast<bool>(fb);@g' "$OPENGL_CPP" || true
+    fi
+    X_SURFACE_CPP="src/xwayland/XSurface.cpp"
+    if [ -f "$X_SURFACE_CPP" ]; then
+        perl -0777 -i -pe 's@bool connected = m_listeners.destroySurface;@bool connected = static_cast<bool>(m_listeners.destroySurface);@g' "$X_SURFACE_CPP" || true
+    fi
+    UNIFIED_SWIPE_CPP="src/managers/input/UnifiedWorkspaceSwipeGesture.cpp"
+    if [ -f "$UNIFIED_SWIPE_CPP" ]; then
+        perl -0777 -i -pe 's@return m_workspaceBegin;@return static_cast<bool>(m_workspaceBegin);@g' "$UNIFIED_SWIPE_CPP" || true
+    fi
+
+    # Compatibility: libstdc++ on Debian 13 may reject two-arg std::views::filter adaptor invocation.
+    COMPOSITOR_HPP="src/Compositor.hpp"
+    if [ -f "$COMPOSITOR_HPP" ]; then
+        perl -0777 -i -pe 's@return std::views::filter\(m_workspaces, \[\]\(const auto& e\) \{ return e; \}\);@return m_workspaces | std::views::filter([](const auto& e) { return static_cast<bool>(e); });@g' "$COMPOSITOR_HPP" || true
+    fi
+
     # Apply patch only if it applies cleanly; otherwise skip
     if [ -f "$PARENT_DIR/assets/0001-fix-hyprland-compile-issue.patch" ]; then
         if patch -p1 --dry-run <"$PARENT_DIR/assets/0001-fix-hyprland-compile-issue.patch" >/dev/null 2>&1; then

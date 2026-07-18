@@ -27,6 +27,8 @@
 #   ./update-hyprland.sh --package-cleanup --install   # purge Debian Hyprland packages before building
 #   ./update-hyprland.sh --mode debian --install       # switch to Debian package mode and install
 #   ./update-hyprland.sh --mode auto --install         # prompt package vs source with version visibility
+#   ./update-hyprland.sh --source --install            # force source mode (non-interactive)
+#   ./update-hyprland.sh --deb-pkg --install           # force Debian package mode (non-interactive)
 #   ./update-hyprland.sh --show-versions               # query Debian/local/upstream Hyprland versions
 #   ./update-hyprland.sh --debian-remove               # remove Debian Hyprland packages
 #   ./update-hyprland.sh --help                        # show this help
@@ -486,6 +488,8 @@ Options:
       --minimal         Build minimal stack before hyprland
       --package-cleanup Purge Debian Hyprland packages before building
       --mode MODE       Select mode: auto (default), source, or debian
+      --source          Alias for --mode source (skip interactive mode selection)
+      --deb-pkg         Alias for --mode debian (skip interactive mode selection)
       --show-versions   Query Debian/local/upstream Hyprland versions and print them
       --versions        Alias for --show-versions
       --debian-install  Install Hyprland stack from Debian repos and skip source build
@@ -1223,6 +1227,14 @@ while [[ $# -gt 0 ]]; do
     --mode)
         MODE=${2:-}
         shift 2
+        ;;
+    --source)
+        MODE="source"
+        shift
+        ;;
+    --deb-pkg)
+        MODE="debian"
+        shift
         ;;
     --show-versions | --versions)
         SHOW_VERSIONS=1

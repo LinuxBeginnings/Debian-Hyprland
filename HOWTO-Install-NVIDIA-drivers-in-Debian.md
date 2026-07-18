@@ -92,6 +92,25 @@ Select [O/n/d]: _
 - `-n, --dry-run` Simulate actions (uses `apt-get -s`, prints changes without applying).
 - `-h, --help` Show usage, options, and examples.
 
+## Related wrapper flags (install/update scripts)
+
+If you run the full project workflows around NVIDIA setup, these newer flags are available:
+
+- `install.sh`
+    - `--mode <source|debian|auto>`
+    - `--source` (alias for source mode)
+    - `--packages` (alias for debian mode)
+    - `--build-trixie`, `--no-trixie`
+    - `--force-reinstall`
+    - `--preset <file>`
+    - `--tty`
+- `update-hyprland.sh`
+    - `--mode <source|debian|auto>`
+    - `--source` (alias for `--mode source`)
+    - `--deb-pkg` (alias for `--mode debian`)
+    - `--debian-install`, `--debian-remove`
+    - `--show-versions`
+
 Examples
 
 ```bash
