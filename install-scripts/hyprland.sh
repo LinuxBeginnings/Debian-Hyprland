@@ -73,6 +73,57 @@ ensure_re2_absl_consistent() {
     fi
 }
 
+# Ensure hyprutils/hyprwire linker targets are available for tools built in this module.
+ensure_hypr_link_libs() {
+    local hu_link hw_link hl_link aq_link hu_script hw_script
+    hu_link=""
+    hw_link=""
+    hl_link=""
+    aq_link=""
+
+    for p in /usr/lib/x86_64-linux-gnu/libhyprutils.so /usr/local/lib/libhyprutils.so /usr/local/lib64/libhyprutils.so; do
+        [ -e "$p" ] && hu_link="$p" && break
+    done
+    for p in /usr/lib/x86_64-linux-gnu/libhyprwire.so /usr/local/lib/libhyprwire.so /usr/local/lib64/libhyprwire.so; do
+        [ -e "$p" ] && hw_link="$p" && break
+    done
+    for p in /usr/lib/x86_64-linux-gnu/libhyprlang.so /usr/local/lib/libhyprlang.so /usr/local/lib64/libhyprlang.so; do
+        [ -e "$p" ] && hl_link="$p" && break
+    done
+    for p in /usr/lib/x86_64-linux-gnu/libaquamarine.so /usr/local/lib/libaquamarine.so /usr/local/lib64/libaquamarine.so; do
+        [ -e "$p" ] && aq_link="$p" && break
+    done
+
+    hu_script="$PARENT_DIR/install-scripts/hyprutils.sh"
+    hw_script="$PARENT_DIR/install-scripts/hyprwire.sh"
+
+    if [ -z "$hu_link" ]; then
+        echo "${NOTE} libhyprutils linker symlink not found. Installing libhyprutils-dev..." | tee -a "$LOG"
+        install_package libhyprutils-dev 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$hw_link" ]; then
+        echo "${NOTE} libhyprwire linker symlink not found. Installing libhyprwire-dev..." | tee -a "$LOG"
+        install_package libhyprwire-dev 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$hl_link" ]; then
+        echo "${NOTE} libhyprlang linker symlink not found. Installing libhyprlang-dev..." | tee -a "$LOG"
+        install_package libhyprlang-dev 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$aq_link" ]; then
+        echo "${NOTE} libaquamarine linker symlink not found. Installing libaquamarine-dev..." | tee -a "$LOG"
+        install_package libaquamarine-dev 2>&1 | tee -a "$LOG" || true
+    fi
+
+    if [ -z "$hu_link" ] && [ -x "$hu_script" ]; then
+        echo "${NOTE} Falling back to source build for hyprutils..." | tee -a "$LOG"
+        "$hu_script" 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$hw_link" ] && [ -x "$hw_script" ]; then
+        echo "${NOTE} Falling back to source build for hyprwire..." | tee -a "$LOG"
+        "$hw_script" 2>&1 | tee -a "$LOG" || true
+    fi
+}
+
 # Set the name of the log file to include the current date and time
 LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprland.log"
 MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprland2.log"
@@ -83,6 +134,7 @@ printf "\n%.0s" {1..1}
 
 printf "\n%.0s" {1..1}
 ensure_re2_absl_consistent
+ensure_hypr_link_libs
 
 # Clone, build, and install Hyprland using Cmake
 printf "${NOTE} Cloning and Installing ${YELLOW}Hyprland $tag${RESET} ...\n"
@@ -179,8 +231,8 @@ EOF
     fi
     WINDOW_CPP="src/desktop/view/Window.cpp"
     if [ -f "$WINDOW_CPP" ]; then
-        perl -0777 -i -pe 's@g_layoutManager->dragController\(\)->target\(\) == m_self@g_layoutManager->dragController()->target() == m_target@g' "$WINDOW_CPP" || true
-        perl -0777 -i -pe 's@m_self\.lock\(\) == g_layoutManager->dragController\(\)->target\(\)@m_target == g_layoutManager->dragController()->target()@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@g_layoutManager->dragController\(\)->target\(\) == m_self@g_layoutManager->dragController()->target() == layoutTarget()@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@m_self\.lock\(\) == g_layoutManager->dragController\(\)->target\(\)@layoutTarget() == g_layoutManager->dragController()->target()@g' "$WINDOW_CPP" || true
         perl -0777 -i -pe 's@bool hasSizeHints = m_xwaylandSurface \? m_xwaylandSurface->m_sizeHints : false;@bool hasSizeHints = m_xwaylandSurface ? static_cast<bool>(m_xwaylandSurface->m_sizeHints) : false;@g' "$WINDOW_CPP" || true
         perl -0777 -i -pe 's@bool hasTopLevel  = m_xdgSurface \? m_xdgSurface->m_toplevel : false;@bool hasTopLevel  = m_xdgSurface ? static_cast<bool>(m_xdgSurface->m_toplevel) : false;@g' "$WINDOW_CPP" || true
         perl -0777 -i -pe 's@bool        isGroup               = m_group;@bool        isGroup               = static_cast<bool>(m_group);@g' "$WINDOW_CPP" || true
@@ -300,7 +352,7 @@ EOF
 
     # By default, build Hyprland with bundled hyprutils/hyprlang to avoid version mismatches
     # You can force system libs by exporting USE_SYSTEM_HYPRLIBS=1 before running this script.
-    USE_SYSTEM=${USE_SYSTEM_HYPRLIBS:-1}
+    USE_SYSTEM=${USE_SYSTEM_HYPRLIBS:-0}
   if [ "$USE_SYSTEM" = "1" ]; then
     export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
     export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
