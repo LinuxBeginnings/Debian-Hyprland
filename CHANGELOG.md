@@ -2,12 +2,18 @@
 
 ## Jul 2026
 
+- Updated:
+- `install.sh` and `update-hyprland.sh` to only install deb pkgs
+    - Currently building from source fails
+    - Will re-enable once it's working
+    - Trixie pkgs is at v0.55.2
+    - Testing/SID pkgs are at v0.55.4
 - Fixed:
-  - `dry-run` caused errors
-  - `swww` doesn't build anymore
-    - Replaced `swww` with `awww`
-    - `swww.sh` script now builds `awww` `awww-daemon`
-    - Removes `swww`
+    - `dry-run` caused errors
+    - `swww` doesn't build anymore
+        - Replaced `swww` with `awww`
+        - `swww.sh` script now builds `awww` `awww-daemon`
+        - Removes `swww`
 - Added:
     - Option to build from source or debian pkgs
         - Currently Trixie is v0.55.2 from trixie-backports
@@ -18,12 +24,12 @@
 ## Jun 2026
 
 - Fixed:
-  - Build issue with `hypertookkit`
-    - `install.sh` script
-    - Was failing on `trixie` due to issues handling `triie-backports` repo
-    - `install.sh` wasn't showing CLI options with `-h/--help`
-  - Verified `update.sh` follows this fix and added more defensive code
- 
+    - Build issue with `hypertookkit`
+        - `install.sh` script
+        - Was failing on `trixie` due to issues handling `triie-backports` repo
+        - `install.sh` wasn't showing CLI options with `-h/--help`
+    - Verified `update.sh` follows this fix and added more defensive code
+
 - Updated:
 - Hyprland v0.55.4
 - Aquamarine v12.1
