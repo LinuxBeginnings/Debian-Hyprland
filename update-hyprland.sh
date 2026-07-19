@@ -1269,6 +1269,14 @@ while [[ $# -gt 0 ]]; do
         MODE=${2:-}
         shift 2
         ;;
+    --source)
+        MODE="source"
+        shift
+        ;;
+    --packages)
+        MODE="debian"
+        shift
+        ;;
     --show-versions | --versions)
         SHOW_VERSIONS=1
         shift
@@ -1374,12 +1382,24 @@ if [[ $SHOW_VERSIONS -eq 1 ]]; then
 fi
 
 if [[ "$MODE" == "auto" ]]; then
-    if [[ -t 0 ]]; then
-        prompt_mode_selection_with_versions "$SUITE"
-    else
-        MODE="source"
-        echo "[INFO] --mode auto in non-interactive context; defaulting to source mode." | tee -a "$SUMMARY_LOG"
-    fi
+    case "$HYPR_AUTO_MODE_POLICY" in
+    debian-default)
+        MODE="debian"
+        echo "[INFO] auto mode policy '$HYPR_AUTO_MODE_POLICY': defaulting to Debian package mode. Use --source to force source mode." | tee -a "$SUMMARY_LOG"
+        ;;
+    menu)
+        if [[ -t 0 ]]; then
+            prompt_mode_selection_with_versions "$SUITE"
+        else
+            MODE="debian"
+            echo "[INFO] --mode auto with menu policy in non-interactive context; defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
+        fi
+        ;;
+    *)
+        MODE="debian"
+        echo "[WARN] Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'. Falling back to Debian package mode." | tee -a "$SUMMARY_LOG"
+        ;;
+    esac
 fi
 
 if [[ "$MODE" == "source" && "${HYPR_REFRESH_ALL_TAGS:-0}" -eq 1 ]]; then
