@@ -207,6 +207,14 @@ EOF
         sed -ri 's/std::string\{"0x"\}\s*\+\s*value/std::string{"0x"} + std::string(value)/g' "$PARSER_UTILS" || true
     fi
 
+    # Compatibility: Python < 3.12 does not support "type Alias = ..." syntax (PEP 695).
+    # Some Hyprland tags ship this in meta/generateLuaStubs.py; rewrite to legacy alias form.
+    LUA_STUB_GEN="meta/generateLuaStubs.py"
+    if [ -f "$LUA_STUB_GEN" ] && grep -qE '^[[:space:]]*type[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=' "$LUA_STUB_GEN"; then
+        echo "${NOTE} Applying Python compatibility shim to $LUA_STUB_GEN (PEP 695 -> legacy alias)." | tee -a "$LOG"
+        perl -0777 -i -pe 's/^([[:space:]]*)type[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]*(.+)$/\1\2 = \3/gm' "$LUA_STUB_GEN" || true
+    fi
+
     # Compatibility: Hyprutils pointers now require explicit bool conversion in several call sites.
     LAYER_SURFACE_HPP="src/desktop/view/LayerSurface.hpp"
     if [ -f "$LAYER_SURFACE_HPP" ]; then
