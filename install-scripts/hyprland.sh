@@ -249,9 +249,39 @@ EOF
     if [ -f "$INPUT_MANAGER_CPP" ]; then
         perl -0777 -i -pe 's@if \(g_layoutManager->dragController\(\)->target\(\) && pFoundWindow != g_layoutManager->dragController\(\)->target\(\)\) \{@if (g_layoutManager->dragController()->target() && (!pFoundWindow || pFoundWindow->layoutTarget() != g_layoutManager->dragController()->target())) {@g' "$INPUT_MANAGER_CPP" || true
     fi
+    VIEW_HPP="src/desktop/view/View.hpp"
+    if [ -f "$VIEW_HPP" ] && ! grep -q '#include <optional>' "$VIEW_HPP"; then
+        sed -ri '1s/^#pragma once$/#pragma once\n\n#include <optional>/' "$VIEW_HPP" || true
+    fi
+    WLSURFACE_HPP="src/desktop/view/WLSurface.hpp"
+    if [ -f "$WLSURFACE_HPP" ] && ! grep -q '#include <optional>' "$WLSURFACE_HPP"; then
+        sed -ri '1s/^#pragma once$/#pragma once\n\n#include <optional>/' "$WLSURFACE_HPP" || true
+    fi
+    MISC_FUNCTIONS_CPP="src/helpers/MiscFunctions.cpp"
+    if [ -f "$MISC_FUNCTIONS_CPP" ] && grep -q 'std::ranges::starts_with' "$MISC_FUNCTIONS_CPP"; then
+        python3 - <<'PY'
+import pathlib
+import re
+
+path = pathlib.Path("src/helpers/MiscFunctions.cpp")
+text = path.read_text()
+pattern = re.compile(r"// clang-format off.*?// clang-format on", re.DOTALL)
+replacement = """    std::string str_lower;
+    str_lower.reserve(str.size());
+    for (auto ch : str) {
+        str_lower.push_back(sc<char>(std::tolower(ch)));
+    }
+    auto starts_with = [&](std::string_view prefix) { return str_lower.rfind(prefix, 0) == 0; };
+
+    return starts_with("true"sv) || starts_with("yes"sv) || starts_with("on"sv);"""
+new_text, count = pattern.subn(replacement, text, count=1)
+if count:
+    path.write_text(new_text)
+PY
+    fi
     COLOR_MANAGEMENT_CPP="src/protocols/ColorManagement.cpp"
     if [ -f "$COLOR_MANAGEMENT_CPP" ]; then
-        perl -0777 -i -pe 's@\(uintptr_t\)m_surface@\(uintptr_t\)m_surface.get\(\)@g' "$COLOR_MANAGEMENT_CPP" || true
+        perl -0777 -i -pe 's@\(uintptr_t\)m_surface@\(uintptr_t\)m_surface.lock\(\)\.get\(\)@g' "$COLOR_MANAGEMENT_CPP" || true
         perl -0777 -i -pe 's@return m_resource && m_resource->resource\(\);@return static_cast<bool>(m_resource) && m_resource->resource();@g' "$COLOR_MANAGEMENT_CPP" || true
     fi
     EXT_WORKSPACE_CPP="src/protocols/ExtWorkspace.cpp"
@@ -276,6 +306,8 @@ EOF
     if [ -f "$DATA_DEVICE_CPP" ]; then
         perl -0777 -i -pe 's@\(uintptr_t\)dragSurface@\(uintptr_t\)dragSurface.get\(\)@g' "$DATA_DEVICE_CPP" || true
         perl -0777 -i -pe 's@\(uintptr_t\)origin@\(uintptr_t\)origin.get\(\)@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@dragSurface\.get\(\)\.get\(\)@dragSurface.get()@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@origin\.get\(\)\.get\(\)@origin.get()@g' "$DATA_DEVICE_CPP" || true
         perl -0777 -i -pe 's@if \(m_dnd.dndSurface->m_current.texture <= 0 && m_dnd.dndSurface->m_mapped\) \{@if (!static_cast<bool>(m_dnd.dndSurface->m_current.texture) && m_dnd.dndSurface->m_mapped) {@g' "$DATA_DEVICE_CPP" || true
         perl -0777 -i -pe 's@return m_dnd.currentSource;@return static_cast<bool>(m_dnd.currentSource);@g' "$DATA_DEVICE_CPP" || true
     fi

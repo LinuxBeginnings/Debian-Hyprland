@@ -3,35 +3,36 @@
 ## Jul 2026
 
 - Fixed:
-  - `dry-run` caused errors
-  - `swww` doesn't build anymore
-    - Replaced `swww` with `awww`
-    - `swww.sh` script now builds `awww` `awww-daemon`
-    - Removes `swww`
-    - `update-hyprland.sh` build issue 
+    - `dry-run` caused errors
+    - `swww` doesn't build anymore
+        - Replaced `swww` with `awww`
+        - `swww.sh` script now builds `awww` `awww-daemon`
+        - Removes `swww`
+        - `update-hyprland.sh` build issue
+        - patched hyprland to build v0.56
 - Added:
     - Option to build from source or debian pkgs
         - Currently Trixie is v0.55.2 from trixie-backports
         - Testing+ is v0.55.4
     - Quickshell v0.3.0 debian package
         - Not wired in yet still testing
-    - `--source` and `--deb-pkg` flags to bypass propmpt 
+    - `--source` and `--deb-pkg` flags to bypass propmpt
 - Updated:
     - HOWTO guides to include all the new flags / options
-    - Aquamarine - v13.0 
-    - XDPH - v1.4.0 
-    - hyprutils - v14.0 
+    - Aquamarine - v13.0
+    - XDPH - v1.4.0
+    - hyprutils - v14.0
     - hyprsunset - v0.4.0
 
 ## Jun 2026
 
 - Fixed:
-  - Build issue with `hypertookkit`
-    - `install.sh` script
-    - Was failing on `trixie` due to issues handling `triie-backports` repo
-    - `install.sh` wasn't showing CLI options with `-h/--help`
-  - Verified `update.sh` follows this fix and added more defensive code
- 
+    - Build issue with `hypertookkit`
+        - `install.sh` script
+        - Was failing on `trixie` due to issues handling `triie-backports` repo
+        - `install.sh` wasn't showing CLI options with `-h/--help`
+    - Verified `update.sh` follows this fix and added more defensive code
+
 - Updated:
 - Hyprland v0.55.4
 - Aquamarine v12.1
