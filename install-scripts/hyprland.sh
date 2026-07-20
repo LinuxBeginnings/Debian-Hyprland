@@ -281,7 +281,8 @@ PY
     fi
     COLOR_MANAGEMENT_CPP="src/protocols/ColorManagement.cpp"
     if [ -f "$COLOR_MANAGEMENT_CPP" ]; then
-        perl -0777 -i -pe 's@\(uintptr_t\)m_surface@\(uintptr_t\)m_surface.lock\(\)\.get\(\)@g' "$COLOR_MANAGEMENT_CPP" || true
+        perl -0777 -i -pe 's@\(uintptr_t\)m_surface(?!\s*\.lock\(\)\.get\(\))@\(uintptr_t\)m_surface.lock\(\)\.get\(\)@g' "$COLOR_MANAGEMENT_CPP" || true
+        perl -0777 -i -pe 's@m_surface\.lock\(\)\.get\(\)\.get\(\)@m_surface.lock().get()@g' "$COLOR_MANAGEMENT_CPP" || true
         perl -0777 -i -pe 's@return m_resource && m_resource->resource\(\);@return static_cast<bool>(m_resource) && m_resource->resource();@g' "$COLOR_MANAGEMENT_CPP" || true
     fi
     EXT_WORKSPACE_CPP="src/protocols/ExtWorkspace.cpp"
@@ -290,7 +291,8 @@ PY
     fi
     FIFO_CPP="src/protocols/Fifo.cpp"
     if [ -f "$FIFO_CPP" ]; then
-        perl -0777 -i -pe 's@\(uintptr_t\)RESOURCE@\(uintptr_t\)RESOURCE.get\(\)@g' "$FIFO_CPP" || true
+        perl -0777 -i -pe 's@\(uintptr_t\)RESOURCE(?!\s*\.get\(\))@\(uintptr_t\)RESOURCE.get\(\)@g' "$FIFO_CPP" || true
+        perl -0777 -i -pe 's@RESOURCE\.get\(\)\.get\(\)@RESOURCE.get()@g' "$FIFO_CPP" || true
     fi
     LAYER_SHELL_CPP="src/protocols/LayerShell.cpp"
     if [ -f "$LAYER_SHELL_CPP" ]; then
