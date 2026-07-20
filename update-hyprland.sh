@@ -52,6 +52,7 @@ mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
 MODE="auto"
+HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-debian-default}"
 DEBIAN_REMOVE=0
 DEBIAN_INSTALL=0
 SHOW_VERSIONS=0
@@ -490,6 +491,7 @@ Options:
       --mode MODE       Select mode: auto (default), source, or debian
       --source          Alias for --mode source (skip interactive mode selection)
       --deb-pkg         Alias for --mode debian (skip interactive mode selection)
+      --packages        Alias for --mode debian (skip interactive mode selection)
       --show-versions   Query Debian/local/upstream Hyprland versions and print them
       --versions        Alias for --show-versions
       --debian-install  Install Hyprland stack from Debian repos and skip source build
@@ -1236,6 +1238,10 @@ while [[ $# -gt 0 ]]; do
         MODE="debian"
         shift
         ;;
+    --packages)
+        MODE="debian"
+        shift
+        ;;
     --show-versions | --versions)
         SHOW_VERSIONS=1
         shift
@@ -1339,12 +1345,24 @@ if [[ $SHOW_VERSIONS -eq 1 ]]; then
 fi
 
 if [[ "$MODE" == "auto" ]]; then
-    if [[ -t 0 ]]; then
-        prompt_mode_selection_with_versions "$SUITE"
-    else
-        MODE="source"
-        echo "[INFO] --mode auto in non-interactive context; defaulting to source mode." | tee -a "$SUMMARY_LOG"
-    fi
+    case "$HYPR_AUTO_MODE_POLICY" in
+    debian-default)
+        MODE="debian"
+        echo "[INFO] Auto mode policy '$HYPR_AUTO_MODE_POLICY': defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
+        ;;
+    menu)
+        if [[ -t 0 ]]; then
+            prompt_mode_selection_with_versions "$SUITE"
+        else
+            MODE="debian"
+            echo "[INFO] Auto mode policy '$HYPR_AUTO_MODE_POLICY' in non-interactive context: defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
+        fi
+        ;;
+    *)
+        MODE="debian"
+        echo "[WARN] Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'; defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
+        ;;
+    esac
 fi
 
 if [[ "$MODE" == "source" && "${HYPR_REFRESH_ALL_TAGS:-0}" -eq 1 ]]; then
@@ -1366,6 +1384,59 @@ if [[ $PACKAGE_CLEANUP -eq 1 && $DO_INSTALL -eq 0 && $DO_DRY_RUN -eq 0 ]]; then
     exit 0
 fi
 
+
+ensure_libinput_min_version_from_local_debs() {
+    local required="1.29"
+    local installed
+    local deb_dir="$REPO_ROOT/debs/libinput-testing"
+    local libinput10_deb=""
+    local libinput_dev_deb=""
+    local libinput_bin_deb=""
+    local libwacom9_deb=""
+    local libwacom_common_deb=""
+    local libwacom_dev_deb=""
+    local -a install_debs=()
+
+    installed="$(dpkg-query -W -f='${Version}' libinput10 2>/dev/null || true)"
+    if [[ -n "$installed" ]] && dpkg --compare-versions "$installed" ge "$required"; then
+        echo "[INFO] libinput10 version $installed satisfies required >= $required." | tee -a "$SUMMARY_LOG"
+        return 0
+    fi
+
+    echo "[WARN] libinput10 version '${installed:-not installed}' is below required >= $required." | tee -a "$SUMMARY_LOG"
+    echo "[INFO] Attempting local libinput upgrade from $deb_dir" | tee -a "$SUMMARY_LOG"
+
+    if [[ ! -d "$deb_dir" ]]; then
+        echo "[ERROR] Local libinput package directory not found: $deb_dir" | tee -a "$SUMMARY_LOG"
+        return 1
+    fi
+
+    libinput10_deb="$(ls -1 "$deb_dir"/libinput10_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libinput_dev_deb="$(ls -1 "$deb_dir"/libinput-dev_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libinput_bin_deb="$(ls -1 "$deb_dir"/libinput-bin_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libwacom9_deb="$(ls -1 "$deb_dir"/libwacom9_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libwacom_common_deb="$(ls -1 "$deb_dir"/libwacom-common_*_all.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libwacom_dev_deb="$(ls -1 "$deb_dir"/libwacom-dev_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+
+    if [[ -z "$libinput10_deb" || -z "$libinput_dev_deb" || -z "$libinput_bin_deb" || -z "$libwacom_dev_deb" ]]; then
+        echo "[ERROR] Missing required local .deb files (need libinput10, libinput-bin, libinput-dev, libwacom-dev) in $deb_dir" | tee -a "$SUMMARY_LOG"
+        return 1
+    fi
+    [[ -n "$libwacom_common_deb" ]] && install_debs+=("$libwacom_common_deb")
+    [[ -n "$libwacom9_deb" ]] && install_debs+=("$libwacom9_deb")
+    install_debs+=("$libwacom_dev_deb")
+    install_debs+=("$libinput10_deb" "$libinput_bin_deb" "$libinput_dev_deb")
+    sudo apt-get install -y "${install_debs[@]}" | tee -a "$SUMMARY_LOG"
+
+    installed="$(dpkg-query -W -f='${Version}' libinput10 2>/dev/null || true)"
+    if [[ -n "$installed" ]] && dpkg --compare-versions "$installed" ge "$required"; then
+        echo "[OK] libinput10 upgraded to $installed (>= $required)." | tee -a "$SUMMARY_LOG"
+        return 0
+    fi
+
+    echo "[ERROR] libinput10 is still '${installed:-not installed}' after local .deb install; required >= $required." | tee -a "$SUMMARY_LOG"
+    return 1
+}
 if [[ "$MODE" == "debian" ]]; then
     if [[ "${APT_VERSION_PREP_DONE:-0}" -eq 1 ]]; then
         echo "[INFO] APT metadata already refreshed during Hyprland version discovery." | tee -a "$SUMMARY_LOG"
@@ -1399,6 +1470,7 @@ if [[ "$MODE" == "debian" ]]; then
     echo "[INFO] Debian package mode dry-run check complete for suite '$SUITE'." | tee -a "$SUMMARY_LOG"
     exit 0
 fi
+ensure_libinput_min_version_from_local_debs
 ensure_re2_absl_consistent
 if [[ $DO_DRY_RUN -eq 0 && $DO_INSTALL -eq 0 ]]; then
     echo "[INFO] No build option specified. Defaulting to --dry-run." | tee -a "$SUMMARY_LOG"

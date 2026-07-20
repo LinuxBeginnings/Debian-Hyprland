@@ -427,6 +427,59 @@ install_debian_hyprland_stack() {
     fi
 }
 
+ensure_libinput_min_version_from_local_debs() {
+    local required="1.29"
+    local installed
+    local deb_dir="$PWD/debs/libinput-testing"
+    local libinput10_deb=""
+    local libinput_dev_deb=""
+    local libinput_bin_deb=""
+    local libwacom9_deb=""
+    local libwacom_common_deb=""
+    local libwacom_dev_deb=""
+    local -a install_debs=()
+
+    installed="$(dpkg-query -W -f='${Version}' libinput10 2>/dev/null || true)"
+    if [ -n "$installed" ] && dpkg --compare-versions "$installed" ge "$required"; then
+        echo "${INFO} libinput10 version $installed satisfies required >= $required." | tee -a "$LOG"
+        return 0
+    fi
+
+    echo "${WARN} libinput10 version '${installed:-not installed}' is below required >= $required." | tee -a "$LOG"
+    echo "${INFO} Attempting local libinput upgrade from $deb_dir" | tee -a "$LOG"
+
+    if [ ! -d "$deb_dir" ]; then
+        echo "${ERROR} Local libinput package directory not found: $deb_dir" | tee -a "$LOG"
+        return 1
+    fi
+
+    libinput10_deb="$(ls -1 "$deb_dir"/libinput10_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libinput_dev_deb="$(ls -1 "$deb_dir"/libinput-dev_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libinput_bin_deb="$(ls -1 "$deb_dir"/libinput-bin_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libwacom9_deb="$(ls -1 "$deb_dir"/libwacom9_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libwacom_common_deb="$(ls -1 "$deb_dir"/libwacom-common_*_all.deb 2>/dev/null | sort -V | tail -n1 || true)"
+    libwacom_dev_deb="$(ls -1 "$deb_dir"/libwacom-dev_*_amd64.deb 2>/dev/null | sort -V | tail -n1 || true)"
+
+    if [ -z "$libinput10_deb" ] || [ -z "$libinput_dev_deb" ] || [ -z "$libinput_bin_deb" ] || [ -z "$libwacom_dev_deb" ]; then
+        echo "${ERROR} Missing required local .deb files (need libinput10, libinput-bin, libinput-dev, libwacom-dev) in $deb_dir" | tee -a "$LOG"
+        return 1
+    fi
+    [ -n "$libwacom_common_deb" ] && install_debs+=("$libwacom_common_deb")
+    [ -n "$libwacom9_deb" ] && install_debs+=("$libwacom9_deb")
+    install_debs+=("$libwacom_dev_deb")
+    install_debs+=("$libinput10_deb" "$libinput_bin_deb" "$libinput_dev_deb")
+    sudo apt-get install -y "${install_debs[@]}" 2>&1 | tee -a "$LOG"
+
+    installed="$(dpkg-query -W -f='${Version}' libinput10 2>/dev/null || true)"
+    if [ -n "$installed" ] && dpkg --compare-versions "$installed" ge "$required"; then
+        echo "${OK} libinput10 upgraded to $installed (>= $required)." | tee -a "$LOG"
+        return 0
+    fi
+
+    echo "${ERROR} libinput10 is still '${installed:-not installed}' after local .deb install; required >= $required." | tee -a "$LOG"
+    return 1
+}
+
 # Warning: End of Life Support
 printf "\n%.0s" {1..2}
 print_color $YELLOW "
@@ -1132,6 +1185,10 @@ else
     sleep 1
     execute_script "00-dependencies.sh" || {
         echo "${ERROR:-[ERROR]} Dependencies installation failed" | tee -a "$LOG"
+        exit 1
+    }
+    ensure_libinput_min_version_from_local_debs || {
+        echo "${ERROR:-[ERROR]} libinput requirement setup failed" | tee -a "$LOG"
         exit 1
     }
 
