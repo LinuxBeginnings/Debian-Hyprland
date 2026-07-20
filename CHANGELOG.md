@@ -3,11 +3,8 @@
 ## Jul 2026
 
 - Updated:
-- `install.sh` and `update-hyprland.sh` to only install deb pkgs
-    - Currently building from source fails
-    - Will re-enable once it's working
-    - Trixie pkgs is at v0.55.2
-    - Testing/SID pkgs are at v0.55.4
+    - `install.sh` and `update-hyprland.sh`
+        - Now builds Hyprland v0.56
 - Fixed:
     - `dry-run` caused errors
     - `swww` doesn't build anymore
