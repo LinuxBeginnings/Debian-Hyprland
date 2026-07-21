@@ -45,6 +45,10 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
   exit 1
 fi
 
+# Prefer source-stack pkg-config metadata first to keep runtime ABI consistent.
+export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+export CMAKE_PREFIX_PATH="/usr/local:/usr"
+
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprgraphics.log"
 MLOG="install-$(date +%d-%H%M%S)_hyprgraphics2.log"
@@ -73,7 +77,7 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprgraphics.git "$SR
     cd "$SRC_DIR" || exit 1
     BUILD_DIR="$BUILD_ROOT/hyprgraphics"
     rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
-	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr -S . -B "$BUILD_DIR"
+    cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" --config Release --target hyprgraphics -j`nproc 2>/dev/null || getconf _NPROCESSORS_CONF`
     if [ $DO_INSTALL -eq 1 ]; then
         if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG" ; then

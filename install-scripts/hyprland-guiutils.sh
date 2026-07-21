@@ -24,6 +24,7 @@ guiutils=(
 	qt6-5compat-dev
     libqt6waylandclient6
     qml6-module-qtwayland-client-texturesharing
+    libhyprlang-dev
 )
 
 #specific branch or release
@@ -64,6 +65,10 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
   echo "Failed to source Global_functions.sh"
   exit 1
 fi
+
+# Prefer system pkg-config metadata to avoid stale /usr/local *.pc linker paths.
+export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+export CMAKE_PREFIX_PATH="/usr"
 
 # Set the name of the log file to include the current date and time
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprland-guiutils.log"

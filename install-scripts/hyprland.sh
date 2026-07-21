@@ -73,6 +73,57 @@ ensure_re2_absl_consistent() {
     fi
 }
 
+# Ensure hyprutils/hyprwire linker targets are available for tools built in this module.
+ensure_hypr_link_libs() {
+    local hu_link hw_link hl_link aq_link hu_script hw_script
+    hu_link=""
+    hw_link=""
+    hl_link=""
+    aq_link=""
+
+    for p in /usr/lib/x86_64-linux-gnu/libhyprutils.so /usr/local/lib/libhyprutils.so /usr/local/lib64/libhyprutils.so; do
+        [ -e "$p" ] && hu_link="$p" && break
+    done
+    for p in /usr/lib/x86_64-linux-gnu/libhyprwire.so /usr/local/lib/libhyprwire.so /usr/local/lib64/libhyprwire.so; do
+        [ -e "$p" ] && hw_link="$p" && break
+    done
+    for p in /usr/lib/x86_64-linux-gnu/libhyprlang.so /usr/local/lib/libhyprlang.so /usr/local/lib64/libhyprlang.so; do
+        [ -e "$p" ] && hl_link="$p" && break
+    done
+    for p in /usr/lib/x86_64-linux-gnu/libaquamarine.so /usr/local/lib/libaquamarine.so /usr/local/lib64/libaquamarine.so; do
+        [ -e "$p" ] && aq_link="$p" && break
+    done
+
+    hu_script="$PARENT_DIR/install-scripts/hyprutils.sh"
+    hw_script="$PARENT_DIR/install-scripts/hyprwire.sh"
+
+    if [ -z "$hu_link" ]; then
+        echo "${NOTE} libhyprutils linker symlink not found. Installing libhyprutils-dev..." | tee -a "$LOG"
+        install_package libhyprutils-dev 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$hw_link" ]; then
+        echo "${NOTE} libhyprwire linker symlink not found. Installing libhyprwire-dev..." | tee -a "$LOG"
+        install_package libhyprwire-dev 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$hl_link" ]; then
+        echo "${NOTE} libhyprlang linker symlink not found. Installing libhyprlang-dev..." | tee -a "$LOG"
+        install_package libhyprlang-dev 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$aq_link" ]; then
+        echo "${NOTE} libaquamarine linker symlink not found. Installing libaquamarine-dev..." | tee -a "$LOG"
+        install_package libaquamarine-dev 2>&1 | tee -a "$LOG" || true
+    fi
+
+    if [ -z "$hu_link" ] && [ -x "$hu_script" ]; then
+        echo "${NOTE} Falling back to source build for hyprutils..." | tee -a "$LOG"
+        "$hu_script" 2>&1 | tee -a "$LOG" || true
+    fi
+    if [ -z "$hw_link" ] && [ -x "$hw_script" ]; then
+        echo "${NOTE} Falling back to source build for hyprwire..." | tee -a "$LOG"
+        "$hw_script" 2>&1 | tee -a "$LOG" || true
+    fi
+}
+
 # Set the name of the log file to include the current date and time
 LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprland.log"
 MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprland2.log"
@@ -83,6 +134,7 @@ printf "\n%.0s" {1..1}
 
 printf "\n%.0s" {1..1}
 ensure_re2_absl_consistent
+ensure_hypr_link_libs
 
 # Clone, build, and install Hyprland using Cmake
 printf "${NOTE} Cloning and Installing ${YELLOW}Hyprland $tag${RESET} ...\n"
@@ -155,6 +207,143 @@ EOF
         sed -ri 's/std::string\{"0x"\}\s*\+\s*value/std::string{"0x"} + std::string(value)/g' "$PARSER_UTILS" || true
     fi
 
+    # Compatibility: Python < 3.12 does not support "type Alias = ..." syntax (PEP 695).
+    # Some Hyprland tags ship this in meta/generateLuaStubs.py; rewrite to legacy alias form.
+    LUA_STUB_GEN="meta/generateLuaStubs.py"
+    if [ -f "$LUA_STUB_GEN" ] && grep -qE '^[[:space:]]*type[[:space:]]+[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=' "$LUA_STUB_GEN"; then
+        echo "${NOTE} Applying Python compatibility shim to $LUA_STUB_GEN (PEP 695 -> legacy alias)." | tee -a "$LOG"
+        perl -0777 -i -pe 's/^([[:space:]]*)type[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)[[:space:]]*=[[:space:]]*(.+)$/\1\2 = \3/gm' "$LUA_STUB_GEN" || true
+    fi
+
+    # Compatibility: Hyprutils pointers now require explicit bool conversion in several call sites.
+    LAYER_SURFACE_HPP="src/desktop/view/LayerSurface.hpp"
+    if [ -f "$LAYER_SURFACE_HPP" ]; then
+        sed -ri 's/return[[:space:]]+l[[:space:]]*;/return static_cast<bool>(l);/g' "$LAYER_SURFACE_HPP" || true
+    fi
+
+    DRM_SYNCOBJ_HPP="src/protocols/DRMSyncobj.hpp"
+    if [ -f "$DRM_SYNCOBJ_HPP" ]; then
+        sed -ri 's/return[[:space:]]+m_timeline[[:space:]]*;/return static_cast<bool>(m_timeline);/g' "$DRM_SYNCOBJ_HPP" || true
+    fi
+    CONFIG_ACTIONS_CPP="src/config/shared/actions/ConfigActions.cpp"
+    if [ -f "$CONFIG_ACTIONS_CPP" ]; then
+        sed -ri 's/const[[:space:]]+bool[[:space:]]+ISWINDOWGROUP[[:space:]]*=[[:space:]]*window->m_group[[:space:]]*;/const bool ISWINDOWGROUP = static_cast<bool>(window->m_group);/g' "$CONFIG_ACTIONS_CPP" || true
+    fi
+    SESSION_LOCK_CPP="src/desktop/view/SessionLock.cpp"
+    if [ -f "$SESSION_LOCK_CPP" ]; then
+        perl -0777 -i -pe 's@return e == m_self;@return e == m_self.lock();@g' "$SESSION_LOCK_CPP" || true
+    fi
+    WL_SURFACE_CPP="src/desktop/view/WLSurface.cpp"
+    if [ -f "$WL_SURFACE_CPP" ]; then
+        perl -0777 -i -pe 's@bool CWLSurface::exists\(\) const \{\n    return m_resource;\n\}@bool CWLSurface::exists() const {\n    return static_cast<bool>(m_resource);\n}@g' "$WL_SURFACE_CPP" || true
+    fi
+    WINDOW_CPP="src/desktop/view/Window.cpp"
+    if [ -f "$WINDOW_CPP" ]; then
+        perl -0777 -i -pe 's@g_layoutManager->dragController\(\)->target\(\) == m_self@g_layoutManager->dragController()->target() == layoutTarget()@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@m_self\.lock\(\) == g_layoutManager->dragController\(\)->target\(\)@layoutTarget() == g_layoutManager->dragController()->target()@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@bool hasSizeHints = m_xwaylandSurface \? m_xwaylandSurface->m_sizeHints : false;@bool hasSizeHints = m_xwaylandSurface ? static_cast<bool>(m_xwaylandSurface->m_sizeHints) : false;@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@bool hasTopLevel  = m_xdgSurface \? m_xdgSurface->m_toplevel : false;@bool hasTopLevel  = m_xdgSurface ? static_cast<bool>(m_xdgSurface->m_toplevel) : false;@g' "$WINDOW_CPP" || true
+        perl -0777 -i -pe 's@bool        isGroup               = m_group;@bool        isGroup               = static_cast<bool>(m_group);@g' "$WINDOW_CPP" || true
+    fi
+    ANR_MANAGER_CPP="src/managers/ANRManager.cpp"
+    if [ -f "$ANR_MANAGER_CPP" ]; then
+        perl -0777 -i -pe 's@std::erase_if\(m_data, \[&window\]\(auto& w\) \{ return w == window; \}\);@std::erase_if(m_data, [&window](auto& w) { return w->fitsWindow(window); });@g' "$ANR_MANAGER_CPP" || true
+    fi
+    SCROLLING_ALGO_CPP="src/layout/algorithm/tiled/scrolling/ScrollingAlgorithm.cpp"
+    if [ -f "$SCROLLING_ALGO_CPP" ]; then
+        perl -0777 -i -pe 's@TARGET->target->setPositionGlobal\(targetBoxWithGaps\(TARGET->layoutBox, i, j, FS\)\);@TARGET->target->setPositionGlobal(targetBoxWithGaps(TARGET->layoutBox, i, j, static_cast<bool>(FS)));@g' "$SCROLLING_ALGO_CPP" || true
+    fi
+    INPUT_MANAGER_CPP="src/managers/input/InputManager.cpp"
+    if [ -f "$INPUT_MANAGER_CPP" ]; then
+        perl -0777 -i -pe 's@if \(g_layoutManager->dragController\(\)->target\(\) && pFoundWindow != g_layoutManager->dragController\(\)->target\(\)\) \{@if (g_layoutManager->dragController()->target() && (!pFoundWindow || pFoundWindow->layoutTarget() != g_layoutManager->dragController()->target())) {@g' "$INPUT_MANAGER_CPP" || true
+    fi
+    VIEW_HPP="src/desktop/view/View.hpp"
+    if [ -f "$VIEW_HPP" ] && ! grep -q '#include <optional>' "$VIEW_HPP"; then
+        sed -ri '1s/^#pragma once$/#pragma once\n\n#include <optional>/' "$VIEW_HPP" || true
+    fi
+    WLSURFACE_HPP="src/desktop/view/WLSurface.hpp"
+    if [ -f "$WLSURFACE_HPP" ] && ! grep -q '#include <optional>' "$WLSURFACE_HPP"; then
+        sed -ri '1s/^#pragma once$/#pragma once\n\n#include <optional>/' "$WLSURFACE_HPP" || true
+    fi
+    MISC_FUNCTIONS_CPP="src/helpers/MiscFunctions.cpp"
+    if [ -f "$MISC_FUNCTIONS_CPP" ] && grep -q 'std::ranges::starts_with' "$MISC_FUNCTIONS_CPP"; then
+        python3 - <<'PY'
+import pathlib
+import re
+
+path = pathlib.Path("src/helpers/MiscFunctions.cpp")
+text = path.read_text()
+pattern = re.compile(r"// clang-format off.*?// clang-format on", re.DOTALL)
+replacement = """    std::string str_lower;
+    str_lower.reserve(str.size());
+    for (auto ch : str) {
+        str_lower.push_back(sc<char>(std::tolower(ch)));
+    }
+    auto starts_with = [&](std::string_view prefix) { return str_lower.rfind(prefix, 0) == 0; };
+
+    return starts_with("true"sv) || starts_with("yes"sv) || starts_with("on"sv);"""
+new_text, count = pattern.subn(replacement, text, count=1)
+if count:
+    path.write_text(new_text)
+PY
+    fi
+    COLOR_MANAGEMENT_CPP="src/protocols/ColorManagement.cpp"
+    if [ -f "$COLOR_MANAGEMENT_CPP" ]; then
+        perl -0777 -i -pe 's@\(uintptr_t\)m_surface(?!\s*\.lock\(\)\.get\(\))@\(uintptr_t\)m_surface.lock\(\)\.get\(\)@g' "$COLOR_MANAGEMENT_CPP" || true
+        perl -0777 -i -pe 's@m_surface\.lock\(\)\.get\(\)\.get\(\)@m_surface.lock().get()@g' "$COLOR_MANAGEMENT_CPP" || true
+        perl -0777 -i -pe 's@return m_resource && m_resource->resource\(\);@return static_cast<bool>(m_resource) && m_resource->resource();@g' "$COLOR_MANAGEMENT_CPP" || true
+    fi
+    EXT_WORKSPACE_CPP="src/protocols/ExtWorkspace.cpp"
+    if [ -f "$EXT_WORKSPACE_CPP" ]; then
+        perl -0777 -i -pe 's@return m_resource;@return static_cast<bool>(m_resource);@g' "$EXT_WORKSPACE_CPP" || true
+    fi
+    FIFO_CPP="src/protocols/Fifo.cpp"
+    if [ -f "$FIFO_CPP" ]; then
+        perl -0777 -i -pe 's@\(uintptr_t\)RESOURCE(?!\s*\.get\(\))@\(uintptr_t\)RESOURCE.get\(\)@g' "$FIFO_CPP" || true
+        perl -0777 -i -pe 's@RESOURCE\.get\(\)\.get\(\)@RESOURCE.get()@g' "$FIFO_CPP" || true
+    fi
+    LAYER_SHELL_CPP="src/protocols/LayerShell.cpp"
+    if [ -f "$LAYER_SHELL_CPP" ]; then
+        perl -0777 -i -pe 's@bool attachedBuffer = m_surface->m_current.texture;@bool attachedBuffer = static_cast<bool>(m_surface->m_current.texture);@g' "$LAYER_SHELL_CPP" || true
+        perl -0777 -i -pe 's@return m_resource->resource\(\);@return static_cast<bool>(m_resource->resource());@g' "$LAYER_SHELL_CPP" || true
+    fi
+    BUFFER_CPP="src/protocols/types/Buffer.cpp"
+    if [ -f "$BUFFER_CPP" ]; then
+        perl -0777 -i -pe 's@SP<IHLBuffer> CHLBufferReference::operator->\(\) const \{\n    return static_cast<bool>\(m_buffer\);\n\}@SP<IHLBuffer> CHLBufferReference::operator->() const {\n    return m_buffer;\n}@g' "$BUFFER_CPP" || true
+        perl -0777 -i -pe 's@CHLBufferReference::operator bool\(\) const \{\n    return m_buffer;\n\}@CHLBufferReference::operator bool() const {\n    return static_cast<bool>(m_buffer);\n}@g' "$BUFFER_CPP" || true
+    fi
+    DATA_DEVICE_CPP="src/protocols/core/DataDevice.cpp"
+    if [ -f "$DATA_DEVICE_CPP" ]; then
+        perl -0777 -i -pe 's@\(uintptr_t\)dragSurface@\(uintptr_t\)dragSurface.get\(\)@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@\(uintptr_t\)origin@\(uintptr_t\)origin.get\(\)@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@dragSurface\.get\(\)\.get\(\)@dragSurface.get()@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@origin\.get\(\)\.get\(\)@origin.get()@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@if \(m_dnd.dndSurface->m_current.texture <= 0 && m_dnd.dndSurface->m_mapped\) \{@if (!static_cast<bool>(m_dnd.dndSurface->m_current.texture) && m_dnd.dndSurface->m_mapped) {@g' "$DATA_DEVICE_CPP" || true
+        perl -0777 -i -pe 's@return m_dnd.currentSource;@return static_cast<bool>(m_dnd.currentSource);@g' "$DATA_DEVICE_CPP" || true
+    fi
+    GL_RENDERER_CPP="src/render/GLRenderer.cpp"
+    if [ -f "$GL_RENDERER_CPP" ]; then
+        perl -0777 -i -pe 's@return m_currentRenderbuffer;@return static_cast<bool>(m_currentRenderbuffer);@g' "$GL_RENDERER_CPP" || true
+    fi
+    OPENGL_CPP="src/render/OpenGL.cpp"
+    if [ -f "$OPENGL_CPP" ]; then
+        perl -0777 -i -pe 's@m_fakeFrame = fb;@m_fakeFrame = static_cast<bool>(fb);@g' "$OPENGL_CPP" || true
+    fi
+    X_SURFACE_CPP="src/xwayland/XSurface.cpp"
+    if [ -f "$X_SURFACE_CPP" ]; then
+        perl -0777 -i -pe 's@bool connected = m_listeners.destroySurface;@bool connected = static_cast<bool>(m_listeners.destroySurface);@g' "$X_SURFACE_CPP" || true
+    fi
+    UNIFIED_SWIPE_CPP="src/managers/input/UnifiedWorkspaceSwipeGesture.cpp"
+    if [ -f "$UNIFIED_SWIPE_CPP" ]; then
+        perl -0777 -i -pe 's@return m_workspaceBegin;@return static_cast<bool>(m_workspaceBegin);@g' "$UNIFIED_SWIPE_CPP" || true
+    fi
+
+    # Compatibility: libstdc++ on Debian 13 may reject two-arg std::views::filter adaptor invocation.
+    COMPOSITOR_HPP="src/Compositor.hpp"
+    if [ -f "$COMPOSITOR_HPP" ]; then
+        perl -0777 -i -pe 's@return std::views::filter\(m_workspaces, \[\]\(const auto& e\) \{ return e; \}\);@return m_workspaces | std::views::filter([](const auto& e) { return static_cast<bool>(e); });@g' "$COMPOSITOR_HPP" || true
+    fi
+
     # Apply patch only if it applies cleanly; otherwise skip
     if [ -f "$PARENT_DIR/assets/0001-fix-hyprland-compile-issue.patch" ]; then
         if patch -p1 --dry-run <"$PARENT_DIR/assets/0001-fix-hyprland-compile-issue.patch" >/dev/null 2>&1; then
@@ -205,7 +394,7 @@ EOF
 
     # By default, build Hyprland with bundled hyprutils/hyprlang to avoid version mismatches
     # You can force system libs by exporting USE_SYSTEM_HYPRLIBS=1 before running this script.
-    USE_SYSTEM=${USE_SYSTEM_HYPRLIBS:-1}
+    USE_SYSTEM=${USE_SYSTEM_HYPRLIBS:-0}
   if [ "$USE_SYSTEM" = "1" ]; then
     export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
     export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"

@@ -8,6 +8,12 @@
 # 💫 https://github.com/LinuxBeginnings 💫 #
 # Hypr Ecosystem #
 # hyprtoolkit #
+hyprtoolkit_deps=(
+    libhyprutils-dev
+    libhyprlang-dev
+    libaquamarine-dev
+    libhyprgraphics-dev
+)
 
 #specific branch or release
 tag="v0.4.1"
@@ -39,9 +45,23 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
   exit 1
 fi
 
+# Prefer system pkg-config metadata to avoid stale /usr/local *.pc linker paths.
+export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
+export CMAKE_PREFIX_PATH="/usr"
+
 # Set the name of the log file to include the current date and time
 LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprtoolkit.log"
 MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprtoolkit2.log"
+
+printf "\n%s - Installing ${YELLOW}hyprtoolkit dependencies${RESET} .... \n" "${INFO}"
+for PKG1 in "${hyprtoolkit_deps[@]}"; do
+  re_install_package "$PKG1" 2>&1 | tee -a "$LOG"
+  if [ $? -ne 0 ]; then
+    echo -e "\e[1A\e[K${ERROR} - ${YELLOW}$PKG1${RESET} Package installation failed, Please check the installation logs"
+    exit 1
+  fi
+done
+printf "\n%.0s" {1..1}
 
 # Clone, build, and install using Cmake
 printf "${NOTE} Cloning hyprtoolkit...\n"

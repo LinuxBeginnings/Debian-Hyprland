@@ -92,6 +92,25 @@ Selecciona [O/n/d]: _
 - `-n, --dry-run` Simula acciones (usa `apt-get -s`, imprime cambios sin aplicarlos).
 - `-h, --help` Muestra ayuda, opciones y ejemplos.
 
+## Flags relacionados (scripts de instalación/actualización)
+
+Si ejecutas los flujos completos del proyecto alrededor de NVIDIA, estos flags nuevos están disponibles:
+
+- `install.sh`
+    - `--mode <source|debian|auto>`
+    - `--source` (alias de modo source)
+    - `--packages` (alias de modo debian)
+    - `--build-trixie`, `--no-trixie`
+    - `--force-reinstall`
+    - `--preset <file>`
+    - `--tty`
+- `update-hyprland.sh`
+    - `--mode <source|debian|auto>`
+    - `--source` (alias de `--mode source`)
+    - `--deb-pkg` (alias de `--mode debian`)
+    - `--debian-install`, `--debian-remove`
+    - `--show-versions`
+
 Ejemplos
 
 ```bash

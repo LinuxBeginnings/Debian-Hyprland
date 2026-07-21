@@ -80,6 +80,13 @@ fi
 printf "${INFO} Installing ${YELLOW}hyprlock ${git_ref:-default-branch}${RESET} ...\n"
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprlock.git "$SRC_DIR"; then
     cd "$SRC_DIR" || exit 1
+    # Compatibility: Hyprutils shared pointers now use explicit bool conversion.
+    # Older code returning shared pointers directly from bool functions fails.
+    SEAT_CPP="src/core/Seat.cpp"
+    if [ -f "$SEAT_CPP" ] && grep -q 'return[[:space:]]*m_pSeat[[:space:]]*;' "$SEAT_CPP"; then
+        echo "${NOTE} Applying hyprlock shared-pointer bool compatibility patch."
+        sed -ri 's/return[[:space:]]*m_pSeat[[:space:]]*;/return static_cast<bool>(m_pSeat);/g' "$SEAT_CPP"
+    fi
     BUILD_DIR="$BUILD_ROOT/hyprlock"
     rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 	cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -S . -B "$BUILD_DIR"

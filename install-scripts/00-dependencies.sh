@@ -126,6 +126,7 @@ hyprland_dep=(
     libc6
     libcairo2-dev
     libdrm2
+    libeis-dev
     libjpeg-dev
     libjxl-dev
     libmagic-dev

@@ -218,6 +218,19 @@ EOF
     fi
 
     if [ -f CMakeLists.txt ]; then
+        # Compatibility for newer Hyprutils where CSharedPointer->bool is explicit.
+        # Upstream code may do: available = GUI::backend; which fails with
+        # "cannot convert CSharedPointer<...> to bool in assignment".
+        GUI_CPP="barmaids/hyprtavern-perm-daemon/src/ui/GUI.cpp"
+        if [ -f "$GUI_CPP" ] && grep -q 'available[[:space:]]*=[[:space:]]*GUI::backend[[:space:]]*;' "$GUI_CPP"; then
+            echo "${NOTE} Applying hyprtavern shared-pointer bool compatibility patch."
+            sed -ri 's/available[[:space:]]*=[[:space:]]*GUI::backend[[:space:]]*;/available = static_cast<bool>(GUI::backend);/g' "$GUI_CPP"
+        fi
+        SERVER_HANDLER_CPP="src/core/ServerHandler.cpp"
+        if [ -f "$SERVER_HANDLER_CPP" ] && grep -q 'return[[:space:]]*m_socket[[:space:]]*;' "$SERVER_HANDLER_CPP"; then
+            echo "${NOTE} Applying hyprtavern ServerHandler bool-return compatibility patch."
+            sed -ri 's/return[[:space:]]*m_socket[[:space:]]*;/return static_cast<bool>(m_socket);/g' "$SERVER_HANDLER_CPP"
+        fi
         CMAKE_FLAGS=(
             -DCMAKE_BUILD_TYPE=Release
             -DCMAKE_CXX_STANDARD=23
