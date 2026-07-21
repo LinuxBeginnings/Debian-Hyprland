@@ -381,6 +381,45 @@ install_debian_hypr_packages() {
         sudo apt-get install -y "${install_list[@]}"
     fi
 }
+
+has_debian_hyprland_installed() {
+    dpkg -s hyprland >/dev/null 2>&1
+}
+
+has_source_hyprland_artifacts() {
+    [[ -x /usr/local/bin/Hyprland ]] || [[ -x /usr/local/bin/hyprland ]] || [[ -f /usr/local/share/wayland-sessions/hyprland.desktop ]]
+}
+
+offer_debian_packages_if_source_detected() {
+    local suite="$1"
+    local answer
+    if has_debian_hyprland_installed; then
+        return 0
+    fi
+    if ! has_source_hyprland_artifacts; then
+        return 0
+    fi
+
+    echo "[WARN] Source-built Hyprland detected and Debian hyprland package is not installed." | tee -a "$SUMMARY_LOG"
+    if [[ -t 0 ]]; then
+        printf "Install Debian Hyprland packages instead? [Y/n]: "
+        read -r answer || true
+        case "${answer,,}" in
+            ""|y|yes)
+                MODE="debian"
+                DEBIAN_INSTALL=1
+                DO_INSTALL=1
+                DO_DRY_RUN=0
+                echo "[INFO] Switching to Debian package mode install for suite '$suite'." | tee -a "$SUMMARY_LOG"
+                ;;
+            *)
+                echo "[INFO] Keeping requested mode: $MODE" | tee -a "$SUMMARY_LOG"
+                ;;
+        esac
+    else
+        echo "[WARN] Non-interactive shell: cannot prompt. Continuing with current mode '$MODE'." | tee -a "$SUMMARY_LOG"
+    fi
+}
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
     local pkgs=(
@@ -1334,6 +1373,8 @@ if [[ $FETCH_LATEST -eq 1 ]]; then
     fetch_latest_tags
 fi
 SUITE="$(detect_suite)"
+
+offer_debian_packages_if_source_detected "$SUITE"
 
 if [[ $SHOW_VERSIONS -eq 1 ]]; then
     collect_hyprland_version_info "$SUITE"

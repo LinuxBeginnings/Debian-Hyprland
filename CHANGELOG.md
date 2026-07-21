@@ -2,6 +2,9 @@
 
 ## Jul 2026
 
+- Updated:
+    - `install.sh` and `update-hyprland.sh`
+        - Now builds Hyprland v0.56
 - Fixed:
     - `dry-run` caused errors
     - `swww` doesn't build anymore

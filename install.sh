@@ -568,6 +568,10 @@ PRESET_FILE=""
 HYPR_INSTALL_MODE="auto"
 HYPR_REFRESH_ALL_TAGS=0
 APT_PREP_DONE=0
+# Auto mode policy:
+#   debian-default -> auto mode resolves to Debian packages (recommended while source builds are unstable)
+#   menu           -> auto mode shows interactive source/debian selection menu
+HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-debian-default}"
 
 # Parse a small set of supported CLI args (order-independent)
 # NOTE: install.sh historically used "$1"/"$2" for --preset; this keeps that working.
@@ -674,52 +678,64 @@ else
 fi
 show_hyprland_version_summary "$HYPR_DEBIAN_VERSION" "$HYPR_LOCAL_HYPRLAND_TAG" "$HYPR_UPSTREAM_HYPRLAND_TAG" "$HYPR_UPSTREAM_RELEASE_URL"
 if [ "$HYPR_INSTALL_MODE" = "auto" ]; then
-    if [ "$TTY_MODE" -eq 1 ]; then
-        echo "Select Hyprland install method:"
-        echo "  1) Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)"
-        echo "  2) Build from source using local hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)"
-        if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
-            echo "  3) Build from source using latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) and update hypr-tags.env (refresh all tags)"
-            mode_prompt="[1/2/3]"
-        else
-            mode_prompt="[1/2]"
-        fi
-        read -r -p "Choose ${mode_prompt} (default 2): " _mode
-        case "${_mode,,}" in
-        1 | d | debian) HYPR_INSTALL_MODE="debian" ;;
-        3 | l | latest)
+    case "$HYPR_AUTO_MODE_POLICY" in
+    debian-default)
+        HYPR_INSTALL_MODE="debian"
+        echo "${INFO} auto mode policy '${HYPR_AUTO_MODE_POLICY}': defaulting to Debian packages. Use --source to force source builds." | tee -a "$LOG"
+        ;;
+    menu)
+        if [ "$TTY_MODE" -eq 1 ]; then
+            echo "Select Hyprland install method:"
+            echo "  1) Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)"
+            echo "  2) Build from source using local hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)"
             if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
-                HYPR_INSTALL_MODE="source"
-                HYPR_REFRESH_ALL_TAGS=1
+                echo "  3) Build from source using latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) and update hypr-tags.env (refresh all tags)"
+                mode_prompt="[1/2/3]"
             else
-                HYPR_INSTALL_MODE="source"
+                mode_prompt="[1/2]"
             fi
-            ;;
-        2 | s | source | "" | *) HYPR_INSTALL_MODE="source" ;;
-        esac
-    else
-        menu_text="Detected versions:\nDebian package: $HYPR_DEBIAN_VERSION\nLocal hypr-tags.env (HYPRLAND_TAG): $HYPR_LOCAL_HYPRLAND_TAG\nUpstream latest: $HYPR_UPSTREAM_HYPRLAND_TAG\n\nSelect installation source"
-        if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
-            choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 20 98 8 \
-                d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
-                s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" \
-                l "Build latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) + refresh all tags" 3>&1 1>&2 2>&3) || true
+            read -r -p "Choose ${mode_prompt} (default 2): " _mode
+            case "${_mode,,}" in
+            1 | d | debian) HYPR_INSTALL_MODE="debian" ;;
+            3 | l | latest)
+                if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
+                    HYPR_INSTALL_MODE="source"
+                    HYPR_REFRESH_ALL_TAGS=1
+                else
+                    HYPR_INSTALL_MODE="source"
+                fi
+                ;;
+            2 | s | source | "" | *) HYPR_INSTALL_MODE="source" ;;
+            esac
         else
-            choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 18 98 6 \
-                d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
-                s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" 3>&1 1>&2 2>&3) || true
-        fi
-        case "$choice" in
-        d) HYPR_INSTALL_MODE="debian" ;;
-        l)
-            HYPR_INSTALL_MODE="source"
+            menu_text="Detected versions:\nDebian package: $HYPR_DEBIAN_VERSION\nLocal hypr-tags.env (HYPRLAND_TAG): $HYPR_LOCAL_HYPRLAND_TAG\nUpstream latest: $HYPR_UPSTREAM_HYPRLAND_TAG\n\nSelect installation source"
             if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
-                HYPR_REFRESH_ALL_TAGS=1
+                choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 20 98 8 \
+                    d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
+                    s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" \
+                    l "Build latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) + refresh all tags" 3>&1 1>&2 2>&3) || true
+            else
+                choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 18 98 6 \
+                    d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
+                    s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" 3>&1 1>&2 2>&3) || true
             fi
-            ;;
-        s | *) HYPR_INSTALL_MODE="source" ;;
-        esac
-    fi
+            case "$choice" in
+            d) HYPR_INSTALL_MODE="debian" ;;
+            l)
+                HYPR_INSTALL_MODE="source"
+                if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
+                    HYPR_REFRESH_ALL_TAGS=1
+                fi
+                ;;
+            s | *) HYPR_INSTALL_MODE="source" ;;
+            esac
+        fi
+        ;;
+    *)
+        HYPR_INSTALL_MODE="debian"
+        echo "${WARN} Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'. Falling back to Debian default policy." | tee -a "$LOG"
+        ;;
+    esac
 fi
 HYPR_INSTALL_MODE="$(select_hypr_install_mode "$DEBIAN_SUITE" "$HYPR_INSTALL_MODE")"
 case "$HYPR_INSTALL_MODE" in
