@@ -393,6 +393,9 @@ has_source_hyprland_artifacts() {
 offer_debian_packages_if_source_detected() {
     local suite="$1"
     local answer
+    if [[ "$MODE" == "source" ]]; then
+        return 0
+    fi
     if has_debian_hyprland_installed; then
         return 0
     fi
@@ -558,7 +561,7 @@ HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
-HYPRWIRE_TAG=v0.2.1
+HYPRWIRE_TAG=main
 XDPH_TAG=v1.3.12
 EOF
     fi
@@ -713,7 +716,6 @@ declare -A repos=(
         [HYPRLAND_PROTOCOLS_TAG]="hyprwm/hyprland-protocols"
         [HYPRLAND_QT_SUPPORT_TAG]="hyprwm/hyprland-qt-support"
         [HYPRLAND_QTUTILS_TAG]="hyprwm/hyprland-qtutils"
-        [HYPRWIRE_TAG]="hyprwm/hyprwire"
         [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
         # Additional apps/utilities
         [HYPRIDLE_TAG]="hyprwm/hypridle"
@@ -740,7 +742,7 @@ declare -A repos=(
             continue
         fi
         if command -v jq >/dev/null 2>&1; then
-            tag=$(printf '%s' "$body" | jq -r '.tag_name // empty')
+            tag=$(printf '%s' "$body" | jq -r '.tag_name // empty' 2>/dev/null || true)
         else
             tag=$(printf '%s' "$body" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name"\s*:\s*"([^"]+)".*/\1/')
         fi
@@ -757,6 +759,9 @@ declare -A repos=(
         [[ -z "$k" || "$k" =~ ^# ]] && continue
         map[$k]="$v"
     done <"$TAGS_FILE"
+
+    # Ensure hyprwire is always pinned to main
+    map[HYPRWIRE_TAG]="main"
 
     # Build a list of changes (old -> new) according to override rules
     changes=()

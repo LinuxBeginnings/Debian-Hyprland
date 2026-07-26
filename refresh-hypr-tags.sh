@@ -136,7 +136,7 @@ HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRLAND_GUIUTILS_TAG=v0.2.0
-HYPRWIRE_TAG=v0.2.1
+HYPRWIRE_TAG=main
 WAYLAND_PROTOCOLS_TAG=1.46
 XDPH_TAG=v1.3.12
 EOF
@@ -197,7 +197,6 @@ declare -A repos=(
   [HYPRLAND_QT_SUPPORT_TAG]="hyprwm/hyprland-qt-support"
   [HYPRLAND_QTUTILS_TAG]="hyprwm/hyprland-qtutils"
   [HYPRLAND_GUIUTILS_TAG]="hyprwm/hyprland-guiutils"
-  [HYPRWIRE_TAG]="hyprwm/hyprwire"
   [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
   [WAYLAND_PROTOCOLS_TAG]="wayland-project/wayland-protocols"
   # Additional apps/utilities
@@ -238,42 +237,34 @@ for key in "${!repos[@]}"; do
   status=$(printf '%s' "$status_and_body" | head -n1)
   body=$(printf '%s' "$status_and_body" | tail -n +2)
 
-  if [[ "$status" == "403" && "$repo" != "wayland-project/wayland-protocols" ]]; then
-    # Fall back to git ls-remote to avoid API rate limits.
-    tag=$(git ls-remote --tags --refs "https://github.com/$repo.git" \
+  if [[ "$status" != "200" && "$repo" != "wayland-project/wayland-protocols" ]]; then
+    # Fall back to git ls-remote to avoid API rate limits or HTTP errors.
+    tag=$(timeout 10 git ls-remote --tags --refs "https://github.com/$repo.git" \
       | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
     if [[ -z "$tag" ]]; then
-      echo "[WARN] HTTP 403 from API for $repo (rate limit or auth required). Set GITHUB_TOKEN to avoid limits." | tee -a "$SUMMARY_LOG"
+      echo "[WARN] HTTP $status from API for $repo. Set GITHUB_TOKEN or check connection." | tee -a "$SUMMARY_LOG"
       continue
     fi
   fi
 
-  if [[ "$status" == "404" && "$repo" != "wayland-project/wayland-protocols" ]]; then
-    # Some repos don't publish GitHub releases; fall back to tags.
-    tags_url="https://api.github.com/repos/$repo/tags?per_page=1"
-    status_and_body=$(fetch_url "$tags_url" "Accept: application/vnd.github+json")
-    status=$(printf '%s' "$status_and_body" | head -n1)
-    body=$(printf '%s' "$status_and_body" | tail -n +2)
-  fi
-
-  if [[ -z "${tag:-}" && ( -z "$body" || "$status" == "404" ) ]]; then
-    echo "[WARN] Empty response for $repo" | tee -a "$SUMMARY_LOG"
+  if [[ -z "${tag:-}" && ( -z "$body" || "$status" != "200" ) && "$repo" != "wayland-project/wayland-protocols" ]]; then
+    echo "[WARN] Non-200 or empty response for $repo (status: ${status:-unknown})" | tee -a "$SUMMARY_LOG"
     continue
   fi
   if [[ -z "${tag:-}" ]]; then
     if command -v jq >/dev/null 2>&1; then
-      tag=$(printf '%s' "$body" | jq -r 'if type=="object" then (.tag_name // empty) elif type=="array" then (.[0].name // empty) else empty end')
+      tag=$(printf '%s' "$body" | jq -r 'if type=="object" then (.tag_name // empty) elif type=="array" then (.[0].name // empty) else empty end' 2>/dev/null || true)
     else
       tag=$(printf '%s' "$body" | grep -m1 -E '"tag_name"|"name"' | sed -E 's/.*"(tag_name|name)"\s*:\s*"([^"]+)".*/\2/')
     fi
   fi
   if [[ -z "$tag" ]]; then
-    # Final fallback: query git tags directly.
+    # Final fallback: query git tags directly with timeout.
     if [[ "$repo" == "wayland-project/wayland-protocols" ]]; then
-      tag=$(git ls-remote --tags --refs "https://gitlab.freedesktop.org/wayland/wayland-protocols.git" \
+      tag=$(timeout 10 git ls-remote --tags --refs "https://gitlab.freedesktop.org/wayland/wayland-protocols.git" \
         | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
     else
-      tag=$(git ls-remote --tags --refs "https://github.com/$repo.git" \
+      tag=$(timeout 10 git ls-remote --tags --refs "https://github.com/$repo.git" \
         | awk -F/ '{print $NF}' | sort -V | tail -n1 || true)
     fi
   fi
@@ -310,6 +301,9 @@ if [[ -t 0 && ${#changes[@]} -gt 0 ]]; then
       ;;
   esac
 fi
+
+# Ensure hyprwire remains pinned to main
+cur[HYPRWIRE_TAG]="main"
 
 # Write back
 {
