@@ -6,6 +6,8 @@
     - `install.sh` and `update-hyprland.sh`
         - Now builds Hyprland v0.56
 - Fixed:
+    - `--package-cleanup` flag prompted to install deb pkgs instead 
+       - Which is not correct behavior
     - `dry-run` caused errors
     - `swww` doesn't build anymore
         - Replaced `swww` with `awww`

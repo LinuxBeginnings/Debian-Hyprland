@@ -396,6 +396,9 @@ offer_debian_packages_if_source_detected() {
     if [[ "$MODE" == "source" ]]; then
         return 0
     fi
+    if [[ "${PACKAGE_CLEANUP:-0}" -eq 1 ]]; then
+        return 0
+    fi
     if has_debian_hyprland_installed; then
         return 0
     fi
