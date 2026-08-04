@@ -6,10 +6,11 @@
     - `install.sh` and `update-hyprland.sh`
         - Now builds Hyprland v0.56.1
 - Fixed:
-    - `rofi-wayland.sh` wasn't getting called 
+    - `rofi-wayland.sh` wasn't getting called
     - `swww.sh` could fail silently and not install
-    - `--package-cleanup` flag prompted to install deb pkgs instead 
-       - Which is not correct behavior
+    - Final check was looking for `swww` not `awww`
+    - `--package-cleanup` flag prompted to install deb pkgs instead
+        - Which is not correct behavior
     - `dry-run` caused errors
     - `swww` doesn't build anymore
         - Replaced `swww` with `awww`
