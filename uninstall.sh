@@ -71,20 +71,158 @@ if [ $? -eq 1 ]; then
     exit 0
 fi
 
+# Detect whether a named package is installed via apt, source (/usr/local or /usr/bin),
+# both, or not at all.  Echoes: apt | source | both | none
+detect_pkg_install_method() {
+    local pkg="$1"
+    local is_apt=0 is_source=0
+
+    dpkg -l "$pkg" 2>/dev/null | grep -q '^ii' && is_apt=1
+
+    case "$pkg" in
+        hyprland)
+            { [ -f /usr/local/bin/hyprland ] || [ -f /usr/local/bin/Hyprland ]; } && is_source=1 ;;
+        xdg-desktop-portal-hyprland)
+            [ -f /usr/local/libexec/xdg-desktop-portal-hyprland ] && is_source=1 ;;
+        wallust)
+            [ -f /usr/local/bin/wallust ] && is_source=1 ;;
+        waybar)
+            [ -f /usr/local/bin/waybar ] && is_source=1 ;;
+        swww)
+            # installer builds awww -> /usr/bin/; legacy swww paths also checked
+            { [ -f /usr/bin/awww ]          || [ -f /usr/local/bin/awww ]  \
+              || [ -f /usr/bin/swww ]       || [ -f /usr/local/bin/swww ]; } && is_source=1 ;;
+        rofi-wayland)
+            [ -f /usr/local/bin/rofi ] && is_source=1 ;;
+        wlogout)
+            [ -f /usr/local/bin/wlogout ] && is_source=1 ;;
+        hyprlock)
+            [ -f /usr/local/bin/hyprlock ] && is_source=1 ;;
+        hypridle)
+            [ -f /usr/local/bin/hypridle ] && is_source=1 ;;
+        hyprpaper)
+            [ -f /usr/local/bin/hyprpaper ] && is_source=1 ;;
+        hyprpicker)
+            [ -f /usr/local/bin/hyprpicker ] && is_source=1 ;;
+    esac
+
+    if [[ $is_apt -eq 1 && $is_source -eq 1 ]]; then echo "both"
+    elif [[ $is_apt -eq 1 ]]; then echo "apt"
+    elif [[ $is_source -eq 1 ]]; then echo "source"
+    else echo "none"
+    fi
+}
+
+# Remove source-installed artifacts for a single named component.
+# Returns 0 if something was removed, 1 if nothing was found.
+remove_source_component() {
+    local pkg="$1"
+    local removed=0
+    local f
+    case "$pkg" in
+        hyprland)
+            for f in /usr/local/bin/hyprland /usr/local/bin/Hyprland \
+                      /usr/local/bin/hyprctl /usr/local/bin/hyprpm \
+                      /usr/local/share/wayland-sessions/hyprland.desktop \
+                      /usr/local/share/hyprland; do
+                if [ -e "$f" ]; then
+                    echo "  Removing source artifact: $f"
+                    sudo rm -rf "$f" && removed=1
+                fi
+            done
+            for f in /usr/local/share/man/man1/hypr* /usr/local/share/man/man7/hypr*; do
+                [ -e "$f" ] && sudo rm -f "$f" && removed=1
+            done ;;
+        xdg-desktop-portal-hyprland)
+            for f in /usr/local/libexec/xdg-desktop-portal-hyprland \
+                      "/usr/local/share/systemd/user/xdg-desktop-portal-hyprland.service" \
+                      "/usr/local/share/dbus-1/services/org.freedesktop.impl.portal.desktop.hyprland.service" \
+                      "/usr/local/share/xdg-desktop-portal/portals/hyprland.portal" \
+                      "/usr/local/share/xdg-desktop-portal/hyprland.desktop"; do
+                if [ -e "$f" ]; then
+                    echo "  Removing source artifact: $f"
+                    sudo rm -f "$f" && removed=1
+                fi
+            done ;;
+        wallust)
+            if [ -f /usr/local/bin/wallust ]; then
+                echo "  Removing source artifact: /usr/local/bin/wallust"
+                sudo rm -f /usr/local/bin/wallust && removed=1
+            fi ;;
+        waybar)
+            if [ -f /usr/local/bin/waybar ]; then
+                echo "  Removing source artifact: /usr/local/bin/waybar"
+                sudo rm -f /usr/local/bin/waybar && removed=1
+            fi ;;
+        swww)
+            for f in /usr/bin/awww /usr/bin/awww-daemon \
+                      /usr/local/bin/awww /usr/local/bin/awww-daemon \
+                      /usr/bin/swww /usr/bin/swww-daemon \
+                      /usr/local/bin/swww /usr/local/bin/swww-daemon; do
+                if [ -e "$f" ]; then
+                    echo "  Removing source artifact: $f"
+                    sudo rm -f "$f" && removed=1
+                fi
+            done ;;
+        rofi-wayland)
+            if [ -f /usr/local/bin/rofi ]; then
+                echo "  Removing source artifact: /usr/local/bin/rofi"
+                sudo rm -f /usr/local/bin/rofi && removed=1
+                for f in /usr/local/share/man/man1/rofi*; do
+                    [ -e "$f" ] && sudo rm -f "$f"
+                done
+                sudo rm -rf /usr/local/share/rofi 2>/dev/null || true
+            fi ;;
+        wlogout)
+            if [ -f /usr/local/bin/wlogout ]; then
+                echo "  Removing source artifact: /usr/local/bin/wlogout"
+                sudo rm -f /usr/local/bin/wlogout && removed=1
+            fi ;;
+        hyprlock)
+            if [ -f /usr/local/bin/hyprlock ]; then
+                echo "  Removing source artifact: /usr/local/bin/hyprlock"
+                sudo rm -f /usr/local/bin/hyprlock && removed=1
+            fi ;;
+        hypridle)
+            if [ -f /usr/local/bin/hypridle ]; then
+                echo "  Removing source artifact: /usr/local/bin/hypridle"
+                sudo rm -f /usr/local/bin/hypridle && removed=1
+            fi ;;
+        hyprpaper)
+            if [ -f /usr/local/bin/hyprpaper ]; then
+                echo "  Removing source artifact: /usr/local/bin/hyprpaper"
+                sudo rm -f /usr/local/bin/hyprpaper && removed=1
+            fi ;;
+        hyprpicker)
+            if [ -f /usr/local/bin/hyprpicker ]; then
+                echo "  Removing source artifact: /usr/local/bin/hyprpicker"
+                sudo rm -f /usr/local/bin/hyprpicker && removed=1
+            fi ;;
+    esac
+    return $((1 - removed))
+}
+
 # Function to remove selected packages on Debian/Ubuntu
 remove_packages() {
     local selected_packages_file=$1
+    local _method
     while read -r package; do
-        # Check if the package is installed using dpkg (apt's underlying tool)
-        if dpkg -l | grep -q "^ii  $package "; then
-            echo "Removing package: $package"
+        _method="$(detect_pkg_install_method "$package")"
+        if [ "$_method" = "none" ]; then
+            echo "$INFO Package ${YELLOW}$package${RESET} not found (apt or source). Skipping."
+            continue
+        fi
+        if [ "$_method" = "apt" ] || [ "$_method" = "both" ]; then
+            echo "Removing apt package: $package"
             if ! sudo apt remove -y "$package"; then
-                echo "$ERROR Failed to remove package: $package"
+                echo "$ERROR Failed to remove apt package: $package"
             else
-                echo "$OK Successfully removed package: $package"
+                echo "$OK Successfully removed apt package: $package"
             fi
-        else
-            echo "$INFO Package ${YELLOW}$package${RESET} not found. Skipping."
+        fi
+        if [ "$_method" = "source" ] || [ "$_method" = "both" ]; then
+            echo "Removing source-installed artifacts for: $package"
+            remove_source_component "$package" || true
         fi
     done < "$selected_packages_file"
 }
@@ -135,6 +273,11 @@ remove_source_builds() {
         /usr/local/bin/hypridle
         /usr/local/share/wayland-sessions/hyprland.desktop
         /usr/local/libexec/xdg-desktop-portal-hyprland
+        /usr/local/bin/rofi
+        /usr/local/bin/wallust
+        /usr/bin/awww
+        /usr/local/bin/waybar
+        /usr/local/bin/wlogout
     )
     for p in "${PROBE_LIST[@]}"; do
         if [ -e "$p" ]; then
@@ -148,8 +291,8 @@ remove_source_builds() {
         return 0
     fi
 
-    if ! whiptail --title "Remove source-built Hyprland" --yesno \
-"A Hyprland build installed under /usr/local appears to be present.\n\nRemove source-installed files (binaries, desktop entries, completions, portal, etc.)?" 13 80; then
+    if ! whiptail --title "Remove source-built components" --yesno \
+"One or more source-built components were detected (Hyprland, rofi, wallust, awww/swww, waybar, wlogout, etc.).\n\nRemove source-installed files (binaries, desktop entries, completions, portal, etc.)?" 13 80; then
         echo "$INFO Skipped removal of source-built components."
         return 0
     fi
@@ -159,14 +302,26 @@ remove_source_builds() {
 
     local REMOVE_LIST=(
         /usr/local/bin/hyprland
+        /usr/local/bin/Hyprland
         /usr/local/bin/hyprctl
         /usr/local/bin/hyprpm
         /usr/local/bin/hyprpaper
         /usr/local/bin/hyprlock
         /usr/local/bin/hypridle
+        /usr/local/bin/hyprpicker
+        /usr/local/bin/hyprshutdown
+        /usr/local/bin/hyprsunset
         /usr/local/bin/ags
         /usr/local/bin/rofi
         /usr/local/bin/wallust
+        /usr/bin/awww
+        /usr/bin/awww-daemon
+        /usr/local/bin/awww
+        /usr/local/bin/awww-daemon
+        /usr/local/bin/swww
+        /usr/local/bin/swww-daemon
+        /usr/local/bin/waybar
+        /usr/local/bin/wlogout
         /usr/local/share/wayland-sessions/hyprland.desktop
         /usr/local/share/hyprland
         /usr/local/share/zsh/site-functions/_hyprctl
@@ -177,6 +332,7 @@ remove_source_builds() {
         /usr/local/share/dbus-1/services/org.freedesktop.impl.portal.desktop.hyprland.service
         /usr/local/share/xdg-desktop-portal/portals/hyprland.portal
         /usr/local/share/xdg-desktop-portal/hyprland.desktop
+        /usr/local/share/rofi
     )
 
     for item in "${REMOVE_LIST[@]}"; do
@@ -221,54 +377,65 @@ remove_source_builds() {
     fi
 }
 
-# Define the list of packages to choose from (with options_command tags)
-packages=(
-    "btop" "resource monitor" "off"
-    "brightnessctl" "brightnessctl" "off"
-    "cava" "Cross-platform Audio Visualizer" "off"
-    "cliphist" "clipboard manager" "off"
-    "fastfetch" "fastfetch" "off"
-    "ffmpegthumbnailer" "FFmpeg Thumbnailer" "off"
-    "grim" "screenshot tool" "off"
-    "polkit-kde-agent-1" "polkit agent" "off"
-    "imagemagick" "Image manipulation tool" "off"
-    "kitty" "kitty-terminal" "off"
-    "qt-style-kvantum" "QT apps theming" "off"
-    "qt-style-kvantum-themes" "QT apps theming" "off"
-    "libqt5quick5" "QT apps theming" "off"
-    "libqt5qml5" "QT apps theming" "off"
-    "qt6-declarative-dev" "QT apps theming" "off"
-    "mousepad" "simple text editor" "off"
-    "mpv" "multi-media player" "off"
-    "mpv-mpris" "mpv-plugin" "off"
-    "nvtop" "gpu resource monitor" "off"
-    "nwg-displays" "display monitor configuration app" "off"
-    "nwg-look" "gtk settings app" "off"
-    "pamixer" "pamixer" "off"
-    "pavucontrol" "pavucontrol" "off"
-    "playerctl" "playerctl" "off"
-    "qalculate-gtk" "calculater - QT" "off"
-    "qt5ct" "qt5ct" "off"
-    "qt6-svg" "qt6-svg" "off"
-    "qt6ct" "qt6ct" "off"
-    "slurp" "screenshot tool" "off"
-    "swappy" "screenshot tool" "off"
-    "sway-notification-center" "notification agent" "off"
-    "swww" "wallpaper engine" "off"
-    "thunar" "File Manager" "off"
-    "thunar-archive-plugin" "Archive Plugin" "off"
-    "thunar-volman" "Volume Management" "off"
-    "tumbler" "Thumbnail Service" "off"
-    "wallust" "color pallete generator" "off"
-    "waybar" "wayland bar" "off"
-    "wl-clipboard" "clipboard manager" "off"
-    "wlogout" "logout menu" "off"
-    "xdg-desktop-portal-hyprland" "hyprland file picker" "off"
-    "yad" "dialog box" "off"
-    "yt-dlp" "video downloader" "off"
-    "xarchiver" "Archive Manager" "off"
-    "hyprland" "hyprland main package" "off"
+# Base package list: alternating name/description pairs
+# The packages array is built dynamically below with [install method] annotations.
+_pkg_base=(
+    "btop"                        "resource monitor"
+    "brightnessctl"               "brightnessctl"
+    "cava"                        "Cross-platform Audio Visualizer"
+    "cliphist"                    "clipboard manager"
+    "fastfetch"                   "fastfetch"
+    "ffmpegthumbnailer"           "FFmpeg Thumbnailer"
+    "grim"                        "screenshot tool"
+    "polkit-kde-agent-1"          "polkit agent"
+    "imagemagick"                 "Image manipulation tool"
+    "kitty"                       "kitty-terminal"
+    "qt-style-kvantum"            "QT apps theming"
+    "qt-style-kvantum-themes"     "QT apps theming"
+    "libqt5quick5"                "QT apps theming"
+    "libqt5qml5"                  "QT apps theming"
+    "qt6-declarative-dev"         "QT apps theming"
+    "mousepad"                    "simple text editor"
+    "mpv"                         "multi-media player"
+    "mpv-mpris"                   "mpv-plugin"
+    "nvtop"                       "gpu resource monitor"
+    "nwg-displays"                "display monitor configuration app"
+    "nwg-look"                    "gtk settings app"
+    "pamixer"                     "pamixer"
+    "pavucontrol"                 "pavucontrol"
+    "playerctl"                   "playerctl"
+    "qalculate-gtk"               "calculator - QT"
+    "qt5ct"                       "qt5ct"
+    "qt6-svg"                     "qt6-svg"
+    "qt6ct"                       "qt6ct"
+    "slurp"                       "screenshot tool"
+    "swappy"                      "screenshot tool"
+    "sway-notification-center"    "notification agent"
+    "swww"                        "wallpaper engine"
+    "thunar"                      "File Manager"
+    "thunar-archive-plugin"       "Archive Plugin"
+    "thunar-volman"               "Volume Management"
+    "tumbler"                     "Thumbnail Service"
+    "wallust"                     "color palette generator"
+    "waybar"                      "wayland bar"
+    "wl-clipboard"                "clipboard manager"
+    "wlogout"                     "logout menu"
+    "xdg-desktop-portal-hyprland" "hyprland file picker"
+    "yad"                         "dialog box"
+    "yt-dlp"                      "video downloader"
+    "xarchiver"                   "Archive Manager"
+    "hyprland"                    "hyprland main package"
 )
+
+# Build packages array, annotating each description with the detected install method.
+# Format: [apt], [source], [both], or [none] (not installed)
+packages=()
+for (( _pi=0; _pi<${#_pkg_base[@]}; _pi+=2 )); do
+    _pname="${_pkg_base[$_pi]}"
+    _pdesc="${_pkg_base[$_pi+1]}"
+    _pmethod="$(detect_pkg_install_method "$_pname")"
+    packages+=( "$_pname" "$_pdesc [$_pmethod]" "off" )
+done
 
 # Define the list of directories to choose from (with options_command tags)
 directories=(

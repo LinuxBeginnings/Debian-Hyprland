@@ -1189,7 +1189,10 @@ if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
     sleep 1
     execute_script "wallust.sh"
     sleep 1
-    execute_script "swww.sh"
+    execute_script "swww.sh" || echo "${WARN} awww/swww build failed — wallpaper daemon may be missing. Check Install-Logs/." | tee -a "$LOG"
+    sleep 1
+    echo "${INFO} Installing ${SKY_BLUE}rofi (wayland)...${RESET}" | tee -a "$LOG"
+    execute_script "rofi-wayland.sh" || echo "${WARN} rofi-wayland build failed — rofi may be missing. Check Install-Logs/." | tee -a "$LOG"
     sudo ldconfig 2>/dev/null || true
 else
     # Remove any Debian-provided Hyprland stack packages before source builds

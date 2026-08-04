@@ -40,7 +40,7 @@ required_bins=(
     hypridle
     hyprlock
     wallust
-    swww
+    awww
     waybar
 )
 
