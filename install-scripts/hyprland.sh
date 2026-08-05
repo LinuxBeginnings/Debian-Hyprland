@@ -81,45 +81,28 @@ ensure_hypr_link_libs() {
     hl_link=""
     aq_link=""
 
-    for p in /usr/lib/x86_64-linux-gnu/libhyprutils.so /usr/local/lib/libhyprutils.so /usr/local/lib64/libhyprutils.so; do
+    for p in /usr/local/lib/libhyprutils.so /usr/local/lib64/libhyprutils.so /usr/lib/x86_64-linux-gnu/libhyprutils.so; do
         [ -e "$p" ] && hu_link="$p" && break
     done
-    for p in /usr/lib/x86_64-linux-gnu/libhyprwire.so /usr/local/lib/libhyprwire.so /usr/local/lib64/libhyprwire.so; do
+    for p in /usr/local/lib/libhyprwire.so /usr/local/lib64/libhyprwire.so /usr/lib/x86_64-linux-gnu/libhyprwire.so; do
         [ -e "$p" ] && hw_link="$p" && break
     done
-    for p in /usr/lib/x86_64-linux-gnu/libhyprlang.so /usr/local/lib/libhyprlang.so /usr/local/lib64/libhyprlang.so; do
+    for p in /usr/local/lib/libhyprlang.so /usr/local/lib64/libhyprlang.so /usr/lib/x86_64-linux-gnu/libhyprlang.so; do
         [ -e "$p" ] && hl_link="$p" && break
     done
-    for p in /usr/lib/x86_64-linux-gnu/libaquamarine.so /usr/local/lib/libaquamarine.so /usr/local/lib64/libaquamarine.so; do
+    for p in /usr/local/lib/libaquamarine.so /usr/local/lib64/libaquamarine.so /usr/lib/x86_64-linux-gnu/libaquamarine.so; do
         [ -e "$p" ] && aq_link="$p" && break
     done
 
     hu_script="$PARENT_DIR/install-scripts/hyprutils.sh"
     hw_script="$PARENT_DIR/install-scripts/hyprwire.sh"
 
-    if [ -z "$hu_link" ]; then
-        echo "${NOTE} libhyprutils linker symlink not found. Installing libhyprutils-dev..." | tee -a "$LOG"
-        install_package libhyprutils-dev 2>&1 | tee -a "$LOG" || true
-    fi
-    if [ -z "$hw_link" ]; then
-        echo "${NOTE} libhyprwire linker symlink not found. Installing libhyprwire-dev..." | tee -a "$LOG"
-        install_package libhyprwire-dev 2>&1 | tee -a "$LOG" || true
-    fi
-    if [ -z "$hl_link" ]; then
-        echo "${NOTE} libhyprlang linker symlink not found. Installing libhyprlang-dev..." | tee -a "$LOG"
-        install_package libhyprlang-dev 2>&1 | tee -a "$LOG" || true
-    fi
-    if [ -z "$aq_link" ]; then
-        echo "${NOTE} libaquamarine linker symlink not found. Installing libaquamarine-dev..." | tee -a "$LOG"
-        install_package libaquamarine-dev 2>&1 | tee -a "$LOG" || true
-    fi
-
     if [ -z "$hu_link" ] && [ -x "$hu_script" ]; then
-        echo "${NOTE} Falling back to source build for hyprutils..." | tee -a "$LOG"
+        echo "${NOTE} Building hyprutils from source..." | tee -a "$LOG"
         "$hu_script" 2>&1 | tee -a "$LOG" || true
     fi
     if [ -z "$hw_link" ] && [ -x "$hw_script" ]; then
-        echo "${NOTE} Falling back to source build for hyprwire..." | tee -a "$LOG"
+        echo "${NOTE} Building hyprwire from source..." | tee -a "$LOG"
         "$hw_script" 2>&1 | tee -a "$LOG" || true
     fi
 }
