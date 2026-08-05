@@ -229,6 +229,10 @@ EOF
     if [ -f "$CONFIG_ACTIONS_CPP" ]; then
         sed -ri 's/const[[:space:]]+bool[[:space:]]+ISWINDOWGROUP[[:space:]]*=[[:space:]]*window->m_group[[:space:]]*;/const bool ISWINDOWGROUP = static_cast<bool>(window->m_group);/g' "$CONFIG_ACTIONS_CPP" || true
     fi
+    CONFIG_VALUES_CPP="src/config/values/ConfigValues.cpp"
+    if [ -f "$CONFIG_VALUES_CPP" ]; then
+        perl -0777 -i -pe 's@,\s*\.deprecationNotice\s*=\s*"[^"]*"@@g' "$CONFIG_VALUES_CPP" || true
+    fi
     SESSION_LOCK_CPP="src/desktop/view/SessionLock.cpp"
     if [ -f "$SESSION_LOCK_CPP" ]; then
         perl -0777 -i -pe 's@return e == m_self;@return e == m_self.lock();@g' "$SESSION_LOCK_CPP" || true

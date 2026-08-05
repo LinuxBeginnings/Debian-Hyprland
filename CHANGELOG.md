@@ -2,6 +2,10 @@
 
 ## Aug 2026
 
+- Fixed:
+  - Build issues for HL v0.56.2 
+
+
 ## Jul 2026
 
 - Updated:
