@@ -428,27 +428,8 @@ offer_debian_packages_if_source_detected() {
 }
 # Remove Debian-provided Hyprland stack packages before source builds (install only)
 remove_deb_hypr_packages() {
-    local pkgs=(
-        hyprland hyprland-plugins hyprland-session
-        hyprland-protocols hyprland-guiutils hyprland-qt-support hyprland-qtutils qml6-module-org-hyprland-style
-        hyprutils libhyprutils0 libhyprutils-dev
-        hyprlang libhyprlang0 libhyprlang-dev
-        hyprgraphics libhyprgraphics0 libhyprgraphics-dev
-        hyprcursor libhyprcursor0 libhyprcursor-dev
-        hyprwayland-scanner
-        hyprtoolkit
-        hyprwire hyprwire-protocols libhyprwire0 libhyprwire-dev
-        aquamarine libaquamarine0 libaquamarine-dev
-        hypridle hyprlock hyprpicker hyprpaper hyprsunset hyprlauncher hyprsysteminfo
-        hyprpolkitagent hyprpm hyprctl
-        xdg-desktop-portal-hyprland
-    )
     local found=()
-    for p in "${pkgs[@]}"; do
-        if dpkg -s "$p" >/dev/null 2>&1; then
-            found+=("$p")
-        fi
-    done
+    mapfile -t found < <(dpkg-query -W -f='${Package}\n' 'hypr*' 'libhypr*' 'aquamarine*' 'libaquamarine*' 2>/dev/null | grep -v 'hyprland-backgrounds' || true)
     if [[ ${#found[@]} -eq 0 ]]; then
         echo "[INFO] No Debian Hyprland packages detected." | tee -a "$SUMMARY_LOG"
         return 0
