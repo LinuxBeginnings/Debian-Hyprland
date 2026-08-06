@@ -24,7 +24,6 @@ guiutils=(
 	qt6-5compat-dev
     libqt6waylandclient6
     qml6-module-qtwayland-client-texturesharing
-    libhyprlang-dev
 )
 
 #specific branch or release

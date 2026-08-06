@@ -18,9 +18,6 @@ qt_support=(
     qt6-tools-dev
     qt6-tools-dev-tools
     qt6-charts-dev
-    libhyprutils-dev
-    libhyprlang-dev
-    libhyprtoolkit-dev
 )
 
 #specific branch or release

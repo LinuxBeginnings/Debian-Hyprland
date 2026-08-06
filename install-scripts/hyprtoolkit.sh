@@ -9,10 +9,6 @@
 # Hypr Ecosystem #
 # hyprtoolkit #
 hyprtoolkit_deps=(
-    libhyprutils-dev
-    libhyprlang-dev
-    libaquamarine-dev
-    libhyprgraphics-dev
 )
 
 #specific branch or release

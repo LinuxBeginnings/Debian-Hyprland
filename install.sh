@@ -321,15 +321,18 @@ ensure_trixie_backports_repo() {
     local suite="$1"
     [ "$suite" = "trixie" ] || return 0
     local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
-    local desired="deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
-    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
-        # If we previously created an overlay but backports exists elsewhere, remove overlay to avoid duplicate targets.
+    # Check old-style .list format: match trixie-backports as the suite regardless of URL or mirror
+    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+\S+[[:space:]]+trixie-backports([[:space:]]|$)' \
+            /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        # Backports found elsewhere — remove our overlay if previously created
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi
         return 0
     fi
-    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+    # Check DEB822 .sources format: match trixie-backports in the Suites: field
+    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' \
+            /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi

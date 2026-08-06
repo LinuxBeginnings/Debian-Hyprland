@@ -1,5 +1,11 @@
 ## CHANGELOG
 
+## Aug 2026
+
+- Fixed:
+    - Build issues for HL v0.56.2
+    - Duplicate trixie-backports warning errors
+
 ## Jul 2026
 
 - Updated:
