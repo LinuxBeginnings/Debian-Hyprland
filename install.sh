@@ -1316,7 +1316,13 @@ execute_script "yazi.sh" || {
 }
 
 #execute_script "imagemagick.sh" #this is for compiling from source. 07 Sep 2024
-# execute_script "waybar-git.sh" only if waybar on repo is old
+
+sleep 1
+echo "${INFO} Building and installing ${SKY_BLUE}Waybar from source${RESET} (required for Hyprland Lua workflow)..." | tee -a "$LOG"
+execute_script "waybar.sh" || {
+    echo "${ERROR:-[ERROR]} Waybar build failed" | tee -a "$LOG"
+    exit 1
+}
 
 sleep 1
 # Clean up the selected options (remove quotes and trim spaces)

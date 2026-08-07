@@ -90,7 +90,7 @@ show_progress() {
 
 # Function for installing packages with a progress bar
 install_package() { 
-  if dpkg -l | grep -q -w "$1" ; then
+  if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed" ; then
     echo -e "${INFO} ${MAGENTA}$1${RESET} is already installed. Skipping..."
   else 
     (
@@ -100,7 +100,7 @@ install_package() {
     show_progress $PID "$1" 
     
     # Double check if the package successfully installed
-    if dpkg -l | grep -q -w "$1"; then
+    if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed"; then
         echo -e "\e[1A\e[K${OK} Package ${YELLOW}$1${RESET} has been successfully installed!"
     else
         echo -e "\e[1A\e[K${ERROR} ${YELLOW}$1${RESET} failed to install. Please check the install.log. You may need to install it manually. Sorry, I have tried :("
@@ -168,7 +168,7 @@ re_install_package() {
     PID=$!
     show_progress $PID "$1" 
     
-    if dpkg -l | grep -q -w "$1"; then
+    if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed"; then
         echo -e "\e[1A\e[K${OK} Package ${YELLOW}$1${RESET} has been successfully re-installed!"
     else
         # Package not found, reinstallation failed
@@ -181,11 +181,11 @@ uninstall_package() {
   local pkg="$1"
 
   # Checking if package is installed
-  if sudo dpkg -l | grep -q -w "^ii  $1" ; then
+  if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" ; then
     echo -e "${NOTE} removing $pkg ..."
     sudo apt autoremove -y "$1" >> "$LOG" 2>&1 | grep -v "error: target not found"
     
-    if ! dpkg -l | grep -q -w "^ii  $1" ; then
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" ; then
       echo -e "\e[1A\e[K${OK} ${MAGENTA}$1${RESET} removed."
     else
       echo -e "\e[1A\e[K${ERROR} $pkg Removal failed. No actions required."
