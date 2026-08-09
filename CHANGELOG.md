@@ -11,8 +11,9 @@
 - Updated:
     - `install.sh` and `update-hyprland.sh`
         - Now builds Hyprland v0.56.1
-- waybar now builds from source 
-  - Needed for LUA compatibility 
+- waybar now builds from source
+    - Needed for LUA compatibility
+    - `update-deps.sh` now calls `waybar.sh` if the source version isn't installed
 
 - Fixed:
     - `rofi-wayland.sh` wasn't getting called
