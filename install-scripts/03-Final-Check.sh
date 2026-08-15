@@ -26,9 +26,8 @@ packages=(
     zoxide
     libopengl-dev
     libglvnd-dev
-    libgl1-mesa-dev
+    libgl-dev
     libglx-dev
-    mesa-common-dev
 )
 
 # Essential binaries that should exist in PATH
@@ -92,6 +91,9 @@ for pkg in "${packages[@]}"; do
     # Check if the package is installed via dpkg
     if ! is_installed_dpkg "$pkg"; then
         if [ "$pkg" = "yazi" ] && command -v yazi >/dev/null 2>&1; then
+            continue
+        fi
+        if { [ "$pkg" = "libgl-dev" ] || [ "$pkg" = "libgl1-mesa-dev" ] || [ "$pkg" = "mesa-common-dev" ]; } && { is_installed_dpkg "libgl-dev" || is_installed_dpkg "libglvnd-dev" || [ -f /usr/include/GL/gl.h ]; }; then
             continue
         fi
         missing+=("$pkg")

@@ -23,6 +23,7 @@ rofi_deps=(
   libxkbcommon-dev
   libxkbcommon-x11-dev
   libxcb1-dev
+  libxcb-util-dev
   libxcb-keysyms1-dev
   libxcb-xkb-dev
   libxcb-randr0-dev
@@ -104,14 +105,14 @@ export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PK
 BUILD_DIR="$BUILD_ROOT/rofi-${rofi_ver}"
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 # Build both backends if available
-if meson setup "$BUILD_DIR" --prefix /usr/local -Dxcb=enabled -Dwayland=enabled && ninja -C "$BUILD_DIR" ; then
-  if sudo ninja -C "$BUILD_DIR" install 2>&1 | tee -a "$MLOG"; then
-    printf "${OK} rofi $rofi_ver installed successfully.\n" 2>&1 | tee -a "$MLOG"
+if meson setup "$BUILD_DIR" --prefix /usr/local -Dxcb=enabled -Dwayland=enabled >> "$LOG" 2>&1 && ninja -C "$BUILD_DIR" >> "$LOG" 2>&1 ; then
+  if sudo ninja -C "$BUILD_DIR" install 2>&1 | tee -a "$MLOG" "$LOG"; then
+    printf "${OK} rofi $rofi_ver installed successfully.\n" 2>&1 | tee -a "$MLOG" "$LOG"
   else
-    echo -e "${ERROR} Installation failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG"
+    echo -e "${ERROR} Installation failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG" "$LOG"
   fi
 else
-  echo -e "${ERROR} Meson setup or ninja build failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG"
+  echo -e "${ERROR} Meson setup or ninja build failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG" "$LOG"
 fi
 
 # Move logs to Install-Logs directory
