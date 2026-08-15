@@ -91,6 +91,9 @@ is_installed_dpkg() {
 for pkg in "${packages[@]}"; do
     # Check if the package is installed via dpkg
     if ! is_installed_dpkg "$pkg"; then
+        if [ "$pkg" = "yazi" ] && command -v yazi >/dev/null 2>&1; then
+            continue
+        fi
         missing+=("$pkg")
     fi
 done
