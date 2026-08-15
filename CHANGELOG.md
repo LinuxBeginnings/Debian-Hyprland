@@ -6,6 +6,9 @@
     - Due to LUA compatibility waybar builds from source
 
 - Fixed:
+    - Set install from Hyprland source as default
+        - You have manually change to Debian Hyprland pkgs
+            - Debian Hyprland pkgs are older versions of Hyprland
     - Missing dependencies for `awww`
     - SDDM theme is now preserved from repo
         - In future just need update repo to change default SDDM background

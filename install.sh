@@ -894,7 +894,7 @@ NOTE: If you are installing on a VM, ensure to enable 3D acceleration otherwise 
         fi
     else
         source_msg="Build method: FROM SOURCE (Recommended / Default)\n\nBy default, Hyprland will be built from source for the latest features and fixes.\nDebian packages provide a precompiled, but older version (hyprland: $HYPR_DEBIAN_VERSION).\n\nChange to Debian package build (older Hyprland version)?"
-        if whiptail --title "Hyprland Build Method" --yesno "$source_msg" 16 70; then
+        if whiptail --defaultno --title "Hyprland Build Method" --yesno "$source_msg" 16 70; then
             HYPR_INSTALL_MODE="debian"
             proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nHyprland version $HYPR_DEBIAN_VERSION will be installed from Debian packages.\nFor Debian trixie this will enable trixie-backports.\n\nShall we proceed?"
             if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 65; then
