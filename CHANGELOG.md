@@ -6,6 +6,7 @@
     - Due to LUA compatibility waybar builds from source
 
 - Fixed:
+    - Missing dependencies for `awww`
     - SDDM theme is now preserved from repo
         - In future just need update repo to change default SDDM background
     - Build issues for HL v0.56.2
