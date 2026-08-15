@@ -2,6 +2,9 @@
 
 ## Aug 2026
 
+- Updated:
+    - Due to LUA compatibility waybar builds from source
+
 - Fixed:
     - Build issues for HL v0.56.2
     - Duplicate trixie-backports warning errors
