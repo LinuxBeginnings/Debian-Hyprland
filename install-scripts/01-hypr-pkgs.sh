@@ -146,7 +146,7 @@ detect_suite() {
 rofi_installed_ver="$(get_rofi_version || true)"
 rofi_ok=0
 if [ -n "$rofi_installed_ver" ]; then
-    if dpkg --compare-versions "$rofi_installed_ver" ge "2.0.0"; then
+    if version_ge "$rofi_installed_ver" "2.0.0"; then
         rofi_ok=1
         echo "${INFO} Detected rofi ${YELLOW}$rofi_installed_ver${RESET} (>= 2.0.0). Skipping rofi uninstall." | tee -a "$LOG"
     fi

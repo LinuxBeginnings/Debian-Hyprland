@@ -5,6 +5,8 @@
 - Fixed:
     - Build issues for HL v0.56.2
     - Duplicate trixie-backports warning errors
+    - Build errors for waybar
+    - Build errors for rofi
 
 ## Jul 2026
 

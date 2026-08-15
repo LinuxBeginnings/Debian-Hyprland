@@ -33,17 +33,6 @@ mkdir -p "$(dirname "$LOG")"
 # Minimum version required
 MIN_VER="3.5.1"
 
-# Compare versions using dpkg if available, else sort -V
-version_ge() {
-  local a="$1" b="$2"
-  if command -v dpkg >/dev/null 2>&1; then
-    dpkg --compare-versions "$a" ge "$b"
-    return $?
-  fi
-  # Fallback: returns 0 if a >= b
-  [ "$(printf '%s\n%s\n' "$b" "$a" | sort -V | tail -n1)" = "$a" ]
-}
-
 # Detect existing wallust and skip if version is sufficient
 if command -v wallust >/dev/null 2>&1; then
   EXISTING_VER=$(wallust --version 2>/dev/null | grep -oE '[0-9]+(\.[0-9]+){1,3}' | head -1 || true)
