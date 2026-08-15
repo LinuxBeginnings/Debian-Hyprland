@@ -9,9 +9,6 @@
 # Define the options you want to preselect (either ON or OFF)
 # IMPORTANT: answer should be inside ""
 
-###-Install Hyprland from Debian packages instead of building from source? (Default: OFF)
-debian_pkg="OFF"
-
 ### Script will install nvidia-dkms nvidia-utils & nvidia-settings
 ###-Would you like script to Configure NVIDIA for you?
 nvidia="OFF"

@@ -825,23 +825,57 @@ if [ "$TTY_MODE" -eq 1 ]; then
     echo "ATTENTION: Run a full system update and reboot first (recommended)."
     echo "NOTE: On VMs, enable 3D acceleration or Hyprland may not start."
     echo
+
     if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
-        echo "Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)"
+        echo "Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE, version: $HYPR_DEBIAN_VERSION)"
         if [ "$DEBIAN_SUITE" = "trixie" ]; then
             echo "Trixie mode will enable trixie-backports for Hyprland."
         fi
+        read -r -p "Proceed with installation? [y/N]: " _ans
+        case "${_ans,,}" in
+        y | yes) : ;;
+        *)
+            echo "${NOTE} You chose not to continue. Exiting..." | tee -a "$LOG"
+            exit 1
+            ;;
+        esac
     else
         echo "Build method: FROM SOURCE (Recommended / Default)"
-        echo "IMPORTANT: Ensure deb-src is enabled in APT sources."
+        echo "Debian packages provide a precompiled, but older version (hyprland: $HYPR_DEBIAN_VERSION)."
+        echo
+        read -r -p "Change to Debian package build (older Hyprland version)? [y/N]: " _change_deb
+        case "${_change_deb,,}" in
+        y | yes)
+            HYPR_INSTALL_MODE="debian"
+            echo
+            echo "Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE, version: $HYPR_DEBIAN_VERSION)"
+            if [ "$DEBIAN_SUITE" = "trixie" ]; then
+                echo "Trixie mode will enable trixie-backports for Hyprland."
+            fi
+            read -r -p "Proceed with installation? [y/N]: " _ans
+            case "${_ans,,}" in
+            y | yes) : ;;
+            *)
+                echo "${NOTE} You chose not to continue. Exiting..." | tee -a "$LOG"
+                exit 1
+                ;;
+            esac
+            ;;
+        *)
+            HYPR_INSTALL_MODE="source"
+            echo
+            echo "Build method: FROM SOURCE (Recommended / Default)"
+            read -r -p "Proceed with installation? [y/N]: " _ans
+            case "${_ans,,}" in
+            y | yes) : ;;
+            *)
+                echo "${NOTE} You chose not to continue. Exiting..." | tee -a "$LOG"
+                exit 1
+                ;;
+            esac
+            ;;
+        esac
     fi
-    read -r -p "Proceed with installation? [y/N]: " _ans
-    case "${_ans,,}" in
-    y | yes) : ;;
-    *)
-        echo "${NOTE} You chose not to continue. Exiting..." | tee -a "$LOG"
-        exit 1
-        ;;
-    esac
 else
     # Welcome message using whiptail (for displaying information)
     whiptail --title "KooL Debian-Hyprland Trixie+ (2025) Install Script" \
@@ -849,16 +883,36 @@ else
 ATTENTION: Run a full system update and Reboot first !!! (Highly Recommended)\n\n\
 NOTE: If you are installing on a VM, ensure to enable 3D acceleration otherwise Hyprland may NOT start!" \
         15 80
+
     if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
-        proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nFor Debian trixie this will enable trixie-backports and install Hyprland from packages.\n\nShall we proceed?"
+        proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nHyprland version $HYPR_DEBIAN_VERSION will be installed from Debian package repositories.\nFor Debian trixie this will enable trixie-backports.\n\nShall we proceed?"
+        if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 65; then
+            echo -e "\n"
+            echo "❌ ${INFO} You 🫵 chose ${YELLOW}NOT${RESET} to proceed. ${YELLOW}Exiting...${RESET}" | tee -a "$LOG"
+            echo -e "\n"
+            exit 1
+        fi
     else
-        proceed_msg="Build method: FROM SOURCE (Recommended / Default)\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting or adding deb-src to APT sources else script may fail.\n\nShall we proceed?"
-    fi
-    if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 60; then
-        echo -e "\n"
-        echo "❌ ${INFO} You 🫵 chose ${YELLOW}NOT${RESET} to proceed. ${YELLOW}Exiting...${RESET}" | tee -a "$LOG"
-        echo -e "\n"
-        exit 1
+        source_msg="Build method: FROM SOURCE (Recommended / Default)\n\nBy default, Hyprland will be built from source for the latest features and fixes.\nDebian packages provide a precompiled, but older version (hyprland: $HYPR_DEBIAN_VERSION).\n\nChange to Debian package build (older Hyprland version)?"
+        if whiptail --title "Hyprland Build Method" --yesno "$source_msg" 16 70; then
+            HYPR_INSTALL_MODE="debian"
+            proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nHyprland version $HYPR_DEBIAN_VERSION will be installed from Debian packages.\nFor Debian trixie this will enable trixie-backports.\n\nShall we proceed?"
+            if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 65; then
+                echo -e "\n"
+                echo "❌ ${INFO} You 🫵 chose ${YELLOW}NOT${RESET} to proceed. ${YELLOW}Exiting...${RESET}" | tee -a "$LOG"
+                echo -e "\n"
+                exit 1
+            fi
+        else
+            HYPR_INSTALL_MODE="source"
+            proceed_msg="Build method: FROM SOURCE (Recommended / Default)\n\nHyprland and companion components will be built from source.\n\nShall we proceed?"
+            if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 14 65; then
+                echo -e "\n"
+                echo "❌ ${INFO} You 🫵 chose ${YELLOW}NOT${RESET} to proceed. ${YELLOW}Exiting...${RESET}" | tee -a "$LOG"
+                echo -e "\n"
+                exit 1
+            fi
+        fi
     fi
 fi
 
@@ -954,7 +1008,6 @@ fi
 
 #################
 ## Default values for the options (will be overwritten by preset file if available)
-debian_pkg="OFF"
 gtk_themes="OFF"
 bluetooth="OFF"
 thunar="OFF"
@@ -969,10 +1022,6 @@ rog="OFF"
 dots="OFF"
 input_group="OFF"
 nvidia="OFF"
-
-if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
-    debian_pkg="ON"
-fi
 
 # Function to load preset file
 load_preset() {
@@ -1065,7 +1114,6 @@ fi
 
 # Add the remaining static options (XDPH now installed by default; removed from menu)
 options_command+=(
-    "debian_pkg" "Install Hyprland from Debian packages instead of source" "$debian_pkg"
     "gtk_themes" "Install GTK themes (required for Dark/Light function)" "$gtk_themes"
     "bluetooth" "Do you want script to configure Bluetooth?" "$bluetooth"
     "thunar" "Do you want Thunar file manager to be installed?" "$thunar"
@@ -1084,7 +1132,7 @@ if [ "$TTY_MODE" -eq 1 ]; then
     if [ "$nvidia_detected" == "true" ]; then available_opts+=(nvidia); fi
     if [ "$input_group_detected" == "true" ]; then available_opts+=(input_group); fi
     if ! check_services_running; then available_opts+=(sddm sddm_theme); fi
-    available_opts+=(debian_pkg gtk_themes bluetooth thunar ags quickshell zsh pokemon rog dots)
+    available_opts+=(gtk_themes bluetooth thunar ags quickshell zsh pokemon rog dots)
 
     while true; do
         echo "Available options (space-separated):"
@@ -1117,21 +1165,13 @@ else
         fi
         selected_options=$(echo "$selected_options" | tr -d '"' | tr -s ' ')
         IFS=' ' read -r -a options <<<"$selected_options"
-        debian_pkg_selected="OFF"
         dots_selected="OFF"
         for option in "${options[@]}"; do
-            if [[ "$option" == "debian_pkg" ]]; then
-                debian_pkg_selected="ON"
-            elif [[ "$option" == "dots" ]]; then
+            if [[ "$option" == "dots" ]]; then
                 dots_selected="ON"
+                break
             fi
         done
-        if [[ "$debian_pkg_selected" == "ON" ]]; then
-            HYPR_INSTALL_MODE="debian"
-            echo "${INFO} Option 'debian_pkg' selected: Using Debian package repositories for Hyprland installation." | tee -a "$LOG"
-        else
-            HYPR_INSTALL_MODE="source"
-        fi
         if [[ "$dots_selected" == "OFF" ]]; then
             if ! whiptail --title "KooL Hyprland Dot Files" --yesno \
                 "You have not selected to install the pre-configured KooLDots Hyprland dotfiles.\n\nKindly NOTE that if you proceed without dotfiles, and this is a *new* install, not an *upgrade*, Hyprland will start with default vanilla Hyprland configuration and I won't be able to give you support.\n\nWould you like to continue install without KooL Hyprland Dots or return to choices/options?" \
