@@ -64,6 +64,8 @@ waybar_extra_deps=(
     libsndio-dev
     libupower-glib-dev
     libdisplay-info-dev
+    libfftw3-dev
+    libiniparser-dev
 )
 
 # ─── Check if already source-built ───────────────────────────────────────────
@@ -134,9 +136,18 @@ else
     fi
 fi
 
+# ─── Clean stale build / cache files ───────────────────────────────────────────
+if [ -d "$WAYBAR_SRC_DIR/build" ]; then
+    printf "%s - Removing old Waybar build directory...\n" "${INFO}"
+    rm -rf "$WAYBAR_SRC_DIR/build"
+fi
+if [ -d "$BUILD_ROOT/Waybar" ]; then
+    rm -rf "$BUILD_ROOT/Waybar"
+fi
+
 # ─── Meson configure ──────────────────────────────────────────────────────────
 printf "\n%s - Configuring ${YELLOW}Waybar${RESET} with meson...\n" "${INFO}"
-if meson setup build --wipe 2>&1 | tee -a "$MLOG"; then
+if meson setup build -Dtests=disabled 2>&1 | tee -a "$MLOG"; then
     echo "${OK} Meson configuration successful."
 else
     echo "${ERROR} Meson configuration failed for Waybar. Check $MLOG" | tee -a "$MLOG"
