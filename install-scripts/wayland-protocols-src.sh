@@ -10,8 +10,12 @@
 # Provides a newer wayland-protocols.pc for pkg-config when distro version is too old
 
 build_deps=(
-    wayland
+    git
     libwayland-bin
+    libwayland-dev
+    meson
+    ninja-build
+    pkgconf
 )
 
 #specific tag or release (e.g., 1.45, 1.46, 1.48)
@@ -48,8 +52,8 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
 fi
 
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_wayland-protocols.log"
-MLOG="install-$(date +%d-%H%M%S)_wayland-protocols2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_wayland-protocols.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_wayland-protocols2.log"
 
 printf "\n%s - Installing ${YELLOW}wayland-protocols (from source)${RESET} .... \n" "${INFO}"
 
@@ -101,9 +105,7 @@ if git clone --depth=1 --filter=blob:none "$repo_url" "$SRC_DIR"; then
     else
         echo "${NOTE} DRY RUN: Skipping installation of wayland-protocols $tag."
     fi
-    # Move additional logs to Install-Logs directory if they exist
-    [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
-    cd ..
+    cd "$PARENT_DIR" || exit 1
 else
     echo -e "${ERROR} Download failed for ${YELLOW}wayland-protocols $tag${RESET}" 2>&1 | tee -a "$LOG"
 fi

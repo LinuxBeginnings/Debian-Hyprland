@@ -9,8 +9,12 @@
 # AWWW - Wallpaper Utility (swww successor) #
 
 awww_deps=(
+    build-essential
+    git
     liblz4-dev
+    libwayland-bin
     libwayland-dev
+    pkgconf
     wayland-protocols
 )
 
@@ -34,8 +38,8 @@ awww_repo="https://codeberg.org/LGFae/awww"
 awww_src_dir="$SRC_ROOT/awww"
 
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_awww.log"
-MLOG="install-$(date +%d-%H%M%S)_awww2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_awww.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_awww2.log"
 
 # Installation of awww compilation needed
 printf "\n%s - Installing ${SKY_BLUE}awww and dependencies${RESET} .... \n" "${NOTE}"
@@ -43,26 +47,15 @@ printf "\n%s - Installing ${SKY_BLUE}awww and dependencies${RESET} .... \n" "${N
 for PKG1 in "${awww_deps[@]}"; do
     install_package "$PKG1" "$LOG"
 done
-# Ensure wayland.xml is available for build scripts
-if [ ! -f /usr/share/wayland-protocols/wayland.xml ] && [ ! -f /usr/local/share/wayland-protocols/wayland.xml ]; then
-    echo -e "${WARN} wayland.xml not found; attempting to install wayland-protocols."
-    install_package "wayland-protocols" "$LOG"
-fi
-if [ ! -f /usr/share/wayland-protocols/wayland.xml ] && [ ! -f /usr/local/share/wayland-protocols/wayland.xml ]; then
-    echo -e "${WARN} wayland.xml still missing; building wayland-protocols from source."
-    if [ -x "$PARENT_DIR/install-scripts/wayland-protocols-src.sh" ]; then
-        "$PARENT_DIR/install-scripts/wayland-protocols-src.sh"
-    fi
-fi
 
-# Export wayland-protocols path so waybackend-scanner can locate wayland.xml
-if [ -f /usr/local/share/wayland-protocols/wayland.xml ]; then
-    export WAYLAND_PROTOCOLS_DIR=/usr/local/share/wayland-protocols
-elif [ -f /usr/share/wayland-protocols/wayland.xml ]; then
-    export WAYLAND_PROTOCOLS_DIR=/usr/share/wayland-protocols
-fi
-if [ -n "${WAYLAND_PROTOCOLS_DIR:-}" ]; then
-    export WAYLAND_PROTOCOLS_PATH="${WAYLAND_PROTOCOLS_DIR}"
+# Install up-to-date Rust toolchain if not present
+if ! command -v cargo >/dev/null 2>&1; then
+    echo "${INFO} Installing ${YELLOW}Rust toolchain${RESET} ..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y 2>&1 | tee -a "$LOG"
+    source "$HOME/.cargo/env"
+else
+    # Ensure cargo bin path is available
+    source "$HOME/.cargo/env" 2>/dev/null || true
 fi
 
 printf "\n%.0s" {1..2}
@@ -81,8 +74,6 @@ else
 fi
 
 # Proceed with the rest of the installation steps
-source "$HOME/.cargo/env" || true
-
 cargo build --release 2>&1 | tee -a "$MLOG"
 
 # Remove old swww/awww binaries before copying
@@ -106,8 +97,6 @@ done
 sudo cp -r target/release/awww /usr/bin/ 2>&1 | tee -a "$MLOG"
 sudo cp -r target/release/awww-daemon /usr/bin/ 2>&1 | tee -a "$MLOG"
 
-# Moving logs into main Install-Logs
-mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
-cd - || exit 1
+cd "$PARENT_DIR" || exit 1
 
 printf "\n%.0s" {1..2}
