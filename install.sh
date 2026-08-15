@@ -59,9 +59,9 @@ Usage: ${0##*/} [OPTIONS]
 Options:
   --build-trixie         Force trixie compatibility mode
   --no-trixie           Disable trixie compatibility mode
-  --mode <source|debian|auto>  Select Hyprland install method
-  --packages            Alias for --mode debian
-  --source              Alias for --mode source
+  --mode <source|debian|auto>  Select Hyprland install method (default: source)
+  --packages            Install Hyprland from Debian packages (alias for --mode debian)
+  --source              Build Hyprland from source (default, alias for --mode source)
   --preset <file>       Load preset file with options
   --force-reinstall     Force APT re-installs where applicable
   --tty                 Use simple TTY prompts instead of whiptail dialogs
@@ -398,14 +398,7 @@ select_hypr_install_mode() {
     local requested="$2"
     local resolved="$requested"
     if [ "$resolved" = "auto" ]; then
-        case "$suite" in
-        trixie | forky | sid)
-            resolved="debian"
-            ;;
-        *)
-            resolved="source"
-            ;;
-        esac
+        resolved="source"
     fi
     echo "$resolved"
 }
@@ -572,9 +565,10 @@ HYPR_INSTALL_MODE="auto"
 HYPR_REFRESH_ALL_TAGS=0
 APT_PREP_DONE=0
 # Auto mode policy:
-#   debian-default -> auto mode resolves to Debian packages (recommended while source builds are unstable)
+#   source-default -> auto mode resolves to source builds (default)
+#   debian-default -> auto mode resolves to Debian packages
 #   menu           -> auto mode shows interactive source/debian selection menu
-HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-debian-default}"
+HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-source-default}"
 
 # Parse a small set of supported CLI args (order-independent)
 # NOTE: install.sh historically used "$1"/"$2" for --preset; this keeps that working.
@@ -682,6 +676,10 @@ fi
 show_hyprland_version_summary "$HYPR_DEBIAN_VERSION" "$HYPR_LOCAL_HYPRLAND_TAG" "$HYPR_UPSTREAM_HYPRLAND_TAG" "$HYPR_UPSTREAM_RELEASE_URL"
 if [ "$HYPR_INSTALL_MODE" = "auto" ]; then
     case "$HYPR_AUTO_MODE_POLICY" in
+    source-default)
+        HYPR_INSTALL_MODE="source"
+        echo "${INFO} Defaulting to source build. Use --packages, --mode debian, or the options menu to install from Debian packages." | tee -a "$LOG"
+        ;;
     debian-default)
         HYPR_INSTALL_MODE="debian"
         echo "${INFO} auto mode policy '${HYPR_AUTO_MODE_POLICY}': defaulting to Debian packages. Use --source to force source builds." | tee -a "$LOG"
@@ -689,38 +687,36 @@ if [ "$HYPR_INSTALL_MODE" = "auto" ]; then
     menu)
         if [ "$TTY_MODE" -eq 1 ]; then
             echo "Select Hyprland install method:"
-            echo "  1) Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)"
-            echo "  2) Build from source using local hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)"
+            echo "  1) Build from source using local hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG) [DEFAULT]"
+            echo "  2) Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)"
             if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
                 echo "  3) Build from source using latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) and update hypr-tags.env (refresh all tags)"
                 mode_prompt="[1/2/3]"
             else
                 mode_prompt="[1/2]"
             fi
-            read -r -p "Choose ${mode_prompt} (default 2): " _mode
+            read -r -p "Choose ${mode_prompt} (default 1): " _mode
             case "${_mode,,}" in
-            1 | d | debian) HYPR_INSTALL_MODE="debian" ;;
+            2 | d | debian) HYPR_INSTALL_MODE="debian" ;;
             3 | l | latest)
+                HYPR_INSTALL_MODE="source"
                 if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
-                    HYPR_INSTALL_MODE="source"
                     HYPR_REFRESH_ALL_TAGS=1
-                else
-                    HYPR_INSTALL_MODE="source"
                 fi
                 ;;
-            2 | s | source | "" | *) HYPR_INSTALL_MODE="source" ;;
+            1 | s | source | "" | *) HYPR_INSTALL_MODE="source" ;;
             esac
         else
             menu_text="Detected versions:\nDebian package: $HYPR_DEBIAN_VERSION\nLocal hypr-tags.env (HYPRLAND_TAG): $HYPR_LOCAL_HYPRLAND_TAG\nUpstream latest: $HYPR_UPSTREAM_HYPRLAND_TAG\n\nSelect installation source"
             if [ "$HYPR_UPSTREAM_IS_NEWER" -eq 1 ]; then
                 choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 20 98 8 \
+                    s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG) [DEFAULT]" \
                     d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
-                    s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" \
                     l "Build latest upstream (HYPRLAND_TAG: $HYPR_UPSTREAM_HYPRLAND_TAG) + refresh all tags" 3>&1 1>&2 2>&3) || true
             else
                 choice=$(whiptail --title "Hyprland install method" --menu "$menu_text" 18 98 6 \
-                    d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" \
-                    s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG)" 3>&1 1>&2 2>&3) || true
+                    s "Build from source using hypr-tags.env (HYPRLAND_TAG: $HYPR_LOCAL_HYPRLAND_TAG) [DEFAULT]" \
+                    d "Install Debian packages (hyprland: $HYPR_DEBIAN_VERSION)" 3>&1 1>&2 2>&3) || true
             fi
             case "$choice" in
             d) HYPR_INSTALL_MODE="debian" ;;
@@ -735,8 +731,8 @@ if [ "$HYPR_INSTALL_MODE" = "auto" ]; then
         fi
         ;;
     *)
-        HYPR_INSTALL_MODE="debian"
-        echo "${WARN} Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'. Falling back to Debian default policy." | tee -a "$LOG"
+        HYPR_INSTALL_MODE="source"
+        echo "${WARN} Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'. Falling back to Source default policy." | tee -a "$LOG"
         ;;
     esac
 fi
@@ -835,7 +831,7 @@ if [ "$TTY_MODE" -eq 1 ]; then
             echo "Trixie mode will enable trixie-backports for Hyprland."
         fi
     else
-        echo "Build method: FROM SOURCE"
+        echo "Build method: FROM SOURCE (Recommended / Default)"
         echo "IMPORTANT: Ensure deb-src is enabled in APT sources."
     fi
     read -r -p "Proceed with installation? [y/N]: " _ans
@@ -856,7 +852,7 @@ NOTE: If you are installing on a VM, ensure to enable 3D acceleration otherwise 
     if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
         proceed_msg="Build method: DEBIAN PACKAGES (suite: $DEBIAN_SUITE)\n\nFor Debian trixie this will enable trixie-backports and install Hyprland from packages.\n\nShall we proceed?"
     else
-        proceed_msg="Build method: FROM SOURCE\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting or adding deb-src to APT sources else script may fail.\n\nShall we proceed?"
+        proceed_msg="Build method: FROM SOURCE (Recommended / Default)\n\nVERY IMPORTANT!!!\nYou must be able to install from source by uncommenting or adding deb-src to APT sources else script may fail.\n\nShall we proceed?"
     fi
     if ! whiptail --title "Proceed with Installation?" --yesno "$proceed_msg" 15 60; then
         echo -e "\n"
@@ -958,6 +954,7 @@ fi
 
 #################
 ## Default values for the options (will be overwritten by preset file if available)
+debian_pkg="OFF"
 gtk_themes="OFF"
 bluetooth="OFF"
 thunar="OFF"
@@ -972,6 +969,10 @@ rog="OFF"
 dots="OFF"
 input_group="OFF"
 nvidia="OFF"
+
+if [ "$HYPR_INSTALL_MODE" = "debian" ]; then
+    debian_pkg="ON"
+fi
 
 # Function to load preset file
 load_preset() {
@@ -1064,15 +1065,16 @@ fi
 
 # Add the remaining static options (XDPH now installed by default; removed from menu)
 options_command+=(
-    "gtk_themes" "Install GTK themes (required for Dark/Light function)" "OFF"
-    "bluetooth" "Do you want script to configure Bluetooth?" "OFF"
-    "thunar" "Do you want Thunar file manager to be installed?" "OFF"
-    "ags" "Install AGS v1 for Desktop-Like Overview" "OFF"
-    "quickshell" "Install Quickshell (QtQuick-based shell toolkit)?" "OFF"
-    "zsh" "Install zsh shell with Oh-My-Zsh?" "OFF"
-    "pokemon" "Add Pokemon color scripts to your terminal?" "OFF"
-    "rog" "Are you installing on Asus ROG laptops?" "OFF"
-    "dots" "Download and install pre-configured KooL Hyprland dotfiles?" "OFF"
+    "debian_pkg" "Install Hyprland from Debian packages instead of source" "$debian_pkg"
+    "gtk_themes" "Install GTK themes (required for Dark/Light function)" "$gtk_themes"
+    "bluetooth" "Do you want script to configure Bluetooth?" "$bluetooth"
+    "thunar" "Do you want Thunar file manager to be installed?" "$thunar"
+    "ags" "Install AGS v1 for Desktop-Like Overview" "$ags"
+    "quickshell" "Install Quickshell (QtQuick-based shell toolkit)?" "$quickshell"
+    "zsh" "Install zsh shell with Oh-My-Zsh?" "$zsh"
+    "pokemon" "Add Pokemon color scripts to your terminal?" "$pokemon"
+    "rog" "Are you installing on Asus ROG laptops?" "$rog"
+    "dots" "Download and install pre-configured KooL Hyprland dotfiles?" "$dots"
 )
 
 # Capture the selected options before the while loop starts
@@ -1082,7 +1084,7 @@ if [ "$TTY_MODE" -eq 1 ]; then
     if [ "$nvidia_detected" == "true" ]; then available_opts+=(nvidia); fi
     if [ "$input_group_detected" == "true" ]; then available_opts+=(input_group); fi
     if ! check_services_running; then available_opts+=(sddm sddm_theme); fi
-    available_opts+=(gtk_themes bluetooth thunar ags quickshell zsh pokemon rog dots)
+    available_opts+=(debian_pkg gtk_themes bluetooth thunar ags quickshell zsh pokemon rog dots)
 
     while true; do
         echo "Available options (space-separated):"
@@ -1115,13 +1117,21 @@ else
         fi
         selected_options=$(echo "$selected_options" | tr -d '"' | tr -s ' ')
         IFS=' ' read -r -a options <<<"$selected_options"
+        debian_pkg_selected="OFF"
         dots_selected="OFF"
         for option in "${options[@]}"; do
-            if [[ "$option" == "dots" ]]; then
+            if [[ "$option" == "debian_pkg" ]]; then
+                debian_pkg_selected="ON"
+            elif [[ "$option" == "dots" ]]; then
                 dots_selected="ON"
-                break
             fi
         done
+        if [[ "$debian_pkg_selected" == "ON" ]]; then
+            HYPR_INSTALL_MODE="debian"
+            echo "${INFO} Option 'debian_pkg' selected: Using Debian package repositories for Hyprland installation." | tee -a "$LOG"
+        else
+            HYPR_INSTALL_MODE="source"
+        fi
         if [[ "$dots_selected" == "OFF" ]]; then
             if ! whiptail --title "KooL Hyprland Dot Files" --yesno \
                 "You have not selected to install the pre-configured KooLDots Hyprland dotfiles.\n\nKindly NOTE that if you proceed without dotfiles, and this is a *new* install, not an *upgrade*, Hyprland will start with default vanilla Hyprland configuration and I won't be able to give you support.\n\nWould you like to continue install without KooL Hyprland Dots or return to choices/options?" \
