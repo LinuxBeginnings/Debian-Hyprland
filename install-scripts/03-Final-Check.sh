@@ -18,7 +18,6 @@ packages=(
     poppler-utils
     ripgrep
     sway-notification-center
-    waybar
     wl-clipboard
     cliphist
     wlogout
@@ -41,8 +40,23 @@ required_bins=(
     hyprlock
     wallust
     awww
-    waybar
 )
+
+# Function to check if source-built waybar is installed
+# Source builds install to /usr/local/bin; APT installs to /usr/bin.
+is_source_waybar_installed() {
+    if [ -x "/usr/local/bin/waybar" ]; then
+        return 0
+    fi
+    if command -v waybar >/dev/null 2>&1; then
+        local ver_line
+        ver_line="$(waybar --version 2>&1 | grep -i 'waybar v' || true)"
+        if echo "$ver_line" | grep -q -E "branch|g[0-9a-f]{7}"; then
+            return 0
+        fi
+    fi
+    return 1
+}
 
 ## WARNING: DO NOT EDIT BEYOND THIS LINE IF YOU DON'T KNOW WHAT YOU ARE DOING! ##
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -80,6 +94,11 @@ for pkg in "${packages[@]}"; do
         missing+=("$pkg")
     fi
 done
+
+# Check waybar is source-built (not the APT package which lacks Lua support)
+if ! is_source_waybar_installed; then
+    local_missing+=("waybar (source build)")
+fi
 
 # Check required binaries in PATH
 for pkg1 in "${required_bins[@]}"; do

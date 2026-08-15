@@ -57,7 +57,6 @@ hypr_package=(
     swappy
     sway-notification-center
     unzip
-    waybar
     wget
     wl-clipboard
     wlogout
@@ -177,11 +176,7 @@ printf "\n%.0s" {1..1}
 printf "\n%s - Installing ${SKY_BLUE}KooL's hyprland necessary packages${RESET} .... \n" "${NOTE}"
 
 for PKG1 in "${hypr_package[@]}" "${hypr_package_2[@]}" "${Extra[@]}"; do
-    if [ "${HYPR_INSTALL_MODE:-}" = "debian" ] && [ "${DEBIAN_SUITE:-}" = "trixie" ] && [ "$PKG1" = "waybar" ]; then
-        install_package_target "$PKG1" "trixie-backports"
-    else
-        install_package "$PKG1" "$LOG"
-    fi
+    install_package "$PKG1" "$LOG"
 done
 
 # Optional package installs (non-fatal when unavailable in the current suite)

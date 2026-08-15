@@ -76,6 +76,7 @@ DEPENDENCIES_SCRIPT="${DEPENDENCIES_SCRIPT:-$(pick_script "dependencies" || pick
 PACKAGES_SCRIPT="${PACKAGES_SCRIPT:-$(pick_script "hypr-pkgs" || pick_script "pkgs")}"
 CHECK_SCRIPT="${CHECK_SCRIPT:-$(pick_script "Final-Check" || pick_script "Final")}"
 PRE_CLEANUP_SCRIPT="$(pick_script "pre-cleanup" || true)"
+WAYBAR_SCRIPT="${WAYBAR_SCRIPT:-"$SCRIPT_DIR/waybar.sh"}"
 
 if [ -n "$DEPENDENCIES_SCRIPT" ] && [ ! -f "$DEPENDENCIES_SCRIPT" ]; then
   echo "Script not found: $DEPENDENCIES_SCRIPT"
@@ -93,12 +94,17 @@ if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ] && [ -n "$PRE_CLEANUP_SCRIPT" ] && [ ! -f "$
   echo "Script not found: $PRE_CLEANUP_SCRIPT"
   exit 1
 fi
+if [ -n "$WAYBAR_SCRIPT" ] && [ ! -f "$WAYBAR_SCRIPT" ]; then
+  echo "Script not found: $WAYBAR_SCRIPT"
+  exit 1
+fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "Dry run. Scripts that would execute:"
   [ -n "$DEPENDENCIES_SCRIPT" ] && echo "  dependencies: $DEPENDENCIES_SCRIPT"
   [ -n "$PACKAGES_SCRIPT" ] && echo "  packages: $PACKAGES_SCRIPT"
   [ "$INCLUDE_PRE_CLEANUP" -eq 1 ] && [ -n "$PRE_CLEANUP_SCRIPT" ] && echo "  pre-cleanup: $PRE_CLEANUP_SCRIPT"
+  [ -n "$WAYBAR_SCRIPT" ] && echo "  waybar (source build): $WAYBAR_SCRIPT"
   [ -n "$CHECK_SCRIPT" ] && echo "  final check: $CHECK_SCRIPT"
   exit 0
 fi
@@ -107,6 +113,7 @@ RUN_STAMP="$(date +%d-%H%M%S)"
 DEPENDENCIES_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_dependencies.log"
 PACKAGES_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_packages.log"
 PRE_CLEANUP_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_pre-cleanup.log"
+WAYBAR_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_waybar.log"
 CHECK_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_check.log"
 
 strip_ansi() {
@@ -116,6 +123,7 @@ strip_ansi() {
 dependencies_status=0
 packages_status=0
 pre_cleanup_status=0
+waybar_status=0
 check_status=0
 
 if [ -n "$DEPENDENCIES_SCRIPT" ]; then
@@ -136,6 +144,13 @@ if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ] && [ -n "$PRE_CLEANUP_SCRIPT" ]; then
   echo "Running pre-cleanup script: $(basename "$PRE_CLEANUP_SCRIPT")"
   bash "$PRE_CLEANUP_SCRIPT" 2>&1 | tee "$PRE_CLEANUP_LOG"
   pre_cleanup_status=${PIPESTATUS[0]}
+fi
+
+if [ -n "$WAYBAR_SCRIPT" ]; then
+  echo
+  echo "Running waybar source build: $(basename "$WAYBAR_SCRIPT")"
+  bash "$WAYBAR_SCRIPT" 2>&1 | tee "$WAYBAR_LOG"
+  waybar_status=${PIPESTATUS[0]}
 fi
 
 if [ -n "$CHECK_SCRIPT" ]; then
@@ -177,12 +192,14 @@ echo "Packages script: ${PACKAGES_SCRIPT:-none}"
 if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ]; then
   echo "Pre-cleanup script: ${PRE_CLEANUP_SCRIPT:-none}"
 fi
+echo "Waybar script: ${WAYBAR_SCRIPT:-none}"
 echo "Final check script: ${CHECK_SCRIPT:-none}"
 echo "Dependencies exit status: $dependencies_status"
 echo "Packages exit status: $packages_status"
 if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ]; then
   echo "Pre-cleanup exit status: $pre_cleanup_status"
 fi
+echo "Waybar exit status: $waybar_status"
 echo "Check exit status: $check_status"
 echo
 
