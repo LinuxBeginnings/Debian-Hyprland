@@ -109,10 +109,6 @@ if git clone --depth=1 "$source_theme" "$SRC_DIR"; then
     fi
   fi
 
-  # Replace current background from assets
-  sudo cp -r assets/sddm.png "/usr/share/sddm/themes/$theme_name/Backgrounds/default" 2>&1 | tee -a "$LOG"
-  sudo sed -i 's|^wallpaper=".*"|wallpaper="Backgrounds/default"|' "/usr/share/sddm/themes/$theme_name/theme.conf" 2>&1 | tee -a "$LOG"
-  
   printf "\n%.0s" {1..1}
   printf "${NOTE} copying ${YELLOW}JetBrains Mono Nerd Font${RESET} to ${YELLOW}/usr/local/share/fonts${RESET} .......\n"
   printf "${NOTE} necessary for the new SDDM theme to work properly........\n"

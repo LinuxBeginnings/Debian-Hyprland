@@ -64,6 +64,8 @@ waybar_extra_deps=(
     libsndio-dev
     libupower-glib-dev
     libdisplay-info-dev
+    libfftw3-dev
+    libiniparser-dev
 )
 
 # ─── Check if already source-built ───────────────────────────────────────────
@@ -134,9 +136,18 @@ else
     fi
 fi
 
+# ─── Clean stale build / cache files ───────────────────────────────────────────
+if [ -d "$WAYBAR_SRC_DIR/build" ]; then
+    printf "%s - Removing old Waybar build directory...\n" "${INFO}"
+    rm -rf "$WAYBAR_SRC_DIR/build"
+fi
+if [ -d "$BUILD_ROOT/Waybar" ]; then
+    rm -rf "$BUILD_ROOT/Waybar"
+fi
+
 # ─── Meson configure ──────────────────────────────────────────────────────────
 printf "\n%s - Configuring ${YELLOW}Waybar${RESET} with meson...\n" "${INFO}"
-if meson setup build --wipe 2>&1 | tee -a "$MLOG"; then
+if meson setup build -Dtests=disabled 2>&1 | tee -a "$MLOG"; then
     echo "${OK} Meson configuration successful."
 else
     echo "${ERROR} Meson configuration failed for Waybar. Check $MLOG" | tee -a "$MLOG"
@@ -155,6 +166,15 @@ fi
 # ─── Install ──────────────────────────────────────────────────────────────────
 printf "\n%s - Installing ${YELLOW}Waybar${RESET}...\n" "${INFO}"
 if sudo ninja -C build install 2>&1 | tee -a "$MLOG"; then
+    # Ensure /usr/local/lib is in the dynamic linker cache for installed shared libs (e.g. libcava)
+    if ! sudo grep -qxF "/usr/local/lib" /etc/ld.so.conf.d/usr-local.conf 2>/dev/null; then
+        echo "/usr/local/lib" | sudo tee -a /etc/ld.so.conf.d/usr-local.conf >/dev/null
+    fi
+    _arch_lib="/usr/local/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || uname -m-linux-gnu)"
+    if [ -d "$_arch_lib" ] && ! sudo grep -qxF "$_arch_lib" /etc/ld.so.conf.d/usr-local.conf 2>/dev/null; then
+        echo "$_arch_lib" | sudo tee -a /etc/ld.so.conf.d/usr-local.conf >/dev/null
+    fi
+    sudo ldconfig 2>/dev/null || true
     echo "${OK} Waybar installed successfully."
 else
     echo "${ERROR} Installation failed for Waybar. Check $MLOG" | tee -a "$MLOG"

@@ -6,8 +6,12 @@
     - Due to LUA compatibility waybar builds from source
 
 - Fixed:
+    - SDDM theme is now preserved from repo
+        - In future just need update repo to change default SDDM background
     - Build issues for HL v0.56.2
     - Duplicate trixie-backports warning errors
+    - Build errors for waybar
+    - Build errors for rofi
 
 ## Jul 2026
 

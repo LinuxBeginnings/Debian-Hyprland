@@ -41,7 +41,7 @@ dependencies=(
     libgdk-pixbuf-2.0-dev
     libgdk-pixbuf2.0-bin
     libgirepository1.0-dev
-    libgl1-mesa-dev
+    libgl-dev
     libglvnd-dev
     libglx-dev
     libgraphene-1.0-0
@@ -263,7 +263,7 @@ preflight_checks() {
 
     # OpenGL headers/libs sanity (hard fail: required for builds)
     if [[ ! -f /usr/include/GL/gl.h ]]; then
-        echo "${ERROR} Missing /usr/include/GL/gl.h (OpenGL headers). Install: mesa-common-dev libgl1-mesa-dev libglvnd-dev libopengl-dev libglx-dev" | tee -a "$LOG"
+        echo "${ERROR} Missing /usr/include/GL/gl.h (OpenGL headers). Install: libgl-dev libglvnd-dev libopengl-dev libglx-dev" | tee -a "$LOG"
         exit 1
     fi
     local gl_ok=0
@@ -288,7 +288,7 @@ preflight_checks() {
         done
     fi
     if [ "$gl_ok" -eq 0 ]; then
-        echo "${ERROR} OpenGL development files were not detected. Install: libopengl-dev libglvnd-dev libgl1-mesa-dev" | tee -a "$LOG"
+        echo "${ERROR} OpenGL development files were not detected. Install: libopengl-dev libglvnd-dev libgl-dev" | tee -a "$LOG"
         exit 1
     fi
 

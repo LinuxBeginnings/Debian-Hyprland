@@ -23,6 +23,7 @@ rofi_deps=(
   libxkbcommon-dev
   libxkbcommon-x11-dev
   libxcb1-dev
+  libxcb-util-dev
   libxcb-keysyms1-dev
   libxcb-xkb-dev
   libxcb-randr0-dev
@@ -54,8 +55,8 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
 fi
 
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_rofi_wayland.log"
-MLOG="install-$(date +%d-%H%M%S)_rofi_wayland2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_rofi_wayland.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_rofi_wayland2.log"
 # Skip reinstall if rofi >= 2.0.0 is already present
 get_rofi_version() {
   if command -v rofi >/dev/null 2>&1; then
@@ -64,7 +65,7 @@ get_rofi_version() {
 }
 
 rofi_installed_ver="$(get_rofi_version || true)"
-if [ -n "$rofi_installed_ver" ] && dpkg --compare-versions "$rofi_installed_ver" ge "2.0.0"; then
+if [ -n "$rofi_installed_ver" ] && version_ge "$rofi_installed_ver" "2.0.0"; then
   echo "${INFO} Detected rofi ${YELLOW}$rofi_installed_ver${RESET} (>= 2.0.0). Skipping reinstall." | tee -a "$LOG"
   exit 0
 fi
@@ -104,19 +105,19 @@ export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PK
 BUILD_DIR="$BUILD_ROOT/rofi-${rofi_ver}"
 rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 # Build both backends if available
-if meson setup "$BUILD_DIR" --prefix /usr/local -Dxcb=enabled -Dwayland=enabled && ninja -C "$BUILD_DIR" ; then
-  if sudo ninja -C "$BUILD_DIR" install 2>&1 | tee -a "$MLOG"; then
-    printf "${OK} rofi $rofi_ver installed successfully.\n" 2>&1 | tee -a "$MLOG"
+if meson setup "$BUILD_DIR" --prefix /usr/local -Dxcb=enabled -Dwayland=enabled >> "$LOG" 2>&1 && ninja -C "$BUILD_DIR" >> "$LOG" 2>&1 ; then
+  if sudo ninja -C "$BUILD_DIR" install 2>&1 | tee -a "$MLOG" "$LOG"; then
+    printf "${OK} rofi $rofi_ver installed successfully.\n" 2>&1 | tee -a "$MLOG" "$LOG"
   else
-    echo -e "${ERROR} Installation failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG"
+    echo -e "${ERROR} Installation failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG" "$LOG"
   fi
 else
-  echo -e "${ERROR} Meson setup or ninja build failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG"
+  echo -e "${ERROR} Meson setup or ninja build failed for ${YELLOW}rofi $rofi_tag${RESET}" 2>&1 | tee -a "$MLOG" "$LOG"
 fi
 
-# Move logs to Install-Logs directory
-mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
-cd .. || exit 1
+# Move logs to Install-Logs directory if needed
+[ -f "$MLOG" ] && [ "$(dirname "$MLOG")" != "$PARENT_DIR/Install-Logs" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
+cd "$PARENT_DIR" || exit 1
 
 # clean up
 rm -rf "$TAR_PATH"

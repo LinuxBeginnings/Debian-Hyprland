@@ -45,12 +45,19 @@ mkdir -p "$SRC_ROOT"
 # Prefer /usr/local headers/libs/tools for source-built Hypr* components.
 # This reduces accidental linkage against distro-packaged /usr artifacts.
 setup_usr_local_env() {
+  # Ensure standard paths are always present in PATH
+  for p in /usr/local/bin /usr/local/sbin /usr/bin /bin /usr/sbin /sbin; do
+    case ":${PATH:-}:" in
+      *":${p}:"*) ;;
+      *) export PATH="${PATH:+$PATH:}${p}" ;;
+    esac
+  done
+  export PATH="/usr/local/bin:${PATH}"
+
   local multiarch=""
   if command -v dpkg-architecture >/dev/null 2>&1; then
     multiarch="$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || true)"
   fi
-
-  export PATH="/usr/local/bin:${PATH}"
 
   local local_pc="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig"
   if [ -n "$multiarch" ]; then
@@ -87,6 +94,17 @@ show_progress() {
     tput cnorm  
 }
 
+
+# Function for version comparison (returns 0 if $1 >= $2)
+version_ge() {
+  local a="$1" b="$2"
+  if command -v dpkg >/dev/null 2>&1; then
+    dpkg --compare-versions "$a" ge "$b"
+    return $?
+  fi
+  # Fallback: returns 0 if a >= b
+  [ "$(printf '%s\n%s\n' "$b" "$a" | sort -V | tail -n1)" = "$a" ]
+}
 
 # Function for installing packages with a progress bar
 install_package() { 
