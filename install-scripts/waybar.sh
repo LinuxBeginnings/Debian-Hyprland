@@ -166,6 +166,15 @@ fi
 # ─── Install ──────────────────────────────────────────────────────────────────
 printf "\n%s - Installing ${YELLOW}Waybar${RESET}...\n" "${INFO}"
 if sudo ninja -C build install 2>&1 | tee -a "$MLOG"; then
+    # Ensure /usr/local/lib is in the dynamic linker cache for installed shared libs (e.g. libcava)
+    if ! sudo grep -qxF "/usr/local/lib" /etc/ld.so.conf.d/usr-local.conf 2>/dev/null; then
+        echo "/usr/local/lib" | sudo tee -a /etc/ld.so.conf.d/usr-local.conf >/dev/null
+    fi
+    _arch_lib="/usr/local/lib/$(dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null || uname -m-linux-gnu)"
+    if [ -d "$_arch_lib" ] && ! sudo grep -qxF "$_arch_lib" /etc/ld.so.conf.d/usr-local.conf 2>/dev/null; then
+        echo "$_arch_lib" | sudo tee -a /etc/ld.so.conf.d/usr-local.conf >/dev/null
+    fi
+    sudo ldconfig 2>/dev/null || true
     echo "${OK} Waybar installed successfully."
 else
     echo "${ERROR} Installation failed for Waybar. Check $MLOG" | tee -a "$MLOG"
