@@ -45,6 +45,7 @@ DEFAULT_MODULES=(
   hyprland-qtutils
   hyprland
   hyprshutdown
+  hyprpaper
 )
 
 WITH_DEPS=0
@@ -102,6 +103,9 @@ detect_module_method() {
     hyprshutdown)
       dpkg -l 'hyprshutdown' 2>/dev/null | grep -q '^ii' && is_apt=1
       [ -f /usr/local/bin/hyprshutdown ] && is_source=1 ;;
+    hyprpaper)
+      dpkg -l 'hyprpaper' 2>/dev/null | grep -q '^ii' && is_apt=1
+      [ -f /usr/local/bin/hyprpaper ] && is_source=1 ;;
     *)
       dpkg -l "$mod" 2>/dev/null | grep -q '^ii' && is_apt=1 ;;
   esac

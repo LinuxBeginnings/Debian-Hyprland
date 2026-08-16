@@ -40,6 +40,7 @@
         - `update-hyprland.sh` build issue
         - patched hyprland to build v0.56
 - Added:
+    - `hyprpaper` added to package deps
     - Option to build from source or debian pkgs
         - Currently Trixie is v0.55.2 from trixie-backports
         - Testing+ is v0.55.4

@@ -459,6 +459,7 @@ DEFAULT_MODULES=(
     # Apps/utilities built after core Hyprland stack
     hypridle
     hyprlock
+    hyprpaper
     hyprpicker
     hyprshutdown
     hyprpwcenter
@@ -545,6 +546,7 @@ HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
+HYPRPAPER_TAG=v0.8.4
 HYPRWIRE_TAG=main
 XDPH_TAG=v1.3.12
 EOF
@@ -594,6 +596,7 @@ set_tags_from_args() {
         HYPRWIRE_PROTOCOLS | hyprwire-protocols | hyprwire_protocols) key=HYPRWIRE_PROTOCOLS_TAG ;;
         HYPRIDLE | hypridle) key=HYPRIDLE_TAG ;;
         HYPRLOCK | hyprlock) key=HYPRLOCK_TAG ;;
+        HYPRPAPER | hyprpaper) key=HYPRPAPER_TAG ;;
         HYPRPICKER | hyprpicker) key=HYPRPICKER_TAG ;;
         HYPRSHUTDOWN | hyprshutdown) key=HYPRSHUTDOWN_TAG ;;
         HYPRPWCENTER | hyprpwcenter) key=HYPRPWCENTER_TAG ;;
@@ -704,6 +707,7 @@ declare -A repos=(
         # Additional apps/utilities
         [HYPRIDLE_TAG]="hyprwm/hypridle"
         [HYPRLOCK_TAG]="hyprwm/hyprlock"
+        [HYPRPAPER_TAG]="hyprwm/hyprpaper"
         [HYPRPICKER_TAG]="hyprwm/hyprpicker"
         [HYPRSHUTDOWN_TAG]="hyprwm/hyprshutdown"
         [HYPRPWCENTER_TAG]="hyprwm/hyprpwcenter"

@@ -782,6 +782,7 @@ remove_source_hyprland_artifacts() {
         "/usr/local/bin/start-hyprland"
         "/usr/local/bin/hyprctl"
         "/usr/local/bin/hyprpm"
+        "/usr/local/bin/hyprpaper"
         "/usr/local/share/wayland-sessions/hyprland.desktop"
         "/usr/local/share/wayland-sessions/hyprland-uwsm.desktop"
         "/usr/local/lib/pkgconfig/hyprtoolkit.pc"
@@ -1334,6 +1335,8 @@ else
     execute_script "hypridle.sh"
     sleep 1
     execute_script "hyprpicker.sh"
+    sleep 1
+    execute_script "hyprpaper.sh"
     sleep 1
     execute_script "hyprshutdown.sh"
     sleep 1
