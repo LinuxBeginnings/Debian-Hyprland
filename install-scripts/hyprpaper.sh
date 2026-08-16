@@ -9,7 +9,7 @@
 # hyprpaper (build from source)
 
 #specific branch or release (fallback)
-tag_default="auto"
+tag_default="v0.8.4"
 if [ -z "${HYPRPAPER_TAG:-}" ]; then
   TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"
   [ -f "$TAGS_FILE" ] && source "$TAGS_FILE"
@@ -36,6 +36,9 @@ COMMON_DEPS=(
   build-essential
   libwayland-dev
   libxkbcommon-dev
+  libpixman-1-dev
+  libdrm-dev
+  libmagic-dev
 )
 printf "\n%s - Ensuring ${YELLOW}common build dependencies${RESET} .... \n" "${INFO}"
 for PKG in "${COMMON_DEPS[@]}"; do
@@ -66,11 +69,13 @@ if ! command -v hyprwayland-scanner >/dev/null 2>&1; then
   fi
 fi
 
-# Ensure required hypr* libs are installed (hyprlang, hyprutils, hyprgraphics)
-need_lang=0; need_utils=0; need_graphics=0
+# Ensure required hypr* libs are installed (hyprlang, hyprutils, hyprgraphics, hyprtoolkit, hyprwire)
+need_lang=0; need_utils=0; need_graphics=0; need_toolkit=0; need_wire=0
 pkg-config --exists hyprlang || need_lang=1
 pkg-config --exists hyprutils || need_utils=1
 pkg-config --exists hyprgraphics || need_graphics=1
+pkg-config --exists hyprtoolkit || need_toolkit=1
+pkg-config --exists hyprwire || need_wire=1
 
 if [ $need_lang -eq 1 ] && [ -x "$PARENT_DIR/install-scripts/hyprlang.sh" ]; then
   echo "${NOTE} Installing missing hyprlang..."; "$PARENT_DIR/install-scripts/hyprlang.sh"
@@ -80,6 +85,12 @@ if [ $need_utils -eq 1 ] && [ -x "$PARENT_DIR/install-scripts/hyprutils.sh" ]; t
 fi
 if [ $need_graphics -eq 1 ] && [ -x "$PARENT_DIR/install-scripts/hyprgraphics.sh" ]; then
   echo "${NOTE} Installing missing hyprgraphics..."; "$PARENT_DIR/install-scripts/hyprgraphics.sh"
+fi
+if [ $need_toolkit -eq 1 ] && [ -x "$PARENT_DIR/install-scripts/hyprtoolkit.sh" ]; then
+  echo "${NOTE} Installing missing hyprtoolkit..."; "$PARENT_DIR/install-scripts/hyprtoolkit.sh"
+fi
+if [ $need_wire -eq 1 ] && [ -x "$PARENT_DIR/install-scripts/hyprwire.sh" ]; then
+  echo "${NOTE} Installing missing hyprwire..."; "$PARENT_DIR/install-scripts/hyprwire.sh"
 fi
 
 # Optional but recommended protocols availability
@@ -95,6 +106,14 @@ rm -rf "$SRC_DIR" 2>/dev/null || true
 printf "${INFO} Installing ${YELLOW}hyprpaper ${git_ref:-default-branch}${RESET} ...\n"
 if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyprpaper.git "$SRC_DIR"; then
   cd "$SRC_DIR" || exit 1
+
+  # Compatibility: GCC 14 libstdc++ does not yet provide std::vector::append_range
+  MATCHER_CPP="src/config/WallpaperMatcher.cpp"
+  if [ -f "$MATCHER_CPP" ] && grep -q 'append_range' "$MATCHER_CPP"; then
+    echo "${NOTE} Applying hyprpaper append_range compatibility patch for GCC 14/Debian."
+    sed -i 's/m_settings\.append_range(std::move(s));/for (auto\& ss : s) m_settings.emplace_back(std::move(ss));/g' "$MATCHER_CPP"
+  fi
+
   BUILD_DIR="$BUILD_ROOT/hyprpaper"
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 

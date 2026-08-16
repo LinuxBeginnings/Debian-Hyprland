@@ -136,6 +136,7 @@ HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRLAND_GUIUTILS_TAG=v0.2.0
+HYPRPAPER_TAG=v0.8.4
 HYPRWIRE_TAG=main
 WAYLAND_PROTOCOLS_TAG=1.46
 XDPH_TAG=v1.3.12
@@ -202,6 +203,7 @@ declare -A repos=(
   # Additional apps/utilities
   [HYPRIDLE_TAG]="hyprwm/hypridle"
   [HYPRLOCK_TAG]="hyprwm/hyprlock"
+  [HYPRPAPER_TAG]="hyprwm/hyprpaper"
   [HYPRPICKER_TAG]="hyprwm/hyprpicker"
   [HYPRSHUTDOWN_TAG]="hyprwm/hyprshutdown"
   [HYPRPWCENTER_TAG]="hyprwm/hyprpwcenter"
