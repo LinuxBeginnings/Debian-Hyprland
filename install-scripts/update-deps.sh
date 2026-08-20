@@ -20,6 +20,8 @@ Options:
 Env overrides:
   DEPENDENCIES_SCRIPT     Path to dependencies script
   PACKAGES_SCRIPT         Path to packages script
+  WAYBAR_SCRIPT           Path to waybar script
+  SWWW_SCRIPT             Path to swww/awww script
   CHECK_SCRIPT            Path to final check script
 EOF
 }
@@ -77,6 +79,7 @@ PACKAGES_SCRIPT="${PACKAGES_SCRIPT:-$(pick_script "hypr-pkgs" || pick_script "pk
 CHECK_SCRIPT="${CHECK_SCRIPT:-$(pick_script "Final-Check" || pick_script "Final")}"
 PRE_CLEANUP_SCRIPT="$(pick_script "pre-cleanup" || true)"
 WAYBAR_SCRIPT="${WAYBAR_SCRIPT:-"$SCRIPT_DIR/waybar.sh"}"
+SWWW_SCRIPT="${SWWW_SCRIPT:-"$SCRIPT_DIR/swww.sh"}"
 
 if [ -n "$DEPENDENCIES_SCRIPT" ] && [ ! -f "$DEPENDENCIES_SCRIPT" ]; then
   echo "Script not found: $DEPENDENCIES_SCRIPT"
@@ -98,6 +101,10 @@ if [ -n "$WAYBAR_SCRIPT" ] && [ ! -f "$WAYBAR_SCRIPT" ]; then
   echo "Script not found: $WAYBAR_SCRIPT"
   exit 1
 fi
+if [ -n "$SWWW_SCRIPT" ] && [ ! -f "$SWWW_SCRIPT" ]; then
+  echo "Script not found: $SWWW_SCRIPT"
+  exit 1
+fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "Dry run. Scripts that would execute:"
@@ -105,6 +112,11 @@ if [ "$DRY_RUN" -eq 1 ]; then
   [ -n "$PACKAGES_SCRIPT" ] && echo "  packages: $PACKAGES_SCRIPT"
   [ "$INCLUDE_PRE_CLEANUP" -eq 1 ] && [ -n "$PRE_CLEANUP_SCRIPT" ] && echo "  pre-cleanup: $PRE_CLEANUP_SCRIPT"
   [ -n "$WAYBAR_SCRIPT" ] && echo "  waybar (source build): $WAYBAR_SCRIPT"
+  if ! command -v awww >/dev/null 2>&1; then
+    [ -n "$SWWW_SCRIPT" ] && echo "  swww/awww: $SWWW_SCRIPT (awww not installed)"
+  else
+    echo "  swww/awww: skipped (awww already installed at $(command -v awww))"
+  fi
   [ -n "$CHECK_SCRIPT" ] && echo "  final check: $CHECK_SCRIPT"
   exit 0
 fi
@@ -114,6 +126,7 @@ DEPENDENCIES_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_dependencies.log"
 PACKAGES_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_packages.log"
 PRE_CLEANUP_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_pre-cleanup.log"
 WAYBAR_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_waybar.log"
+SWWW_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_swww.log"
 CHECK_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_check.log"
 
 strip_ansi() {
@@ -124,6 +137,7 @@ dependencies_status=0
 packages_status=0
 pre_cleanup_status=0
 waybar_status=0
+swww_status=0
 check_status=0
 
 if [ -n "$DEPENDENCIES_SCRIPT" ]; then
@@ -153,6 +167,18 @@ if [ -n "$WAYBAR_SCRIPT" ]; then
   waybar_status=${PIPESTATUS[0]}
 fi
 
+if ! command -v awww >/dev/null 2>&1; then
+  if [ -n "$SWWW_SCRIPT" ]; then
+    echo
+    echo "awww not found. Running swww/awww script: $(basename "$SWWW_SCRIPT")"
+    bash "$SWWW_SCRIPT" 2>&1 | tee "$SWWW_LOG"
+    swww_status=${PIPESTATUS[0]}
+  fi
+else
+  echo
+  echo "awww already installed ($(command -v awww)). Skipping swww/awww script."
+fi
+
 if [ -n "$CHECK_SCRIPT" ]; then
   echo
   echo "Running final check: $(basename "$CHECK_SCRIPT")"
@@ -162,6 +188,7 @@ fi
 
 clean_dependencies_log="$(mktemp)"
 clean_packages_log="$(mktemp)"
+clean_swww_log="$(mktemp)"
 clean_check_log="$(mktemp)"
 if [ -f "$DEPENDENCIES_LOG" ]; then
   strip_ansi < "$DEPENDENCIES_LOG" > "$clean_dependencies_log"
@@ -169,12 +196,15 @@ fi
 if [ -f "$PACKAGES_LOG" ]; then
   strip_ansi < "$PACKAGES_LOG" > "$clean_packages_log"
 fi
+if [ -f "$SWWW_LOG" ]; then
+  strip_ansi < "$SWWW_LOG" > "$clean_swww_log"
+fi
 if [ -f "$CHECK_LOG" ]; then
   strip_ansi < "$CHECK_LOG" > "$clean_check_log"
 fi
 
-mapfile -t installed_pkgs < <(awk '/\[OK\] Package /{print $3}' "$clean_packages_log" 2>/dev/null | sort -u)
-mapfile -t failed_pkgs < <(awk '/failed to install/{print $2}' "$clean_packages_log" 2>/dev/null | sort -u)
+mapfile -t installed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" 2>/dev/null | awk '/\[OK\] Package /{print $3}' | sort -u)
+mapfile -t failed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" 2>/dev/null | awk '/failed to install/{print $2}' | sort -u)
 
 latest_final_log="$(ls -t "$LOG_DIR"/00_CHECK-*_installed.log 2>/dev/null | head -n 1)"
 missing_pkgs=()
@@ -182,7 +212,7 @@ if [ -n "$latest_final_log" ] && [ -f "$latest_final_log" ]; then
   mapfile -t missing_pkgs < <(strip_ansi < "$latest_final_log" | awk 'NF==1')
 fi
 
-rm -f "$clean_dependencies_log" "$clean_packages_log" "$clean_check_log"
+rm -f "$clean_dependencies_log" "$clean_packages_log" "$clean_swww_log" "$clean_check_log"
 
 echo
 echo "Summary"
@@ -193,6 +223,11 @@ if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ]; then
   echo "Pre-cleanup script: ${PRE_CLEANUP_SCRIPT:-none}"
 fi
 echo "Waybar script: ${WAYBAR_SCRIPT:-none}"
+if ! command -v awww >/dev/null 2>&1; then
+  echo "SWWW/AWWW script: ${SWWW_SCRIPT:-none}"
+else
+  echo "SWWW/AWWW script: ${SWWW_SCRIPT:-none} (awww present)"
+fi
 echo "Final check script: ${CHECK_SCRIPT:-none}"
 echo "Dependencies exit status: $dependencies_status"
 echo "Packages exit status: $packages_status"
@@ -200,6 +235,7 @@ if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ]; then
   echo "Pre-cleanup exit status: $pre_cleanup_status"
 fi
 echo "Waybar exit status: $waybar_status"
+echo "SWWW/AWWW exit status: $swww_status"
 echo "Check exit status: $check_status"
 echo
 
