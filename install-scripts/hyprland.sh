@@ -409,6 +409,17 @@ EOF
     # Make sure submodules are present when building bundled deps
     git submodule update --init --recursive || true
 
+
+run_logged_command() {
+    local desc="$1"
+    shift
+    if "$@" > >(tee -a "$LOG") 2> >(tee -a "$LOG" >&2); then
+        return 0
+    fi
+    local rc=$?
+    echo -e "${ERROR} ${desc} failed (exit ${rc}). See $LOG for details." | tee -a "$LOG"
+    return $rc
+}
 # Preflight: ensure required build tools are present; try to install missing ones
 REQUIRED_TOOLS=(clang clang++ cmake ninja pkg-config)
 declare -A TOOL_PKGS=([clang]=clang [clang++]=clang [cmake]=cmake [ninja]=ninja-build [pkg-config]=pkgconf)
@@ -436,6 +447,36 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
     exit 1
 fi
 
+# Preflight: ensure required pkg-config modules are present; try to install missing dev packages
+REQUIRED_PKGCONFIG_MODULES=(libeis-1.0)
+declare -A PKGCONFIG_APT_PACKAGES=([libeis-1.0]=libeis-dev)
+MISSING_PKGCONFIG_MODULES=()
+for mod in "${REQUIRED_PKGCONFIG_MODULES[@]}"; do
+    if ! pkg-config --exists "$mod" 2>/dev/null; then
+        MISSING_PKGCONFIG_MODULES+=("$mod")
+    fi
+done
+if [ ${#MISSING_PKGCONFIG_MODULES[@]} -ne 0 ]; then
+    echo "${NOTE} Missing pkg-config modules: ${MISSING_PKGCONFIG_MODULES[*]}. Attempting to install required development packages..." | tee -a "$LOG"
+    for mod in "${MISSING_PKGCONFIG_MODULES[@]}"; do
+        pkg="${PKGCONFIG_APT_PACKAGES[$mod]}"
+        if [ -n "$pkg" ]; then
+            install_package "$pkg" 2>&1 | tee -a "$LOG"
+        fi
+    done
+fi
+STILL_MISSING_PKGCONFIG_MODULES=()
+for mod in "${REQUIRED_PKGCONFIG_MODULES[@]}"; do
+    if ! pkg-config --exists "$mod" 2>/dev/null; then
+        STILL_MISSING_PKGCONFIG_MODULES+=("$mod")
+    fi
+done
+if [ ${#STILL_MISSING_PKGCONFIG_MODULES[@]} -ne 0 ]; then
+    echo -e "${ERROR} Missing required pkg-config modules after attempted installation: ${STILL_MISSING_PKGCONFIG_MODULES[*]}" | tee -a "$LOG"
+    echo -e "${NOTE} Run install-scripts/00-dependencies.sh to install/update full build dependencies." | tee -a "$LOG"
+    exit 1
+fi
+
 # Prefer clang if available; otherwise fall back to GCC
 if command -v clang >/dev/null 2>&1 && command -v clang++ >/dev/null 2>&1; then
     export CC="${CC:-clang}"
@@ -458,8 +499,12 @@ CONFIG_FLAGS=(
     -DCMAKE_CXX_FLAGS="-Wno-unknown-warning-option -include ${RANGE_HDR}"
     "${SYSTEM_FLAGS[@]}"
 )
-cmake -S . -B "$BUILD_DIR" "${CONFIG_FLAGS[@]}"
-cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
+if ! run_logged_command "Hyprland CMake configure" cmake -S . -B "$BUILD_DIR" "${CONFIG_FLAGS[@]}"; then
+    exit 1
+fi
+if ! run_logged_command "Hyprland CMake build" cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"; then
+    exit 1
+fi
 
     if [ $DO_INSTALL -eq 1 ]; then
         if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then
