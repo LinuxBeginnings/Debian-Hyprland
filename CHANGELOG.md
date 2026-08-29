@@ -2,7 +2,9 @@
 
 ## Aug 2026
 
-- Added::
+- Added:
+   - `install-scripts/nwg-dock-hyprland.sh`
+     - Builds hyprland doc from source
    - `install-scripts/nwg-dock-hyprland.sh`
      - Builds from source, there is no deb package 
 
