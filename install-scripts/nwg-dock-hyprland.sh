@@ -25,8 +25,8 @@ PARENT_DIR="$SCRIPT_DIR/.."
 cd "$PARENT_DIR" || exit 1
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_nwg_dock_hyprland.log"
-MLOG="install-$(date +%d-%H%M%S)_nwg_dock_hyprland2.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_nwg_dock_hyprland.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_nwg_dock_hyprland2.log"
 
 # Build-time dependencies for nwg-dock-hyprland
 DEPS=(
@@ -145,13 +145,14 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/nwg-piotr/
         fi
     else
         echo -e "${ERROR} Compilation failed for ${YELLOW}nwg-dock-hyprland${RESET}" 2>&1 | tee -a "$LOG"
-        mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
+        cd "$PARENT_DIR" || true
         exit 1
     fi
 
-    mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
+    cd "$PARENT_DIR" || true
 else
     echo -e "${ERROR} Download failed for ${YELLOW}nwg-dock-hyprland${RESET}" 2>&1 | tee -a "$LOG"
+    cd "$PARENT_DIR" || true
     exit 1
 fi
 
