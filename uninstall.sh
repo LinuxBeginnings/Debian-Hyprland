@@ -104,6 +104,8 @@ detect_pkg_install_method() {
             [ -f /usr/local/bin/hyprpaper ] && is_source=1 ;;
         hyprpicker)
             [ -f /usr/local/bin/hyprpicker ] && is_source=1 ;;
+        nwg-dock-hyprland)
+            { [ -f /usr/local/bin/nwg-dock-hyprland ] || [ -f /usr/bin/nwg-dock-hyprland ]; } && is_source=1 ;;
     esac
 
     if [[ $is_apt -eq 1 && $is_source -eq 1 ]]; then echo "both"
@@ -198,6 +200,14 @@ remove_source_component() {
                 echo "  Removing source artifact: /usr/local/bin/hyprpicker"
                 sudo rm -f /usr/local/bin/hyprpicker && removed=1
             fi ;;
+        nwg-dock-hyprland)
+            for f in /usr/local/bin/nwg-dock-hyprland /usr/bin/nwg-dock-hyprland \
+                      /usr/local/share/nwg-dock-hyprland /usr/share/nwg-dock-hyprland; do
+                if [ -e "$f" ]; then
+                    echo "  Removing source artifact: $f"
+                    sudo rm -rf "$f" && removed=1
+                fi
+            done ;;
     esac
     return $((1 - removed))
 }
@@ -333,6 +343,8 @@ remove_source_builds() {
         /usr/local/share/xdg-desktop-portal/portals/hyprland.portal
         /usr/local/share/xdg-desktop-portal/hyprland.desktop
         /usr/local/share/rofi
+        /usr/local/bin/nwg-dock-hyprland
+        /usr/local/share/nwg-dock-hyprland
     )
 
     for item in "${REMOVE_LIST[@]}"; do
@@ -400,6 +412,7 @@ _pkg_base=(
     "mpv-mpris"                   "mpv-plugin"
     "nvtop"                       "gpu resource monitor"
     "nwg-displays"                "display monitor configuration app"
+    "nwg-dock-hyprland"           "Hyprland application dock"
     "nwg-look"                    "gtk settings app"
     "pamixer"                     "pamixer"
     "pavucontrol"                 "pavucontrol"
@@ -446,6 +459,7 @@ directories=(
     "hypr" "main hyprland configuration" "off"
     "kitty" "kitty terminal configuration" "off"
     "Kvantum" "Kvantum-manager configuration" "off"
+    "nwg-dock-hyprland" "nwg-dock-hyprland configuration" "off"
     "qt5ct" "qt5ct configuration" "off"
     "qt6ct" "qt6ct configuration" "off"
     "rofi" "rofi configuration" "off"

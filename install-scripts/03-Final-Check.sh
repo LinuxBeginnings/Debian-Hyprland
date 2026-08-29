@@ -39,6 +39,7 @@ required_bins=(
     hyprlock
     wallust
     awww
+    nwg-dock-hyprland
 )
 
 # Function to check if source-built waybar is installed

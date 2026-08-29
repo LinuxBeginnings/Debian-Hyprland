@@ -2,6 +2,10 @@
 
 ## Aug 2026
 
+- Added::
+   - `install-scripts/nwg-dock-hyprland.sh`
+     - Builds from source, there is no deb package 
+
 - Updated:
     - Due to LUA compatibility waybar builds from source
 

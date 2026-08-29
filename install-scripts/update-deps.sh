@@ -22,6 +22,7 @@ Env overrides:
   PACKAGES_SCRIPT         Path to packages script
   WAYBAR_SCRIPT           Path to waybar script
   SWWW_SCRIPT             Path to swww/awww script
+  NWG_DOCK_SCRIPT         Path to nwg-dock-hyprland script
   CHECK_SCRIPT            Path to final check script
 EOF
 }
@@ -80,6 +81,7 @@ CHECK_SCRIPT="${CHECK_SCRIPT:-$(pick_script "Final-Check" || pick_script "Final"
 PRE_CLEANUP_SCRIPT="$(pick_script "pre-cleanup" || true)"
 WAYBAR_SCRIPT="${WAYBAR_SCRIPT:-"$SCRIPT_DIR/waybar.sh"}"
 SWWW_SCRIPT="${SWWW_SCRIPT:-"$SCRIPT_DIR/swww.sh"}"
+NWG_DOCK_SCRIPT="${NWG_DOCK_SCRIPT:-"$SCRIPT_DIR/nwg-dock-hyprland.sh"}"
 
 if [ -n "$DEPENDENCIES_SCRIPT" ] && [ ! -f "$DEPENDENCIES_SCRIPT" ]; then
   echo "Script not found: $DEPENDENCIES_SCRIPT"
@@ -105,6 +107,10 @@ if [ -n "$SWWW_SCRIPT" ] && [ ! -f "$SWWW_SCRIPT" ]; then
   echo "Script not found: $SWWW_SCRIPT"
   exit 1
 fi
+if [ -n "$NWG_DOCK_SCRIPT" ] && [ ! -f "$NWG_DOCK_SCRIPT" ]; then
+  echo "Script not found: $NWG_DOCK_SCRIPT"
+  exit 1
+fi
 
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "Dry run. Scripts that would execute:"
@@ -117,6 +123,11 @@ if [ "$DRY_RUN" -eq 1 ]; then
   else
     echo "  swww/awww: skipped (awww already installed at $(command -v awww))"
   fi
+  if ! command -v nwg-dock-hyprland >/dev/null 2>&1; then
+    [ -n "$NWG_DOCK_SCRIPT" ] && echo "  nwg-dock-hyprland: $NWG_DOCK_SCRIPT (nwg-dock-hyprland not installed)"
+  else
+    echo "  nwg-dock-hyprland: skipped (nwg-dock-hyprland already installed at $(command -v nwg-dock-hyprland))"
+  fi
   [ -n "$CHECK_SCRIPT" ] && echo "  final check: $CHECK_SCRIPT"
   exit 0
 fi
@@ -127,6 +138,7 @@ PACKAGES_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_packages.log"
 PRE_CLEANUP_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_pre-cleanup.log"
 WAYBAR_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_waybar.log"
 SWWW_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_swww.log"
+NWG_DOCK_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_nwg_dock.log"
 CHECK_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_check.log"
 
 strip_ansi() {
@@ -138,6 +150,7 @@ packages_status=0
 pre_cleanup_status=0
 waybar_status=0
 swww_status=0
+nwg_dock_status=0
 check_status=0
 
 if [ -n "$DEPENDENCIES_SCRIPT" ]; then
@@ -179,6 +192,18 @@ else
   echo "awww already installed ($(command -v awww)). Skipping swww/awww script."
 fi
 
+if ! command -v nwg-dock-hyprland >/dev/null 2>&1; then
+  if [ -n "$NWG_DOCK_SCRIPT" ]; then
+    echo
+    echo "nwg-dock-hyprland not found. Running nwg-dock-hyprland script: $(basename "$NWG_DOCK_SCRIPT")"
+    bash "$NWG_DOCK_SCRIPT" 2>&1 | tee "$NWG_DOCK_LOG"
+    nwg_dock_status=${PIPESTATUS[0]}
+  fi
+else
+  echo
+  echo "nwg-dock-hyprland already installed ($(command -v nwg-dock-hyprland)). Skipping nwg-dock-hyprland script."
+fi
+
 if [ -n "$CHECK_SCRIPT" ]; then
   echo
   echo "Running final check: $(basename "$CHECK_SCRIPT")"
@@ -189,6 +214,7 @@ fi
 clean_dependencies_log="$(mktemp)"
 clean_packages_log="$(mktemp)"
 clean_swww_log="$(mktemp)"
+clean_nwg_dock_log="$(mktemp)"
 clean_check_log="$(mktemp)"
 if [ -f "$DEPENDENCIES_LOG" ]; then
   strip_ansi < "$DEPENDENCIES_LOG" > "$clean_dependencies_log"
@@ -199,12 +225,15 @@ fi
 if [ -f "$SWWW_LOG" ]; then
   strip_ansi < "$SWWW_LOG" > "$clean_swww_log"
 fi
+if [ -f "$NWG_DOCK_LOG" ]; then
+  strip_ansi < "$NWG_DOCK_LOG" > "$clean_nwg_dock_log"
+fi
 if [ -f "$CHECK_LOG" ]; then
   strip_ansi < "$CHECK_LOG" > "$clean_check_log"
 fi
 
-mapfile -t installed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" 2>/dev/null | awk '/\[OK\] Package /{print $3}' | sort -u)
-mapfile -t failed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" 2>/dev/null | awk '/failed to install/{print $2}' | sort -u)
+mapfile -t installed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" "$clean_nwg_dock_log" 2>/dev/null | awk '/\[OK\] (Package |.*nwg-dock-hyprland)/{print $3}' | sort -u)
+mapfile -t failed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" "$clean_nwg_dock_log" 2>/dev/null | awk '/failed to install|Installation failed for/{print $2}' | sort -u)
 
 latest_final_log="$(ls -t "$LOG_DIR"/00_CHECK-*_installed.log 2>/dev/null | head -n 1)"
 missing_pkgs=()
@@ -212,7 +241,7 @@ if [ -n "$latest_final_log" ] && [ -f "$latest_final_log" ]; then
   mapfile -t missing_pkgs < <(strip_ansi < "$latest_final_log" | awk 'NF==1')
 fi
 
-rm -f "$clean_dependencies_log" "$clean_packages_log" "$clean_swww_log" "$clean_check_log"
+rm -f "$clean_dependencies_log" "$clean_packages_log" "$clean_swww_log" "$clean_nwg_dock_log" "$clean_check_log"
 
 echo
 echo "Summary"
@@ -228,6 +257,11 @@ if ! command -v awww >/dev/null 2>&1; then
 else
   echo "SWWW/AWWW script: ${SWWW_SCRIPT:-none} (awww present)"
 fi
+if ! command -v nwg-dock-hyprland >/dev/null 2>&1; then
+  echo "nwg-dock-hyprland script: ${NWG_DOCK_SCRIPT:-none}"
+else
+  echo "nwg-dock-hyprland script: ${NWG_DOCK_SCRIPT:-none} (nwg-dock-hyprland present)"
+fi
 echo "Final check script: ${CHECK_SCRIPT:-none}"
 echo "Dependencies exit status: $dependencies_status"
 echo "Packages exit status: $packages_status"
@@ -236,6 +270,7 @@ if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ]; then
 fi
 echo "Waybar exit status: $waybar_status"
 echo "SWWW/AWWW exit status: $swww_status"
+echo "nwg-dock-hyprland exit status: $nwg_dock_status"
 echo "Check exit status: $check_status"
 echo
 
