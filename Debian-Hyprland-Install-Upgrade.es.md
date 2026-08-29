@@ -58,7 +58,7 @@ Flags clave:
 - --only / --skip: limitar qué módulos se ejecutan
 - --package-cleanup: purga el stack Hyprland de Debian antes de compilar
 - --build-trixie / --no-trixie: habilita/deshabilita el modo de compatibilidad Debian 13 (auto-detectado por defecto)
-- --mode auto|source|debian: seleccionar modo de operación (por defecto: auto → modo de paquetes Debian)
+- --mode auto|source|debian: seleccionar modo de operación (por defecto: auto → modo de compilación desde código fuente)
 - --source / --deb-pkg: alias no interactivos para modo de código fuente o modo paquetes Debian
 - --show-versions: muestra el candidato Debian, la etiqueta local y la versión upstream de Hyprland
 - --debian-remove: elimina los paquetes Hyprland de Debian y termina
@@ -107,7 +107,7 @@ Este repo incluye varios "flags de control" que afectan cómo se compila/instala
 
 Variables de entorno:
 - `FORCE=1`: equivalente a `--force-update`
-- `HYPR_AUTO_MODE_POLICY`: controla el comportamiento de `--mode auto` — `debian-default` (por defecto, selecciona el modo de paquetes Debian silenciosamente) o `menu` (prompt interactivo que compara versiones Debian/local/upstream)
+- `HYPR_AUTO_MODE_POLICY`: controla el comportamiento de `--mode auto` — `source-default` (por defecto, selecciona el modo de compilación desde fuente) o `menu` (prompt interactivo que compara versiones Debian/local/upstream) o `debian-default` (selecciona el modo de paquetes Debian)
 
 Notas:
 - Cuando el modo trixie está habilitado, `update-hyprland.sh` exporta `HYPR_BUILD_TRIXIE=1` y reenvía `--build-trixie` a los scripts de módulos.
@@ -165,14 +165,15 @@ Versiones nuevas de Hyprland (0.53.x+) pueden requerir shims de compatibilidad e
 
 ## Modo de Paquetes Debian
 
-`update-hyprland.sh` ahora soporta instalar Hyprland directamente desde los repositorios de Debian además de compilar desde el código fuente. **El modo de paquetes Debian es el comportamiento por defecto** cuando no se especifica ningún flag de modo.
+`update-hyprland.sh` soporta compilar desde el código fuente (por defecto) además de instalar Hyprland directamente desde los repositorios de Debian. **El modo de compilación desde fuente es el comportamiento por defecto** cuando no se especifica ningún flag de modo.
 
 ### Selección de Modo
 
+- `--mode source` / `--source`: compilar desde el código fuente usando las versiones en `hypr-tags.env` (por defecto)
 - `--mode debian` / `--deb-pkg` / `--packages`: instalar desde los repos de Debian (sin compilación)
-- `--mode source` / `--source`: compilar desde el código fuente usando las versiones en `hypr-tags.env`
 - `--mode auto` (por defecto): comportamiento controlado por `HYPR_AUTO_MODE_POLICY`
-  - `debian-default` (por defecto): selecciona el modo de paquetes Debian silenciosamente
+  - `source-default` (por defecto): compila desde el código fuente
+  - `debian-default`: selecciona el modo de paquetes Debian silenciosamente
   - `menu`: muestra un prompt interactivo con el candidato Debian, la etiqueta local y la versión upstream
 
 Establece `HYPR_AUTO_MODE_POLICY=menu` en tu entorno para obtener el prompt de comparación de versiones en cada ejecución.

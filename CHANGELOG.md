@@ -8,6 +8,7 @@
 
 - Updated:
     - Due to LUA compatibility waybar builds from source
+    - `install.sh` and `update-hyprland.sh` scripts default build from source
 
 - Fixed:
     - Set install from Hyprland source as default

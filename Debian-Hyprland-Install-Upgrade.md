@@ -58,7 +58,7 @@ Key flags:
 - --only / --skip: limit which modules run
 - --package-cleanup: purge Debian-packaged Hyprland stack before building
 - --build-trixie / --no-trixie: enable/disable Debian 13 (trixie) compatibility mode (auto-detected by default)
-- --mode auto|source|debian: select operation mode (default: auto → Debian package mode)
+- --mode auto|source|debian: select operation mode (default: auto → source build mode)
 - --source / --deb-pkg: non-interactive aliases for source or Debian package mode
 - --show-versions: print Debian candidate, local tag, and upstream Hyprland versions
 - --debian-remove: remove Debian Hyprland packages and exit
@@ -107,7 +107,7 @@ This repo provides several "control flags" that affect how the stack is built. T
 
 Environment variables:
 - `FORCE=1`: equivalent to `--force-update`
-- `HYPR_AUTO_MODE_POLICY`: controls `--mode auto` behavior — `debian-default` (default, selects Debian package mode silently) or `menu` (interactive prompt comparing Debian/local/upstream versions)
+- `HYPR_AUTO_MODE_POLICY`: controls `--mode auto` behavior — `source-default` (default, selects source build mode) or `menu` (interactive prompt comparing Debian/local/upstream versions) or `debian-default` (selects Debian package mode)
 
 Notes:
 - When trixie mode is enabled, `update-hyprland.sh` exports `HYPR_BUILD_TRIXIE=1` and forwards `--build-trixie` to module scripts.
@@ -165,14 +165,15 @@ Newer Hyprland versions (0.53.x+) may require source-level compatibility shims o
 
 ## Debian Package Mode
 
-`update-hyprland.sh` now supports installing Hyprland directly from Debian repositories in addition to building from source. **Debian package mode is the default** when no mode flag is given.
+`update-hyprland.sh` supports building from source (default) as well as installing Hyprland directly from Debian repositories. **Source build mode is the default** when no mode flag is given.
 
 ### Mode Selection
 
+- `--mode source` / `--source`: build from source using `hypr-tags.env` versions (default)
 - `--mode debian` / `--deb-pkg` / `--packages`: install from Debian repos (no source build)
-- `--mode source` / `--source`: build from source using `hypr-tags.env` versions
 - `--mode auto` (default): behavior controlled by `HYPR_AUTO_MODE_POLICY`
-  - `debian-default` (default): silently selects Debian package mode
+  - `source-default` (default): builds from source
+  - `debian-default`: selects Debian package mode
   - `menu`: shows an interactive prompt with Debian candidate, local tag, and upstream version
 
 Set `HYPR_AUTO_MODE_POLICY=menu` in your environment to get the interactive version-comparison prompt on every run.

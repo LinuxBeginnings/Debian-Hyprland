@@ -25,8 +25,9 @@
 #   ./update-hyprland.sh --fetch-latest --via-helper   # use dry-run-build.sh for a summary-only run
 #   ./update-hyprland.sh --force-update --install      # override pinned versions (equivalent to FORCE=1)
 #   ./update-hyprland.sh --package-cleanup --install   # purge Debian Hyprland packages before building
+#   ./update-hyprland.sh --mode source --install       # switch to source mode and install (default)
 #   ./update-hyprland.sh --mode debian --install       # switch to Debian package mode and install
-#   ./update-hyprland.sh --mode auto --install         # prompt package vs source with version visibility
+#   ./update-hyprland.sh --mode auto --install         # auto mode policy (default: source)
 #   ./update-hyprland.sh --source --install            # force source mode (non-interactive)
 #   ./update-hyprland.sh --deb-pkg --install           # force Debian package mode (non-interactive)
 #   ./update-hyprland.sh --show-versions               # query Debian/local/upstream Hyprland versions
@@ -52,7 +53,7 @@ mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
 MODE="auto"
-HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-debian-default}"
+HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-source-default}"
 DEBIAN_REMOVE=0
 DEBIAN_INSTALL=0
 SHOW_VERSIONS=0
@@ -393,7 +394,7 @@ has_source_hyprland_artifacts() {
 offer_debian_packages_if_source_detected() {
     local suite="$1"
     local answer
-    if [[ "$MODE" == "source" ]]; then
+    if [[ "$MODE" == "source" || "$HYPR_AUTO_MODE_POLICY" == "source-default" ]]; then
         return 0
     fi
     if [[ "${PACKAGE_CLEANUP:-0}" -eq 1 ]]; then
@@ -515,7 +516,7 @@ Options:
       --via-helper      Use dry-run-build.sh to summarize a dry-run
       --minimal         Build minimal stack before hyprland
       --package-cleanup Purge Debian Hyprland packages before building
-      --mode MODE       Select mode: auto (default), source, or debian
+      --mode MODE       Select mode: source (default), debian, or auto
       --source          Alias for --mode source (skip interactive mode selection)
       --deb-pkg         Alias for --mode debian (skip interactive mode selection)
       --packages        Alias for --mode debian (skip interactive mode selection)
@@ -1380,6 +1381,10 @@ fi
 
 if [[ "$MODE" == "auto" ]]; then
     case "$HYPR_AUTO_MODE_POLICY" in
+    source-default)
+        MODE="source"
+        echo "[INFO] Auto mode policy '$HYPR_AUTO_MODE_POLICY': defaulting to source build." | tee -a "$SUMMARY_LOG"
+        ;;
     debian-default)
         MODE="debian"
         echo "[INFO] Auto mode policy '$HYPR_AUTO_MODE_POLICY': defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
@@ -1388,13 +1393,13 @@ if [[ "$MODE" == "auto" ]]; then
         if [[ -t 0 ]]; then
             prompt_mode_selection_with_versions "$SUITE"
         else
-            MODE="debian"
-            echo "[INFO] Auto mode policy '$HYPR_AUTO_MODE_POLICY' in non-interactive context: defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
+            MODE="source"
+            echo "[INFO] Auto mode policy '$HYPR_AUTO_MODE_POLICY' in non-interactive context: defaulting to source build." | tee -a "$SUMMARY_LOG"
         fi
         ;;
     *)
-        MODE="debian"
-        echo "[WARN] Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'; defaulting to Debian package mode." | tee -a "$SUMMARY_LOG"
+        MODE="source"
+        echo "[WARN] Unknown HYPR_AUTO_MODE_POLICY='$HYPR_AUTO_MODE_POLICY'; defaulting to source build." | tee -a "$SUMMARY_LOG"
         ;;
     esac
 fi
