@@ -3,16 +3,17 @@
 ## Aug 2026
 
 - Added:
-   - `install-scripts/nwg-dock-hyprland.sh`
-     - Builds hyprland doc from source
-   - `install-scripts/nwg-dock-hyprland.sh`
-     - Builds from source, there is no deb package 
+    - `install-scripts/nwg-dock-hyprland.sh`
+        - Builds hyprland doc from source
+    - `install-scripts/nwg-dock-hyprland.sh`
+        - Builds from source, there is no deb package
 
 - Updated:
     - Due to LUA compatibility waybar builds from source
     - `install.sh` and `update-hyprland.sh` scripts default build from source
 
 - Fixed:
+    - Restored `debs` directory I removed by mistake
     - Set install from Hyprland source as default
         - You have manually change to Debian Hyprland pkgs
             - Debian Hyprland pkgs are older versions of Hyprland
