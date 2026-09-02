@@ -9,6 +9,7 @@
         - Builds from source, there is no deb package
 
 - Updated:
+    - Changed banner from Oct 2025 to just "Hyprland installer"
     - Due to LUA compatibility waybar builds from source
     - `install.sh` and `update-hyprland.sh` scripts default build from source
 

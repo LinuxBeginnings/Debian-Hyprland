@@ -323,7 +323,7 @@ ensure_trixie_backports_repo() {
     local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
     # Check old-style .list format: match trixie-backports as the suite regardless of URL or mirror
     if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+\S+[[:space:]]+trixie-backports([[:space:]]|$)' \
-            /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
         # Backports found elsewhere — remove our overlay if previously created
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
@@ -332,7 +332,7 @@ ensure_trixie_backports_repo() {
     fi
     # Check DEB822 .sources format: match trixie-backports in the Suites: field
     if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' \
-            /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi
@@ -480,7 +480,7 @@ ensure_libinput_min_version_from_local_debs() {
 printf "\n%.0s" {1..2}
 print_color $YELLOW "
         █▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀█
-              KooL's Debian - Hyprland October 2025 Update
+              KooL's Debian - Hyprland installer
               
             Most Hyprland packages are built from Source
 
