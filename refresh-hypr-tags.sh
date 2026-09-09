@@ -306,8 +306,9 @@ if [[ -t 0 && ${#changes[@]} -gt 0 ]]; then
   esac
 fi
 
-# Ensure hyprwire remains pinned to main
+# Ensure hyprwire and hyprtoolkit remain pinned to main
 cur[HYPRWIRE_TAG]="main"
+cur[HYPRTOOLKIT_TAG]="main"
 
 # Write back
 {

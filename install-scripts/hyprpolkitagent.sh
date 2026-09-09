@@ -17,7 +17,6 @@ polkitagent=(
     libpolkit-agent-1-dev
     libpolkit-qt6-1-dev
     mate-polkit
-    policykit-1-gnome
 )
 
 # specific branch or release (fallback)

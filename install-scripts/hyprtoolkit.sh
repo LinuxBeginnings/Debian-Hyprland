@@ -11,15 +11,15 @@
 hyprtoolkit_deps=(
 )
 
-#specific branch or release
-tag="v0.4.1"
+#specific branch or release (fallback)
+tag_default="main"
 # Auto-source centralized tags if env is unset
 if [ -z "${HYPRTOOLKIT_TAG:-}" ]; then
   TAGS_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/hypr-tags.env"
   [ -f "$TAGS_FILE" ] && source "$TAGS_FILE"
 fi
-# Allow environment override
-if [ -n "${HYPRTOOLKIT_TAG:-}" ]; then tag="$HYPRTOOLKIT_TAG"; fi
+TAG_SRC="${HYPRTOOLKIT_TAG:-$tag_default}"
+[[ "$TAG_SRC" =~ ^(auto|latest|head|HEAD)$ ]] && git_ref="" || git_ref="$TAG_SRC"
 
 # Dry-run support
 DO_INSTALL=1
@@ -41,9 +41,15 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
   exit 1
 fi
 
-# Prefer system pkg-config metadata to avoid stale /usr/local *.pc linker paths.
-export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
-export CMAKE_PREFIX_PATH="/usr"
+# Ensure toolchain paths prefer /usr/local
+export PATH="/usr/local/bin:${PATH}"
+if [[ ":${PKG_CONFIG_PATH:-}:" != *":/usr/local/share/pkgconfig:"* ]]; then
+  export PKG_CONFIG_PATH="/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
+fi
+if [[ ":${PKG_CONFIG_PATH}:" != *":/usr/local/lib/pkgconfig:"* ]]; then
+  export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH}"
+fi
+export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
 
 # Set the name of the log file to include the current date and time
 LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprtoolkit.log"
@@ -60,7 +66,7 @@ done
 printf "\n%.0s" {1..1}
 
 # Clone, build, and install using Cmake
-printf "${NOTE} Cloning hyprtoolkit...\n"
+printf "${INFO} Installing ${YELLOW}hyprtoolkit ${git_ref:-default-branch}${RESET} ...\n"
 
 # Check if hyprtoolkit folder exists and remove it (under build/src)
 SRC_DIR="$SRC_ROOT/hyprtoolkit"
@@ -68,27 +74,25 @@ if [ -d "$SRC_DIR" ]; then
   printf "${NOTE} Removing existing hyprtoolkit folder...\n"
   rm -rf "$SRC_DIR" >> "$LOG" 2>&1
 fi
-if git clone -b "$tag" "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR" >> "$LOG" 2>&1; then
+if git clone --recursive ${git_ref:+-b "$git_ref"} "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR" >> "$LOG" 2>&1; then
   cd "$SRC_DIR" || exit 1
-  printf "${NOTE} Applying hyprtoolkit format fix...\\n"
+  printf "${NOTE} Applying hyprtoolkit format fix...\n"
   python3 - <<'PY' >> "$LOG" 2>&1
-from pathlib import Path
-
-path = Path("src/system/Icons.cpp")
-text = path.read_text()
-
-text = text.replace(
-    'g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: Found {} as default fallback", themeDir.value());',
-    """g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: Found {} theme dirs as default fallback (first: {})", themeDir->size(),
-                              themeDir->front());""",
-)
-text = text.replace(
-    'g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme {}", *inheritTheme);',
-    """g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme (count: {}, first: {})", inheritTheme->size(),
-                              inheritTheme->front());""",
-)
-
-path.write_text(text)
+import re, pathlib
+path = pathlib.Path("src/system/Icons.cpp")
+if path.is_file():
+    text = path.read_text()
+    text = re.sub(
+        r'g_logger->log\(HT_LOG_TRACE,\s*"CSystemIconFactory:\s*Found\s*\{\}\s*as\s*default\s*fallback",\s*themeDir\.value\(\)\);',
+        'g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: Found default fallback theme");',
+        text,
+    )
+    text = re.sub(
+        r'g_logger->log\(HT_LOG_TRACE,\s*"CSystemIconFactory:\s*parsing\s*inherited\s*theme\s*\{\}",\s*\*inheritTheme\);',
+        'g_logger->log(HT_LOG_TRACE, "CSystemIconFactory: parsing inherited theme");',
+        text,
+    )
+    path.write_text(text)
 PY
   BUILD_DIR="$BUILD_ROOT/hyprtoolkit"
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"

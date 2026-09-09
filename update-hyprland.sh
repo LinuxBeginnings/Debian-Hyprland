@@ -753,8 +753,9 @@ declare -A repos=(
         map[$k]="$v"
     done <"$TAGS_FILE"
 
-    # Ensure hyprwire is always pinned to main
+    # Ensure hyprwire and hyprtoolkit are always pinned to main
     map[HYPRWIRE_TAG]="main"
+    map[HYPRTOOLKIT_TAG]="main"
 
     # Build a list of changes (old -> new) according to override rules
     changes=()
