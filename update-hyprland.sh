@@ -462,6 +462,7 @@ DEFAULT_MODULES=(
     hyprlock
     hyprpaper
     hyprpicker
+    hyprpolkitagent
     hyprshutdown
     hyprpwcenter
     hyprtavern
@@ -548,6 +549,7 @@ HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRPAPER_TAG=v0.8.4
+HYPRPOLKITAGENT_TAG=v0.2.0
 HYPRWIRE_TAG=main
 XDPH_TAG=v1.3.12
 EOF
@@ -599,6 +601,7 @@ set_tags_from_args() {
         HYPRLOCK | hyprlock) key=HYPRLOCK_TAG ;;
         HYPRPAPER | hyprpaper) key=HYPRPAPER_TAG ;;
         HYPRPICKER | hyprpicker) key=HYPRPICKER_TAG ;;
+        HYPRPOLKITAGENT | hyprpolkitagent) key=HYPRPOLKITAGENT_TAG ;;
         HYPRSHUTDOWN | hyprshutdown) key=HYPRSHUTDOWN_TAG ;;
         HYPRPWCENTER | hyprpwcenter) key=HYPRPWCENTER_TAG ;;
         HYPRTAVERN | hyprtavern) key=HYPRTAVERN_TAG ;;
@@ -710,6 +713,7 @@ declare -A repos=(
         [HYPRLOCK_TAG]="hyprwm/hyprlock"
         [HYPRPAPER_TAG]="hyprwm/hyprpaper"
         [HYPRPICKER_TAG]="hyprwm/hyprpicker"
+        [HYPRPOLKITAGENT_TAG]="hyprwm/hyprpolkitagent"
         [HYPRSHUTDOWN_TAG]="hyprwm/hyprshutdown"
         [HYPRPWCENTER_TAG]="hyprwm/hyprpwcenter"
         [HYPRTAVERN_TAG]="hyprwm/hyprtavern"

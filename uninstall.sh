@@ -104,6 +104,8 @@ detect_pkg_install_method() {
             [ -f /usr/local/bin/hyprpaper ] && is_source=1 ;;
         hyprpicker)
             [ -f /usr/local/bin/hyprpicker ] && is_source=1 ;;
+        hyprpolkitagent)
+            { [ -f /usr/local/libexec/hyprpolkitagent ] || [ -f /usr/local/bin/hyprpolkitagent ] || [ -f /usr/libexec/hyprpolkitagent ] || [ -f /usr/bin/hyprpolkitagent ]; } && is_source=1 ;;
         nwg-dock-hyprland)
             { [ -f /usr/local/bin/nwg-dock-hyprland ] || [ -f /usr/bin/nwg-dock-hyprland ]; } && is_source=1 ;;
     esac
@@ -200,6 +202,16 @@ remove_source_component() {
                 echo "  Removing source artifact: /usr/local/bin/hyprpicker"
                 sudo rm -f /usr/local/bin/hyprpicker && removed=1
             fi ;;
+        hyprpolkitagent)
+            for f in /usr/local/libexec/hyprpolkitagent /usr/local/bin/hyprpolkitagent \
+                      /usr/local/lib/systemd/user/hyprpolkitagent.service \
+                      /usr/local/share/dbus-1/services/org.hyprland.hyprpolkitagent.service \
+                      /usr/share/dbus-1/services/org.hyprland.hyprpolkitagent.service; do
+                if [ -e "$f" ]; then
+                    echo "  Removing source artifact: $f"
+                    sudo rm -rf "$f" && removed=1
+                fi
+            done ;;
         nwg-dock-hyprland)
             for f in /usr/local/bin/nwg-dock-hyprland /usr/bin/nwg-dock-hyprland \
                       /usr/local/share/nwg-dock-hyprland /usr/share/nwg-dock-hyprland; do
@@ -281,6 +293,8 @@ remove_source_builds() {
         /usr/local/bin/hyprpaper
         /usr/local/bin/hyprlock
         /usr/local/bin/hypridle
+        /usr/local/libexec/hyprpolkitagent
+        /usr/local/bin/hyprpolkitagent
         /usr/local/share/wayland-sessions/hyprland.desktop
         /usr/local/libexec/xdg-desktop-portal-hyprland
         /usr/local/bin/rofi
@@ -319,6 +333,8 @@ remove_source_builds() {
         /usr/local/bin/hyprlock
         /usr/local/bin/hypridle
         /usr/local/bin/hyprpicker
+        /usr/local/libexec/hyprpolkitagent
+        /usr/local/bin/hyprpolkitagent
         /usr/local/bin/hyprshutdown
         /usr/local/bin/hyprsunset
         /usr/local/bin/ags

@@ -103,6 +103,9 @@ detect_module_method() {
     hyprshutdown)
       dpkg -l 'hyprshutdown' 2>/dev/null | grep -q '^ii' && is_apt=1
       [ -f /usr/local/bin/hyprshutdown ] && is_source=1 ;;
+    hyprpolkitagent)
+      dpkg -l 'hyprpolkitagent' 2>/dev/null | grep -q '^ii' && is_apt=1
+      { [ -f /usr/local/libexec/hyprpolkitagent ] || [ -f /usr/local/bin/hyprpolkitagent ] || [ -f /usr/libexec/hyprpolkitagent ] || [ -f /usr/bin/hyprpolkitagent ]; } && is_source=1 ;;
     hyprpaper)
       dpkg -l 'hyprpaper' 2>/dev/null | grep -q '^ii' && is_apt=1
       [ -f /usr/local/bin/hyprpaper ] && is_source=1 ;;
