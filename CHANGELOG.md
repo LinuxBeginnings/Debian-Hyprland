@@ -5,7 +5,7 @@
 
 - Fixed 
   - Build issues with hyprland-protocols 
-
+  - BUild complete 
 
 ## Aug 2026
 
