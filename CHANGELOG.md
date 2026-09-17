@@ -1,5 +1,12 @@
 ## CHANGELOG
 
+
+## Sept 2026 
+
+- Fixed 
+  - Build issues with hyprland-protocols 
+
+
 ## Aug 2026
 
 - Added:
