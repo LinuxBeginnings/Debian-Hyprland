@@ -19,6 +19,9 @@ PACKAGES=(
   swappy
   waybar
   magick
+  quickshell
+  qs
+  qs-system
 )
 
 # List of packages installed from Debian-Hyprland repo

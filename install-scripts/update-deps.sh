@@ -23,6 +23,7 @@ Env overrides:
   WAYBAR_SCRIPT           Path to waybar script
   SWWW_SCRIPT             Path to swww/awww script
   NWG_DOCK_SCRIPT         Path to nwg-dock-hyprland script
+  QUICKSHELL_SCRIPT       Path to quickshell script
   CHECK_SCRIPT            Path to final check script
 EOF
 }
@@ -79,9 +80,10 @@ DEPENDENCIES_SCRIPT="${DEPENDENCIES_SCRIPT:-$(pick_script "dependencies" || pick
 PACKAGES_SCRIPT="${PACKAGES_SCRIPT:-$(pick_script "hypr-pkgs" || pick_script "pkgs")}"
 CHECK_SCRIPT="${CHECK_SCRIPT:-$(pick_script "Final-Check" || pick_script "Final")}"
 PRE_CLEANUP_SCRIPT="$(pick_script "pre-cleanup" || true)"
-WAYBAR_SCRIPT="${WAYBAR_SCRIPT:-"$SCRIPT_DIR/waybar.sh"}"
-SWWW_SCRIPT="${SWWW_SCRIPT:-"$SCRIPT_DIR/swww.sh"}"
-NWG_DOCK_SCRIPT="${NWG_DOCK_SCRIPT:-"$SCRIPT_DIR/nwg-dock-hyprland.sh"}"
+WAYBAR_SCRIPT="${WAYBAR_SCRIPT:-$SCRIPT_DIR/waybar.sh}"
+SWWW_SCRIPT="${SWWW_SCRIPT:-$SCRIPT_DIR/swww.sh}"
+NWG_DOCK_SCRIPT="${NWG_DOCK_SCRIPT:-$SCRIPT_DIR/nwg-dock-hyprland.sh}"
+QUICKSHELL_SCRIPT="${QUICKSHELL_SCRIPT:-$SCRIPT_DIR/quickshell.sh}"
 
 if [ -n "$DEPENDENCIES_SCRIPT" ] && [ ! -f "$DEPENDENCIES_SCRIPT" ]; then
   echo "Script not found: $DEPENDENCIES_SCRIPT"
@@ -111,6 +113,29 @@ if [ -n "$NWG_DOCK_SCRIPT" ] && [ ! -f "$NWG_DOCK_SCRIPT" ]; then
   echo "Script not found: $NWG_DOCK_SCRIPT"
   exit 1
 fi
+if [ -n "$QUICKSHELL_SCRIPT" ] && [ ! -f "$QUICKSHELL_SCRIPT" ]; then
+  echo "Script not found: $QUICKSHELL_SCRIPT"
+  exit 1
+fi
+
+is_quickshell_outdated() {
+  local min_ver="0.3.1"
+  if [ -e /usr/local/bin/quickshell ] || [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/qs-system ]; then
+    return 0
+  fi
+  if ! command -v qs >/dev/null 2>&1; then
+    return 1
+  fi
+  local ver
+  ver="$(qs --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)"
+  if [ -z "$ver" ]; then
+    return 0
+  fi
+  if [ "$(printf '%s\n%s\n' "$min_ver" "$ver" | sort -V | head -n1)" != "$min_ver" ]; then
+    return 0
+  fi
+  return 1
+}
 
 if [ "$DRY_RUN" -eq 1 ]; then
   echo "Dry run. Scripts that would execute:"
@@ -128,6 +153,13 @@ if [ "$DRY_RUN" -eq 1 ]; then
   else
     echo "  nwg-dock-hyprland: skipped (nwg-dock-hyprland already installed at $(command -v nwg-dock-hyprland))"
   fi
+  if command -v qs >/dev/null 2>&1 || [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ]; then
+    if is_quickshell_outdated; then
+      [ -n "$QUICKSHELL_SCRIPT" ] && echo "  quickshell: $QUICKSHELL_SCRIPT (outdated < 0.3.1 or legacy /usr/local build detected)"
+    else
+      echo "  quickshell: skipped (already >= 0.3.1 at $(command -v qs))"
+    fi
+  fi
   [ -n "$CHECK_SCRIPT" ] && echo "  final check: $CHECK_SCRIPT"
   exit 0
 fi
@@ -139,6 +171,7 @@ PRE_CLEANUP_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_pre-cleanup.log"
 WAYBAR_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_waybar.log"
 SWWW_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_swww.log"
 NWG_DOCK_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_nwg_dock.log"
+QUICKSHELL_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_quickshell.log"
 CHECK_LOG="$LOG_DIR/update-deps-${RUN_STAMP}_check.log"
 
 strip_ansi() {
@@ -151,6 +184,7 @@ pre_cleanup_status=0
 waybar_status=0
 swww_status=0
 nwg_dock_status=0
+quickshell_status=0
 check_status=0
 
 if [ -n "$DEPENDENCIES_SCRIPT" ]; then
@@ -202,6 +236,20 @@ if ! command -v nwg-dock-hyprland >/dev/null 2>&1; then
 else
   echo
   echo "nwg-dock-hyprland already installed ($(command -v nwg-dock-hyprland)). Skipping nwg-dock-hyprland script."
+fi
+
+if command -v qs >/dev/null 2>&1 || [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ]; then
+  if is_quickshell_outdated; then
+    if [ -n "$QUICKSHELL_SCRIPT" ]; then
+      echo
+      echo "Quickshell is outdated (< 0.3.1 or legacy /usr/local/bin build). Running quickshell script: $(basename "$QUICKSHELL_SCRIPT")"
+      bash "$QUICKSHELL_SCRIPT" 2>&1 | tee "$QUICKSHELL_LOG"
+      quickshell_status=${PIPESTATUS[0]}
+    fi
+  else
+    echo
+    echo "Quickshell already up-to-date (>= 0.3.1 at $(command -v qs)). Skipping quickshell script."
+  fi
 fi
 
 if [ -n "$CHECK_SCRIPT" ]; then
@@ -261,6 +309,14 @@ if ! command -v nwg-dock-hyprland >/dev/null 2>&1; then
   echo "nwg-dock-hyprland script: ${NWG_DOCK_SCRIPT:-none}"
 else
   echo "nwg-dock-hyprland script: ${NWG_DOCK_SCRIPT:-none} (nwg-dock-hyprland present)"
+fi
+if command -v qs >/dev/null 2>&1 || [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ]; then
+  if is_quickshell_outdated; then
+    echo "Quickshell script: ${QUICKSHELL_SCRIPT:-none} (outdated < 0.3.1 or legacy build)"
+    echo "Quickshell exit status: $quickshell_status"
+  else
+    echo "Quickshell script: ${QUICKSHELL_SCRIPT:-none} (present and >= 0.3.1)"
+  fi
 fi
 echo "Final check script: ${CHECK_SCRIPT:-none}"
 echo "Dependencies exit status: $dependencies_status"

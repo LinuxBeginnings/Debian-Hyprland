@@ -1022,6 +1022,14 @@ dots="OFF"
 input_group="OFF"
 nvidia="OFF"
 
+# If an older Quickshell (< 0.3.1 or legacy /usr/local/bin build) is detected, default quickshell option to ON
+if command -v qs >/dev/null 2>&1 || [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ]; then
+    _qs_ver="$(qs --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1 || true)"
+    if [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ] || [ -z "$_qs_ver" ] || [ "$(printf '%s\n%s\n' "0.3.1" "$_qs_ver" | sort -V | head -n1)" != "0.3.1" ]; then
+        quickshell="ON"
+    fi
+fi
+
 # Function to load preset file
 load_preset() {
     if [ -f "$1" ]; then
@@ -1117,7 +1125,7 @@ options_command+=(
     "bluetooth" "Do you want script to configure Bluetooth?" "$bluetooth"
     "thunar" "Do you want Thunar file manager to be installed?" "$thunar"
     "ags" "Install AGS v1 for Desktop-Like Overview" "$ags"
-    "quickshell" "Install Quickshell (QtQuick-based shell toolkit)?" "$quickshell"
+    "quickshell" "Install/Update Quickshell (QtQuick-based shell toolkit)?" "$quickshell"
     "zsh" "Install zsh shell with Oh-My-Zsh?" "$zsh"
     "pokemon" "Add Pokemon color scripts to your terminal?" "$pokemon"
     "rog" "Are you installing on Asus ROG laptops?" "$rog"

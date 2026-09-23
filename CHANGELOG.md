@@ -3,12 +3,14 @@
 ## Sep 2026
 
 - Fixed:
-  - Build issues with hyprland-protocols
-  - Build complete
-  - Resolved hyprtoolkit build issues
+    - Build issues with hyprland-protocols
+    - Build complete
+    - Resolved hyprtoolkit build issues
 - Updated banner date to just `Hyprland Installer`
 - Updated `quickshell` to v0.3.1
-  - No longer builds from source
+    - No longer builds from source
+    - Added version check
+
 ## Aug 2026
 
 - Added:

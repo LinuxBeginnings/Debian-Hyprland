@@ -191,17 +191,28 @@ cleanup_legacy_quickshell
 if install_quickshell_pkg; then
     ensure_qml_runtime_modules
 
+    MIN_QS_VER="0.3.1"
     if command -v qs >/dev/null 2>&1; then
         QS_BIN="$(command -v qs)"
         QS_VER="$(qs --version 2>/dev/null | head -n1 || true)"
+        QS_NUM="$(echo "$QS_VER" | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1)"
         echo "${OK} Quickshell installed: ${MAGENTA}${QS_VER:-unknown}${RESET} (${QS_BIN})" | tee -a "$LOG"
         case "$QS_BIN" in
         /usr/local/*)
             echo "${WARN} 'qs' resolves to ${QS_BIN}; a /usr/local build may still shadow the packaged binary." | tee -a "$LOG"
             ;;
         esac
+        if [ -n "$QS_NUM" ]; then
+            if [ "$(printf '%s\n%s\n' "$MIN_QS_VER" "$QS_NUM" | sort -V | head -n1)" != "$MIN_QS_VER" ]; then
+                echo "${ERROR} Installed Quickshell version ${QS_NUM} is older than required ${MIN_QS_VER}+." | tee -a "$LOG"
+                exit 1
+            else
+                echo "${OK} Quickshell version ${QS_NUM} satisfies >= ${MIN_QS_VER}." | tee -a "$LOG"
+            fi
+        fi
     else
-        echo "${WARN} Quickshell package installed but 'qs' was not found on PATH." | tee -a "$LOG"
+        echo "${ERROR} Quickshell package installed but 'qs' was not found on PATH." | tee -a "$LOG"
+        exit 1
     fi
 else
     echo "${ERROR} Failed to install Quickshell from Debian repositories." | tee -a "$LOG"
