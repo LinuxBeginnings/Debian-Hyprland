@@ -6,7 +6,15 @@
 #  SPDX-License-Identifier: GPL-3.0-or-later
 # ==================================================
 # 💫 https://github.com/LinuxBeginnings 💫 #
-# Quickshell (QtQuick-based shell toolkit) - Debian builder
+# Quickshell (QtQuick-based shell toolkit) - Debian package installer
+#
+# Installs the distro-packaged Quickshell instead of building an older
+# release from source into /usr/local (which shadowed the packaged binary
+# and, on older releases, lacked Hyprland.usingLua -> broken Lua dispatchers).
+#
+# Repository selection:
+#   - Debian trixie : trixie-backports
+#   - forky+/sid/testing : standard repositories
 
 set -Eeuo pipefail
 
@@ -23,16 +31,8 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
     exit 1
 fi
 
-# Prefer /usr/local for pkg-config and CMake
-export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:${PKG_CONFIG_PATH:-}"
-export CMAKE_PREFIX_PATH="/usr/local:${CMAKE_PREFIX_PATH:-}"
-
-# Ensure logs dir exists at repo root (we cd into source later)
 mkdir -p "$PARENT_DIR/Install-Logs"
-
 LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_quickshell.log"
-MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_quickshell_build.log"
-
 
 # Refresh sudo credentials once (install_package uses sudo internally)
 if command -v sudo >/dev/null 2>&1; then
@@ -42,188 +42,170 @@ fi
 note() { echo -e "${NOTE} $*" | tee -a "$LOG"; }
 info() { echo -e "${INFO} $*" | tee -a "$LOG"; }
 
-# Build-time and runtime deps per upstream BUILD.md (Qt 6.6+)
-# Some may already be present from 00-dependencies.sh
-DEPS=(
-    build-essential
-    git
-    autoconf
-    automake
-    libtool
-    zlib1g-dev
-    libcurl4-openssl-dev
-    cmake
-    ninja-build
-    pkg-config
-    spirv-tools
-    qt6-base-dev
-    qt6-declarative-dev
-    qt6-shadertools-dev
-    qt6-tools-dev
-    qt6-tools-dev-tools
-    qt6-declarative-private-dev
-    # Wayland + protocols
-    libwayland-dev
-    wayland-protocols
-    # Screencopy/GBM/DRM
-    libdrm-dev
-    libgbm-dev
-    # Optional integrations enabled by default
-    libpipewire-0.3-dev
-    libpam0g-dev
-    libglib2.0-dev
-    libpolkit-gobject-1-dev
-    libpolkit-agent-1-dev
-    libjemalloc-dev
-    # X11 (optional but harmless)
-    libxcb1-dev
-    # SVG support (package name differs across releases; try both)
-    qt6-svg-dev
-    libqt6svg6-dev
-    # Third-party libs used by Quickshell
-    libcli11-dev
-    # Crash handler (cpptrace vendoring still requires unwind libs)
-    libunwind-dev
-    libdwarf-dev
-    # Qt Quick runtime QML modules required at runtime (RectangularShadow, etc.)
-    qml6-module-qtquick-effects
-    qml6-module-qtquick-shapes
-    qml6-module-qtquick-controls
-    qml6-module-qtquick-layouts
-    qml6-module-qt5compat-graphicaleffects
-)
-
-printf "\n%s - Installing ${SKY_BLUE}Quickshell build dependencies${RESET}....\n" "${NOTE}"
-# Single apt transaction for speed and robustness, but filter packages with no candidate
-sudo apt update 2>&1 | tee -a "$LOG"
-AVAILABLE_PKGS=()
-for PKG in "${DEPS[@]}"; do
-    CAND=$(apt-cache policy "$PKG" | awk '/Candidate:/ {print $2}')
-    if [ -n "$CAND" ] && [ "$CAND" != "(none)" ]; then
-        AVAILABLE_PKGS+=("$PKG")
-    else
-        note "Skipping $PKG (no candidate in APT)"
+# ------------------------------------------------------------------
+# Resolve the Debian suite (prefer DEBIAN_SUITE from install.sh)
+# ------------------------------------------------------------------
+resolve_suite() {
+    if [ -n "${DEBIAN_SUITE:-}" ]; then
+        echo "$DEBIAN_SUITE"
+        return
     fi
-done
-if ! sudo apt install -y "${AVAILABLE_PKGS[@]}" 2>&1 | tee -a "$LOG"; then
-    echo "${ERROR} apt failed when installing Quickshell build dependencies." | tee -a "$LOG"
-    exit 1
-fi
-
-# Validate critical tools
-for bin in cmake ninja pkg-config; do
-    if ! command -v "$bin" >/dev/null 2>&1; then
-        echo "${ERROR} Required tool '$bin' not found after apt install." | tee -a "$LOG"
-        exit 1
+    local c=""
+    if [ -f /etc/os-release ]; then
+        # shellcheck disable=SC1091
+        . /etc/os-release || true
+        c="${VERSION_CODENAME:-}"
     fi
-done
-
-# Quickshell switched from Breakpad to cpptrace.
-# Prefer vendoring cpptrace to avoid distro package mismatches/missing cmake configs.
-note "Using vendored cpptrace (-DVENDOR_CPPTRACE=ON)."
-
-# Clone source (prefer upstream forgejo; mirror available at github:quickshell-mirror/quickshell)
-SRC_DIR="$SRC_ROOT/quickshell-src"
-if [ -d "$SRC_DIR" ]; then
-    note "Removing existing $SRC_DIR"
-    rm -rf "$SRC_DIR"
-fi
-
-note "Cloning Quickshell source..."
-if git clone --depth=1 https://git.outfoxxed.me/quickshell/quickshell "$SRC_DIR" 2>&1 | tee -a "$LOG"; then
-    cd "$SRC_DIR"
-else
-    echo "${ERROR} Failed to clone Quickshell repo" | tee -a "$LOG"
-    exit 1
-fi
-
-# Configure with Ninja; enable RelWithDebInfo, leave features ON (deps installed above)
-CMAKE_FLAGS=(
-    -GNinja
-    -DCMAKE_BUILD_TYPE=RelWithDebInfo
-    -DDISTRIBUTOR="Debian-Hyprland installer"
-    -DVENDOR_CPPTRACE=ON
-)
-
-note "Configuring Quickshell (CMake)..."
-# Use explicit source/build dirs and preserve cmake exit code with pipefail
-BUILD_DIR="$BUILD_ROOT/quickshell"
-rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
-if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" 2>&1 | tee -a "$MLOG"; then
-    note "Initial CMake configure failed; retrying with -DCRASH_HANDLER=OFF"
-    rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
-    if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" -DCRASH_HANDLER=OFF 2>&1 | tee -a "$MLOG"; then
-        echo "${ERROR} CMake configure failed (including fallback). See log: $MLOG" | tee -a "$LOG"
-        exit 1
+    if [ -z "$c" ] && command -v lsb_release >/dev/null 2>&1; then
+        c="$(lsb_release -sc 2>/dev/null || true)"
     fi
-fi
-
-# Ensure build files exist before invoking ninja
-if [ ! -f "$BUILD_DIR/build.ninja" ]; then
-    echo "${ERROR} build/build.ninja not generated; aborting build." | tee -a "$LOG"
-    exit 1
-fi
-
-note "Building Quickshell (Ninja)..."
-if ! cmake --build "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then
-    echo "${ERROR} Build failed. See log: $MLOG" | tee -a "$LOG"
-    exit 1
-fi
-
-note "Installing Quickshell..."
-if ! sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then
-    echo "${ERROR} Installation failed. See log: $MLOG" | tee -a "$LOG"
-    exit 1
-fi
-
-echo "${OK} Quickshell installed successfully." | tee -a "$MLOG"
-
-# Provide a shim for missing QtQuick.Effects.RectangularShadow (wraps MultiEffect)
-OVR_DIR=/usr/local/share/quickshell-overrides/QtQuick/Effects
-sudo install -d -m 755 "$OVR_DIR"
-sudo tee "$OVR_DIR/RectangularShadow.qml" >/dev/null <<'QML'
-import QtQuick
-import QtQuick.Effects
-
-Item {
-    id: root
-    // Minimal RectangularShadow shim using MultiEffect
-    // Map common properties used by configs
-    property alias source: fx.source
-    property color color: "#000000"
-    property real opacity: 0.4
-    property real blur: 32
-    property real xOffset: 0
-    property real yOffset: 6
-    property real scale: 1.0
-
-    MultiEffect {
-        id: fx
-        anchors.fill: parent
-        shadowEnabled: true
-        shadowColor: root.color
-        shadowOpacity: root.opacity
-        shadowBlur: root.blur
-        shadowHorizontalOffset: root.xOffset
-        shadowVerticalOffset: root.yOffset
-        shadowScale: root.scale
-    }
+    echo "$c"
 }
-QML
+SUITE="$(resolve_suite)"
 
-# Install a wrapper to run Quickshell with system QML imports (avoids Nix/Flatpak overrides)
-WRAP=/usr/local/bin/qs-system
-sudo tee "$WRAP" >/dev/null <<'EOSH'
-#!/usr/bin/env bash
-# Run Quickshell preferring system Qt6 QML modules and overrides
-OVR=/usr/local/share/quickshell-overrides
-export QML_IMPORT_PATH="$OVR${QML_IMPORT_PATH:+:$QML_IMPORT_PATH}"
-export QML2_IMPORT_PATH="$OVR${QML2_IMPORT_PATH:+:$QML2_IMPORT_PATH}"
-exec qs "$@"
-EOSH
-sudo chmod +x "$WRAP" || true
+# ------------------------------------------------------------------
+# Remove legacy source-built Quickshell that shadows the packaged qs
+# (previous installer versions built ~0.2.1 into /usr/local/bin).
+# ------------------------------------------------------------------
+cleanup_legacy_quickshell() {
+    local f
+    for f in /usr/local/bin/quickshell /usr/local/bin/qs; do
+        if [ -e "$f" ] || [ -L "$f" ]; then
+            note "Removing legacy source-built Quickshell artifact: $f"
+            sudo rm -f "$f" 2>/dev/null || true
+        fi
+    done
+    # The qs-system wrapper and QML override shim were only needed to work
+    # around the old source build; the packaged Quickshell does not use them.
+    if [ -e /usr/local/bin/qs-system ]; then
+        note "Removing legacy Quickshell wrapper: /usr/local/bin/qs-system"
+        sudo rm -f /usr/local/bin/qs-system 2>/dev/null || true
+    fi
+    if [ -d /usr/local/share/quickshell-overrides ]; then
+        note "Removing legacy Quickshell override shim: /usr/local/share/quickshell-overrides"
+        sudo rm -rf /usr/local/share/quickshell-overrides 2>/dev/null || true
+    fi
+}
 
-# Build logs already written to $PARENT_DIR/Install-Logs
-# Keep source directory for reference in case user wants to rebuild later
+# ------------------------------------------------------------------
+# Ensure trixie-backports is configured (standalone-safe; install.sh
+# normally does this already when on trixie).
+# ------------------------------------------------------------------
+ensure_trixie_backports() {
+    [ "$SUITE" = "trixie" ] || return 0
+    if apt-cache policy quickshell 2>/dev/null | grep -q "trixie-backports"; then
+        return 0
+    fi
+    # Already configured elsewhere?
+    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+\S+[[:space:]]+trixie-backports([[:space:]]|$)' \
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' \
+        /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        return 0
+    fi
+    info "Enabling Debian trixie-backports repository for Quickshell..."
+    sudo bash -c "cat > /etc/apt/sources.list.d/99-debian-trixie-backports.list <<EOF
+# Added by Debian-Hyprland installer for Quickshell on trixie
+deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+deb-src http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware
+EOF"
+    sudo apt update 2>&1 | tee -a "$LOG"
+}
+
+pkg_candidate() {
+    apt-cache policy quickshell 2>/dev/null | awk '/Candidate:/ {print $2}'
+}
+
+pkg_available_in_target() {
+    local target="$1"
+    apt-cache policy quickshell 2>/dev/null | grep -Eq "[[:space:]]${target}/"
+}
+
+# ------------------------------------------------------------------
+# Install the Quickshell Debian package from the right repository
+# ------------------------------------------------------------------
+install_quickshell_pkg() {
+    local cand
+    case "$SUITE" in
+    trixie)
+        ensure_trixie_backports
+        if pkg_available_in_target "trixie-backports"; then
+            info "Installing Quickshell from trixie-backports..."
+            install_package_target quickshell "trixie-backports"
+        else
+            cand="$(pkg_candidate)"
+            if [ -n "$cand" ] && [ "$cand" != "(none)" ]; then
+                note "quickshell not found in trixie-backports; installing from default suite ($cand)."
+                install_package quickshell
+            else
+                echo "${ERROR} quickshell is not available in trixie-backports. Ensure the repository is enabled and run 'sudo apt update'." | tee -a "$LOG"
+                return 1
+            fi
+        fi
+        ;;
+    *)
+        cand="$(pkg_candidate)"
+        if [ -n "$cand" ] && [ "$cand" != "(none)" ]; then
+            info "Installing Quickshell from standard repositories${SUITE:+ (suite: $SUITE)}..."
+            install_package quickshell
+        else
+            echo "${ERROR} quickshell package not available in the standard repositories${SUITE:+ for suite '$SUITE'}." | tee -a "$LOG"
+            return 1
+        fi
+        ;;
+    esac
+}
+
+# ------------------------------------------------------------------
+# Best-effort: ensure Qt Quick runtime QML modules used by the shell
+# configs are present (skips anything unavailable on this suite).
+# ------------------------------------------------------------------
+ensure_qml_runtime_modules() {
+    local pkgs=(
+        qml6-module-qtquick-effects
+        qml6-module-qtquick-shapes
+        qml6-module-qtquick-controls
+        qml6-module-qtquick-layouts
+        qml6-module-qt5compat-graphicaleffects
+    )
+    local p cand
+    for p in "${pkgs[@]}"; do
+        if dpkg -s "$p" >/dev/null 2>&1; then
+            continue
+        fi
+        cand="$(apt-cache policy "$p" 2>/dev/null | awk '/Candidate:/ {print $2}')"
+        if [ -n "$cand" ] && [ "$cand" != "(none)" ]; then
+            install_package "$p"
+        else
+            note "Skipping $p (no candidate in APT)"
+        fi
+    done
+}
+
+printf "\n%s - Installing ${SKY_BLUE}Quickshell${RESET} from Debian repositories....\n" "${NOTE}"
+
+cleanup_legacy_quickshell
+
+if install_quickshell_pkg; then
+    ensure_qml_runtime_modules
+
+    if command -v qs >/dev/null 2>&1; then
+        QS_BIN="$(command -v qs)"
+        QS_VER="$(qs --version 2>/dev/null | head -n1 || true)"
+        echo "${OK} Quickshell installed: ${MAGENTA}${QS_VER:-unknown}${RESET} (${QS_BIN})" | tee -a "$LOG"
+        case "$QS_BIN" in
+        /usr/local/*)
+            echo "${WARN} 'qs' resolves to ${QS_BIN}; a /usr/local build may still shadow the packaged binary." | tee -a "$LOG"
+            ;;
+        esac
+    else
+        echo "${WARN} Quickshell package installed but 'qs' was not found on PATH." | tee -a "$LOG"
+    fi
+else
+    echo "${ERROR} Failed to install Quickshell from Debian repositories." | tee -a "$LOG"
+    exit 1
+fi
 
 printf "\n%.0s" {1..1}
