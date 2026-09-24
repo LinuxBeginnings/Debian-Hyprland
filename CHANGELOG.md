@@ -10,6 +10,11 @@
 - Updated `quickshell` to v0.3.1
     - No longer builds from source
     - Added version check
+- Removed:
+    - quickshell and Hyprland Desktop portal from menu
+        - now installed by default
+- Added:
+    - Dependency check for `flock` part of `utils-linux`
 
 ## Aug 2026
 
