@@ -67,7 +67,8 @@ Options:
 
 Notes:
   --tty is a fallback for remote/CI or when terminals cannot render whiptail.
-  XDG-Desktop-Portal-Hyprland (screen sharing) is installed by default.
+  Quickshell (desktop overview) and XDG-Desktop-Portal-Hyprland (screen sharing)
+  are installed by default.
 EOF
 }
 
@@ -927,6 +928,13 @@ if ! dpkg -l | grep -w pciutils >/dev/null; then
     printf "\n%.0s" {1..1}
 fi
 
+# Ensure flock (util-linux) is available; required by Hyprland-Dots RofiEmoji.sh
+if ! command -v flock >/dev/null 2>&1; then
+    echo "${NOTE} - flock (util-linux) is not installed. Installing..." | tee -a "$LOG"
+    sudo apt install -y util-linux
+    printf "\n%.0s" {1..1}
+fi
+
 # Path to the install-scripts directory
 script_directory=install-scripts
 
@@ -1011,24 +1019,14 @@ gtk_themes="OFF"
 bluetooth="OFF"
 thunar="OFF"
 ags="OFF"
-quickshell="OFF"
 sddm="OFF"
 sddm_theme="OFF"
-xdph="OFF"
 zsh="OFF"
 pokemon="OFF"
 rog="OFF"
 dots="OFF"
 input_group="OFF"
 nvidia="OFF"
-
-# If an older Quickshell (< 0.3.1 or legacy /usr/local/bin build) is detected, default quickshell option to ON
-if command -v qs >/dev/null 2>&1 || [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ]; then
-    _qs_ver="$(qs --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+(\.[0-9]+)?' | head -n1 || true)"
-    if [ -e /usr/local/bin/qs ] || [ -e /usr/local/bin/quickshell ] || [ -z "$_qs_ver" ] || [ "$(printf '%s\n%s\n' "0.3.1" "$_qs_ver" | sort -V | head -n1)" != "0.3.1" ]; then
-        quickshell="ON"
-    fi
-fi
 
 # Function to load preset file
 load_preset() {
@@ -1119,13 +1117,12 @@ if ! check_services_running; then
     )
 fi
 
-# Add the remaining static options (XDPH now installed by default; removed from menu)
+# Add the remaining static options (Quickshell and XDPH now installed by default; removed from menu)
 options_command+=(
     "gtk_themes" "Install GTK themes (required for Dark/Light function)" "$gtk_themes"
     "bluetooth" "Do you want script to configure Bluetooth?" "$bluetooth"
     "thunar" "Do you want Thunar file manager to be installed?" "$thunar"
     "ags" "Install AGS v1 for Desktop-Like Overview" "$ags"
-    "quickshell" "Install/Update Quickshell (QtQuick-based shell toolkit)?" "$quickshell"
     "zsh" "Install zsh shell with Oh-My-Zsh?" "$zsh"
     "pokemon" "Add Pokemon color scripts to your terminal?" "$pokemon"
     "rog" "Are you installing on Asus ROG laptops?" "$rog"
@@ -1139,7 +1136,7 @@ if [ "$TTY_MODE" -eq 1 ]; then
     if [ "$nvidia_detected" == "true" ]; then available_opts+=(nvidia); fi
     if [ "$input_group_detected" == "true" ]; then available_opts+=(input_group); fi
     if ! check_services_running; then available_opts+=(sddm sddm_theme); fi
-    available_opts+=(gtk_themes bluetooth thunar ags quickshell zsh pokemon rog dots)
+    available_opts+=(gtk_themes bluetooth thunar ags zsh pokemon rog dots)
 
     while true; do
         echo "Available options (space-separated):"
@@ -1356,9 +1353,6 @@ else
     sleep 1
     execute_script "hyprsysteminfo.sh"
 
-    # Install XDG-Desktop-Portal-Hyprland by default (removed from menu)
-    execute_script "xdph.sh"
-
     # Ensure /usr/local/lib is in the dynamic linker search path.
     # Many Hypr* components install shared libraries into /usr/local/lib; without this,
     # tools like hyprctl can fail to load (e.g. missing libhyprwire.so.*).
@@ -1367,6 +1361,17 @@ else
     fi
     sudo ldconfig 2>/dev/null || true
 fi
+
+# Quickshell and XDG-Desktop-Portal-Hyprland are installed by default;
+# they are no longer offered as optional menu choices.
+echo "${INFO} Installing ${SKY_BLUE}Quickshell (desktop overview)...${RESET}" | tee -a "$LOG"
+sleep 1
+execute_script "quickshell.sh" || echo "${WARN} Quickshell installation failed - desktop overview will fall back to AGS. Check Install-Logs/." | tee -a "$LOG"
+
+echo "${INFO} Installing ${SKY_BLUE}xdg-desktop-portal-hyprland (screen sharing)...${RESET}" | tee -a "$LOG"
+sleep 1
+execute_script "xdph.sh" || echo "${WARN} xdg-desktop-portal-hyprland installation failed - screen sharing may not work. Check Install-Logs/." | tee -a "$LOG"
+
 echo "${INFO} Installing ${SKY_BLUE}Yazi file manager...${RESET}" | tee -a "$LOG"
 sleep 1
 execute_script "yazi.sh" || {
@@ -1449,14 +1454,6 @@ for option in "${options[@]}"; do
     ags)
         echo "${INFO} Installing ${SKY_BLUE}AGS v1 for Desktop Overview...${RESET}" | tee -a "$LOG"
         execute_script "ags.sh"
-        ;;
-    quickshell)
-        echo "${INFO} Installing ${SKY_BLUE}Quickshell${RESET} (QtQuick-based shell toolkit)..." | tee -a "$LOG"
-        execute_script "quickshell.sh"
-        ;;
-    xdph)
-        echo "${INFO} Installing ${SKY_BLUE}xdg-desktop-portal-hyprland...${RESET}" | tee -a "$LOG"
-        execute_script "xdph.sh"
         ;;
     bluetooth)
         echo "${INFO} Configuring ${SKY_BLUE}Bluetooth...${RESET}" | tee -a "$LOG"
