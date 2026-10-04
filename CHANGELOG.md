@@ -1,5 +1,11 @@
 ## CHANGELOG
 
+## Oct 2026
+
+- Added:
+  - Verified `lua5.4` and `hyprland-guiutils` dependencies
+  - Added `lua5.4` package check and `luac` / `hyprland-dialog` binary checks to `03-Final-Check.sh`
+
 ## Sep 2026
 
 - Fixed:
