@@ -22,6 +22,7 @@ packages=(
     cliphist
     wlogout
     kitty
+    lua5.4
     yazi
     zoxide
     libopengl-dev
@@ -40,6 +41,8 @@ required_bins=(
     wallust
     awww
     nwg-dock-hyprland
+    hyprland-dialog
+    luac
 )
 
 # Function to check if source-built waybar is installed
