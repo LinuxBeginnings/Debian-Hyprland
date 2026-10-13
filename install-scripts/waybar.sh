@@ -68,18 +68,35 @@ waybar_extra_deps=(
     libiniparser-dev
 )
 
-# ─── Check if already source-built ───────────────────────────────────────────
+# ─── Check if already source-built AND runnable ──────────────────────────────
 # Source builds land in /usr/local/bin; APT installs to /usr/bin.
-if [ -x "/usr/local/bin/waybar" ]; then
+#
+# Existence alone is not enough to skip. A source-built Waybar goes stale when a
+# library ABI it links against moves: a libfmt major bump changes the spdlog ABI
+# and the old binary then dies on every launch with
+# "symbol lookup error: undefined symbol: ...spdlog...fmt...". WaybarStartup.sh
+# discards that stderr, so the bar just never appears. Confirm the binary runs.
+waybar_binary_runs() {
+    local bin="$1"
+    [ -x "$bin" ] || return 1
+    "$bin" --version >/dev/null 2>&1
+}
+
+if [ -x "/usr/local/bin/waybar" ] && waybar_binary_runs "/usr/local/bin/waybar"; then
     echo "${INFO} Waybar is already source-built at /usr/local/bin/waybar. Skipping build."
     exit 0
 fi
 
 if command -v waybar &>/dev/null; then
-    WAYBAR_VER_LINE="$(waybar --version 2>&1 | grep -i 'waybar v' || true)"
-    if echo "$WAYBAR_VER_LINE" | grep -q -E "branch|g[0-9a-f]{7}"; then
-        echo "${INFO} Waybar is already source-built at $(command -v waybar). Skipping build."
-        exit 0
+    _wb_bin="$(command -v waybar)"
+    if waybar_binary_runs "$_wb_bin"; then
+        WAYBAR_VER_LINE="$(waybar --version 2>&1 | grep -i 'waybar v' || true)"
+        if echo "$WAYBAR_VER_LINE" | grep -q -E "branch|g[0-9a-f]{7}"; then
+            echo "${INFO} Waybar is already source-built at $_wb_bin. Skipping build."
+            exit 0
+        fi
+    else
+        echo "${WARN} Existing waybar at $_wb_bin is not runnable (e.g. stale libfmt/spdlog ABI); it will be rebuilt."
     fi
 fi
 
@@ -182,10 +199,11 @@ else
 fi
 
 # ─── Verify ───────────────────────────────────────────────────────────────────
-if command -v waybar &>/dev/null; then
+if command -v waybar &>/dev/null && waybar_binary_runs "$(command -v waybar)"; then
     printf "%s ${GREEN}Waybar${RESET} is available at %s\n" "${OK}" "$(command -v waybar)"
 else
-    echo "${WARN} Waybar binary not found in PATH after install. Check $MLOG" | tee -a "$MLOG"
+    echo "${ERROR} Waybar binary is present but does not run (e.g. symbol lookup error). Check $MLOG" | tee -a "$MLOG"
+    exit 1
 fi
 
 cd "$REPO_ROOT" || exit 1
