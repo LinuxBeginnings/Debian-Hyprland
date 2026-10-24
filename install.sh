@@ -798,7 +798,8 @@ remove_source_hyprland_artifacts() {
     sudo rmdir /usr/local/share/wayland-sessions 2>/dev/null || true
 
     # Remove development files from /usr/local
-    if [ -d "/usr/local/include/hyprland" ] || [ -d "/usr/local/include/hyprtoolkit" ] || [ -d "/usr/local/lib/libhypr" ] || [ -d "/usr/local/lib/cmake/hyprtoolkit" ]; then
+    if [ -d "/usr/local/include/hyprland" ] || [ -d "/usr/local/include/hyprtoolkit" ] || [ -d "/usr/local/lib/cmake/hyprtoolkit" ] ||
+        compgen -G "/usr/local/lib/libhypr*" >/dev/null || compgen -G "/usr/local/lib/libaquamarine*" >/dev/null; then
         echo "${INFO} Removing development files from /usr/local..." | tee -a "$LOG"
         sudo rm -rf /usr/local/include/hyprland* 2>/dev/null || true
         sudo rm -rf /usr/local/include/hyprtoolkit* 2>/dev/null || true
@@ -806,8 +807,31 @@ remove_source_hyprland_artifacts() {
         sudo rm -rf /usr/local/lib/libaquamarine* 2>/dev/null || true
         sudo rm -rf /usr/local/lib/libypr* 2>/dev/null || true
         sudo rm -rf /usr/local/lib/cmake/hyprtoolkit 2>/dev/null || true
-        sudo ldconfig 2>/dev/null || true
     fi
+
+    # Drop the matching pkg-config metadata unconditionally. Leaving it behind
+    # while the libraries are gone makes later source builds configure cleanly and
+    # then fail to link with "cannot find -lhyprutils": /usr/local/lib/pkgconfig is
+    # on pkg-config's default search path, so the stale .pc files are still found.
+    local pc_file
+    for pc_file in \
+        /usr/local/lib/pkgconfig/hyprutils.pc \
+        /usr/local/lib/pkgconfig/hyprlang.pc \
+        /usr/local/lib/pkgconfig/hyprcursor.pc \
+        /usr/local/lib/pkgconfig/aquamarine.pc \
+        /usr/local/lib/pkgconfig/hyprgraphics.pc \
+        /usr/local/lib/pkgconfig/hyprtoolkit.pc \
+        /usr/local/lib/pkgconfig/hyprwire.pc \
+        /usr/local/lib/pkgconfig/hyprwire-scanner.pc \
+        /usr/local/lib/pkgconfig/hyprwire-protocols.pc \
+        /usr/local/share/pkgconfig/hyprland.pc \
+        /usr/local/share/pkgconfig/hyprland-protocols.pc; do
+        if [ -e "$pc_file" ]; then
+            echo "${NOTE} Removing source pkg-config metadata: $pc_file" | tee -a "$LOG"
+            sudo rm -f "$pc_file" 2>/dev/null || true
+        fi
+    done
+    sudo ldconfig 2>/dev/null || true
 
     echo "${OK} Cleanup completed" | tee -a "$LOG"
 }
@@ -963,6 +987,17 @@ execute_script() {
         echo "Script '$script' not found in '$script_directory'." | tee -a "$LOG"
         return 1
     fi
+}
+
+# Drop dangling pkg-config metadata before a source build. Stale .pc files in
+# /usr/local make CMake configure pass while the link fails with
+# "cannot find -l<lib>" (see install-scripts/pkgconfig-preflight.sh).
+preflight_pkgconfig() {
+    local mode="${1:---strict}"
+    local script="$script_directory/pkgconfig-preflight.sh"
+    [ -f "$script" ] || return 0
+    chmod +x "$script" 2>/dev/null || true
+    "$script" "$mode" || true
 }
 
 # Load centralized Hyprland stack tags if present and export for child scripts
@@ -1292,6 +1327,9 @@ else
         exit 1
     }
     sleep 1
+    # A source install rewrites each module's pkg-config metadata, so pruning
+    # dangling entries left over from a previous Debian package mode run is safe.
+    preflight_pkgconfig --prune
     execute_script "hyprutils.sh"
     sleep 1
     execute_script "hyprlang.sh"

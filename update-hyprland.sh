@@ -342,12 +342,26 @@ remove_source_hypr_artifacts() {
         /usr/local/include/hyprland
         /usr/local/include/hyprtoolkit
         /usr/local/include/hyprtoolkit/*
-        /usr/local/lib/pkgconfig/hyprtoolkit.pc
-        /usr/local/share/pkgconfig/hyprtoolkit.pc
         /usr/local/lib/cmake/hyprtoolkit
     )
+    # pkg-config metadata must be removed together with the libraries: /usr/local/lib/pkgconfig
+    # is on pkg-config's default search path, so stale metadata makes CMake configure
+    # succeed while the final link fails with "cannot find -lhyprutils".
+    local source_pc_files=(
+        /usr/local/lib/pkgconfig/hyprutils.pc
+        /usr/local/lib/pkgconfig/hyprlang.pc
+        /usr/local/lib/pkgconfig/hyprcursor.pc
+        /usr/local/lib/pkgconfig/aquamarine.pc
+        /usr/local/lib/pkgconfig/hyprgraphics.pc
+        /usr/local/lib/pkgconfig/hyprtoolkit.pc
+        /usr/local/lib/pkgconfig/hyprwire.pc
+        /usr/local/lib/pkgconfig/hyprwire-scanner.pc
+        /usr/local/lib/pkgconfig/hyprwire-protocols.pc
+        /usr/local/share/pkgconfig/hyprland.pc
+        /usr/local/share/pkgconfig/hyprland-protocols.pc
+    )
     local removed=0
-    for p in "${source_paths[@]}"; do
+    for p in "${source_paths[@]}" "${source_pc_files[@]}"; do
         if [[ -e "$p" ]]; then
             echo "[INFO] Removing source-installed artifact: $p" | tee -a "$SUMMARY_LOG"
             sudo rm -rf "$p" || true
@@ -1528,6 +1542,19 @@ fi
 # Before install builds, optionally remove Debian-provided Hyprland stack to avoid mixed versions
 if [[ $DO_INSTALL -eq 1 && $PACKAGE_CLEANUP -eq 1 ]]; then
     remove_deb_hypr_packages
+fi
+
+# Guard against dangling pkg-config metadata left behind by a previous Debian
+# package mode run: /usr/local/lib/pkgconfig is on pkg-config's default search
+# path, so stale .pc files make configure pass while the link fails. A source
+# install rewrites each module's metadata, so pruning is safe in that case.
+PREFLIGHT_SCRIPT="$REPO_ROOT/install-scripts/pkgconfig-preflight.sh"
+if [[ -f "$PREFLIGHT_SCRIPT" ]]; then
+    if [[ $DO_INSTALL -eq 1 ]]; then
+        "$PREFLIGHT_SCRIPT" --prune || true
+    else
+        "$PREFLIGHT_SCRIPT" --strict || true
+    fi
 fi
 
 # If using helper, delegate to dry-run-build.sh for summary-only output

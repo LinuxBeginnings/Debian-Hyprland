@@ -216,6 +216,26 @@ if [[ $WITH_DEPS -eq 1 ]]; then
   fi
 fi
 
+# Preflight: a dry run only compiles, it never installs, so a module can only be
+# linked against libraries that are already installed in /usr/local.
+PREFLIGHT_SCRIPT="$REPO_ROOT/install-scripts/pkgconfig-preflight.sh"
+if [[ -f "$PREFLIGHT_SCRIPT" ]]; then
+  if ! "$PREFLIGHT_SCRIPT" --strict; then
+    echo "[WARN] Dangling pkg-config metadata detected (see above). Run ./update-hyprland.sh --install to rebuild and install the stack." | tee -a "$SUMMARY_LOG"
+  fi
+fi
+
+_missing_core=()
+for _lib in hyprutils hyprlang hyprcursor aquamarine hyprgraphics hyprtoolkit hyprwire; do
+  [ -e "/usr/local/lib/lib${_lib}.so" ] || _missing_core+=("$_lib")
+done
+if [ ${#_missing_core[@]} -gt 0 ]; then
+  printf "\n[WARN] Core Hypr libraries are not installed in /usr/local/lib: %s\n" "${_missing_core[*]}" | tee -a "$SUMMARY_LOG"
+  printf "       A dry run compiles only and cannot install them, so dependent modules will fail to link.\n" | tee -a "$SUMMARY_LOG"
+  printf "       Run ./update-hyprland.sh --install --with-deps first.\n" | tee -a "$SUMMARY_LOG"
+  printf "\n"
+fi
+
 # Run each module with DRY_RUN=1 and capture exit codes
 declare -A RESULTS
 

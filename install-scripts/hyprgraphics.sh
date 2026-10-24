@@ -10,7 +10,7 @@
 # hyprgraphics #
 
 hyprgraphics=(
-    libmagic
+    libmagic-dev
     libjpeg-dev
     libwebp-dev
 )
@@ -56,12 +56,30 @@ MLOG="install-$(date +%d-%H%M%S)_hyprgraphics2.log"
 # Installation of dependencies
 printf "\n%s - Installing ${YELLOW}hyprgraphics dependencies${RESET} .... \n" "${INFO}"
 
+# Resolve the running Debian suite for clearer multi-suite (trixie/forky/sid) messages
+SUITE_NAME="${DEBIAN_SUITE:-}"
+if [ -z "$SUITE_NAME" ] && [ -r /etc/os-release ]; then
+  SUITE_NAME="$(. /etc/os-release 2>/dev/null; printf '%s' "${VERSION_CODENAME:-}")"
+fi
+[ -n "$SUITE_NAME" ] || SUITE_NAME="unknown"
+
 for PKG1 in "${hyprgraphics[@]}"; do
   re_install_package "$PKG1" 2>&1 | tee -a "$LOG"
-  if [ $? -ne 0 ]; then
-    echo -e "\e[1A\e[K${ERROR} - $PKG1 Package installation failed, Please check the installation logs"
-    exit 1
+  # Verify the package directly: the previous $? check inspected tee, not
+  # re_install_package, so a wrong or suite-specific package name only surfaced
+  # much later as a confusing CMake failure.
+  if dpkg-query -W -f='${Status}' "$PKG1" 2>/dev/null | grep -q "ok installed"; then
+    continue
   fi
+  # Distinguish "not in this suite" from "install failed" so a package rename
+  # across trixie/forky/sid reports the real cause.
+  if apt-cache policy "$PKG1" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -qv "(none)"; then
+    echo -e "\e[1A\e[K${ERROR} - ${YELLOW}$PKG1${RESET} failed to install, Please check the installation logs"
+  else
+    echo -e "\e[1A\e[K${ERROR} - ${YELLOW}$PKG1${RESET} is not available for suite '${SUITE_NAME}'"
+    echo -e "\e[1A\e[K${NOTE} - hyprgraphics requires the libmagic development headers; install the suite equivalent manually"
+  fi
+  exit 1
 done
 printf "\n%.0s" {1..1}
 
@@ -83,7 +101,7 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprgraphics.git "$SR
         if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG" ; then
             printf "${OK} ${MAGENTA}hyprgraphics $tag${RESET} installed successfully.\n" 2>&1 | tee -a "$MLOG"
         else
-            echo -e "${ERROR} Installation failed for ${YELLOW}hyprgraphics $graphics${RESET}" 2>&1 | tee -a "$MLOG"
+            echo -e "${ERROR} Installation failed for ${YELLOW}hyprgraphics $tag${RESET}" 2>&1 | tee -a "$MLOG"
         fi
     else
         echo "${NOTE} DRY RUN: Skipping installation of hyprgraphics $tag."
@@ -92,7 +110,7 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprgraphics.git "$SR
     [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/"
     cd ..
 else
-    echo -e "${ERROR} Download failed for ${YELLOW}hyprgraphics $graphics${RESET}" 2>&1 | tee -a "$LOG"
+    echo -e "${ERROR} Download failed for ${YELLOW}hyprgraphics $tag${RESET}" 2>&1 | tee -a "$LOG"
 fi
 
 printf "\n%.0s" {1..2}

@@ -6,9 +6,42 @@
     - Addded binary check for waybar
         - Earlier source builds were not ABI compatible
         - Causing waybar to crash
+    - Source builds failing with `cannot find -lhyprutils` / `-lhyprlang` / `-laquamarine` / `-lhyprgraphics`
+        - Switching to Debian package mode deleted the source libraries from `/usr/local/lib`
+        - but left their pkg-config `.pc` files behind
+        - `/usr/local/lib/pkgconfig` is on pkg-config's *default* search path, so CMake
+        - configure succeeded and only the link step failed
+        - `remove_source_hyprland_artifacts` (`install.sh`) and `remove_source_hypr_artifacts`
+        - (`update-hyprland.sh`) now remove the matching `.pc` files together with the libraries
+    - `hyprland.sh` reported a false PASS when the build or install failed
+        - `run_logged_command` read `$?` after an `if`, losing the real exit code
+        - (logged as `[ERROR] Hyprland CMake build failed (exit 0)`)
+        - The `cmake --install` step was piped into `tee`, masking failures and still
+        - printing "installed successfully"
+        - Version-header extraction could abort the module under `set -e`
+        - Removed the dead `BUILD_HYPRCTL` / `INSTALL_HYPRCTL` flags; upstream defines no
+        - such options and `hyprctl` / `hyprpm` are always built and required
+    - `hyprgraphics.sh` required the non-existent Debian package `libmagic`
+        - `libmagic` is not a package in trixie, forky or sid; the `file` source builds
+        - `libmagic-dev`, `libmagic-mgc` and the t64 runtime `libmagic1t64` (`libmagic1`
+        - stops at bookworm), so the old name could never install on a supported suite
+        - Corrected to `libmagic-dev`, matching `00-dependencies.sh`, `hyprlock.sh` and
+        - `hyprpaper.sh`, which already used it
+        - The dependency is now verified with `dpkg-query` instead of `$?` (which only
+        - ever inspected `tee`), and an unavailable package is reported as
+        - "not available for suite <suite>" instead of "failed to install"
+    - `hyprcursor.sh` ignored `--dry-run` and installed anyway
+    - `hyprsysteminfo.sh` emitted `grep: src/CMakeLists.txt: No such file or directory`
 - Added:
     - Verified `lua5.4` and `hyprland-guiutils` dependencies
     - Added `lua5.4` package check and `luac` / `hyprland-dialog` binary checks to `03-Final-Check.sh`
+    - `install-scripts/pkgconfig-preflight.sh`
+        - Detects (and with `--prune` removes) pkg-config metadata in `/usr/local` whose
+        - libraries are missing, so the "configure passes, link fails" trap is reported early
+        - Wired into `install.sh` (prune before the source build), `update-hyprland.sh`
+        - (prune on install, report on dry-run) and `dry-run-build.sh` (report only)
+        - `dry-run-build.sh` now warns when the core Hypr libraries are not installed,
+        - because a dry run compiles only and cannot bootstrap them
 
 ## Sep 2026
 

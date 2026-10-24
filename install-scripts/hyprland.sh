@@ -395,14 +395,19 @@ EOF
       echo "${NOTE} hyprwire not detected in /usr/local yet. Ensure install-scripts/hyprwire.sh ran successfully or set USE_SYSTEM_HYPRLIBS=0 to use subprojects."
     fi
   else
-    # Ensure we do not accidentally pick up mismatched system headers
+    # Ensure we do not accidentally pick up mismatched system headers.
+    # NOTE: this does not stop pkg-config from reading its *default* search path,
+    # which includes /usr/local/lib/pkgconfig. Stale metadata there is pruned by
+    # install-scripts/pkgconfig-preflight.sh before the stack is built.
     unset PKG_CONFIG_PATH || true
+    # NOTE: hyprctl and hyprpm are always built and installed. Upstream's CMakeLists
+    # calls add_subdirectory(hyprctl) unconditionally and defines no
+    # BUILD_HYPRCTL/INSTALL_HYPRCTL option, so passing those flags was dead code (and
+    # would be wrong anyway: both tools are required by the KooL dots workflow).
     SYSTEM_FLAGS=(
       "-DUSE_SYSTEM_HYPRUTILS=OFF"
       "-DUSE_SYSTEM_HYPRLANG=OFF"
       "-DUSE_SYSTEM_HYPRWIRE=OFF"
-      "-DBUILD_HYPRCTL=OFF"
-      "-DINSTALL_HYPRCTL=OFF"
     )
   fi
 
@@ -413,12 +418,16 @@ EOF
 run_logged_command() {
     local desc="$1"
     shift
-    if "$@" > >(tee -a "$LOG") 2> >(tee -a "$LOG" >&2); then
+    local rc=0
+    # Capture the real status: reading $? after an `if` returns the status of the
+    # `if` statement itself (always 0), which previously hid configure/build
+    # failures and reported a false PASS for the whole module.
+    "$@" > >(tee -a "$LOG") 2> >(tee -a "$LOG" >&2) || rc=$?
+    if [ "$rc" -eq 0 ]; then
         return 0
     fi
-    local rc=$?
     echo -e "${ERROR} ${desc} failed (exit ${rc}). See $LOG for details." | tee -a "$LOG"
-    return $rc
+    return "$rc"
 }
 # Preflight: ensure required build tools are present; try to install missing ones
 REQUIRED_TOOLS=(clang clang++ cmake ninja pkg-config)
@@ -506,12 +515,21 @@ if ! run_logged_command "Hyprland CMake build" cmake --build "$BUILD_DIR" -j "$(
     exit 1
 fi
 
+    INSTALL_FAILED=0
     if [ $DO_INSTALL -eq 1 ]; then
-        if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; then
+        # Do not pipe into tee here: the pipeline status would be tee's status, so a
+        # failed install was reported as "installed successfully".
+        install_rc=0
+        sudo cmake --install "$BUILD_DIR" > >(tee -a "$MLOG") 2> >(tee -a "$MLOG" >&2) || install_rc=$?
+        if [ "$install_rc" -eq 0 ]; then
             printf "${OK} ${MAGENTA}Hyprland tag${RESET}  installed successfully.\n" 2>&1 | tee -a "$MLOG"
-            
+
             # Update version header file for tools like fastfetch that read it at runtime
             printf "${NOTE} Updating system version header for Hyprland...\n"
+            # Best effort only: parsing `hyprland --version` must never abort the
+            # module (a missing field used to kill the run via errexit), so errexit
+            # is disabled for the extraction block below.
+            set +e
             VER_OUTPUT=""
             if [ -x "$BUILD_DIR/Hyprland" ]; then
                 VER_OUTPUT=$("$BUILD_DIR/Hyprland" --version)
@@ -611,8 +629,10 @@ fi
             else
                 printf "${NOTE} Could not determine Hyprland version output for header update (non-critical)\n" 2>&1 | tee -a "$MLOG"
             fi
+            set -e
         else
-            echo -e "${ERROR} Installation failed for ${YELLOW}Hyprland $tag${RESET}" 2>&1 | tee -a "$MLOG"
+            echo -e "${ERROR} Installation failed for ${YELLOW}Hyprland $tag${RESET} (exit ${install_rc})" 2>&1 | tee -a "$MLOG"
+            INSTALL_FAILED=1
         fi
     else
         echo "${NOTE} DRY RUN: Skipping installation of Hyprland $tag."
@@ -623,6 +643,13 @@ fi
     cd ..
 else
     echo -e "${ERROR} Download failed for ${YELLOW}Hyprland $tag${RESET}" 2>&1 | tee -a "$LOG"
+    exit 1
+fi
+
+# Surface a failed install step instead of reporting a false success.
+if [ "${INSTALL_FAILED:-0}" -ne 0 ]; then
+    echo -e "${ERROR} Hyprland install step failed; see ${MLOG##*/}" | tee -a "$LOG"
+    exit 1
 fi
 
 printf "\n%.0s" {1..2}

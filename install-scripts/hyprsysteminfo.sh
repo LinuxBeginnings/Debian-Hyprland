@@ -100,7 +100,7 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
     # Ensure libpci is linked even if upstream CMake doesn't add it
     export LDFLAGS="${LDFLAGS:-} -lpci"
     if [ -f CMakeLists.txt ]; then
-        if grep -q "WaylandClientPrivate" src/CMakeLists.txt && ! grep -q "WaylandClientPrivate" CMakeLists.txt; then
+        if [ -f src/CMakeLists.txt ] && grep -q "WaylandClientPrivate" src/CMakeLists.txt && ! grep -q "WaylandClientPrivate" CMakeLists.txt; then
             echo "${NOTE} Adding Qt6 WaylandClientPrivate component to satisfy Debian Qt6 packaging." | tee -a "$MLOG"
             sed -i 's/WaylandClient)/WaylandClient WaylandClientPrivate)/' CMakeLists.txt
         fi

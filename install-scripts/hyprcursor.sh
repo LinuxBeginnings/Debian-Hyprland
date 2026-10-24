@@ -36,6 +36,13 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
   exit 1
 fi
 
+# Dry-run support
+DO_INSTALL=1
+if [ "$1" = "--dry-run" ] || [ "${DRY_RUN}" = "1" ] || [ "${DRY_RUN}" = "true" ]; then
+  DO_INSTALL=0
+  echo "${NOTE} DRY RUN: install step will be skipped."
+fi
+
 # Prefer source-stack pkg-config metadata first to keep runtime ABI consistent.
 export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:/usr/local/share/pkgconfig:/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/share/pkgconfig"
 export CMAKE_PREFIX_PATH="/usr/local:/usr"
@@ -70,16 +77,32 @@ if git clone --recursive -b $tag https://github.com/hyprwm/hyprcursor.git "$SRC_
     rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
     cmake --no-warn-unused-cli -DCMAKE_BUILD_TYPE:STRING=Release -DCMAKE_INSTALL_PREFIX:PATH=/usr/local -S . -B "$BUILD_DIR"
 	cmake --build "$BUILD_DIR" --config Release --target all -j`nproc 2>/dev/null || getconf NPROCESSORS_CONF`
-    if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG" ; then
-        printf "${OK} hyprcursor installed successfully.\n" 2>&1 | tee -a "$MLOG"
+    if [ "$DO_INSTALL" -eq 0 ]; then
+        echo "${NOTE} DRY RUN: Skipping installation of hyprcursor $tag."
     else
-        echo -e "${ERROR} Installation failed for hyprcursor." 2>&1 | tee -a "$MLOG"
+        install_rc=0
+        # Do not pipe into tee here: the pipeline status would be tee's status, so a
+        # failed install was reported as "installed successfully".
+        sudo cmake --install "$BUILD_DIR" > >(tee -a "$MLOG") 2> >(tee -a "$MLOG" >&2) || install_rc=$?
+        if [ "$install_rc" -eq 0 ]; then
+            printf "${OK} hyprcursor installed successfully.\n" 2>&1 | tee -a "$MLOG"
+        else
+            echo -e "${ERROR} Installation failed for hyprcursor (exit ${install_rc})." 2>&1 | tee -a "$MLOG"
+            INSTALL_FAILED=1
+        fi
     fi
     #moving the addional logs to Install-Logs directory
     mv $MLOG "$PARENT_DIR/Install-Logs/" || true 
     cd ..
 else
     echo -e "${ERROR} Download failed for hyprcursor." 2>&1 | tee -a "$LOG"
+    exit 1
+fi
+
+# Surface a failed install step instead of reporting a false success.
+if [ "${INSTALL_FAILED:-0}" -ne 0 ]; then
+    echo -e "${ERROR} hyprcursor install step failed; see Install-Logs/" | tee -a "$LOG"
+    exit 1
 fi
 
 printf "\n%.0s" {1..2}
