@@ -11,6 +11,26 @@
         - Added `libcanberra` to `REQUIRED_PKGCONFIG_MODULES` in `hyprland.sh`, so the
         - module verifies (and installs) the dev package before configure instead of
         - stopping with a raw `Package 'libcanberra' not found` error
+    - Hyprland v0.57.0 failed to build on trixie: C++26 standard-library APIs
+        - `src/ipc/s1/S1.cpp` calls `std::string::subview` and `src/keybinds/Key.cpp`
+        - calls the C++26 member `std::variant::visit` (P2637R3, `__cpp_lib_variant`
+        - `>= 202306L`). Neither is a typo: v0.57 sets `CMAKE_CXX_STANDARD 26` itself
+        - trixie ships GCC 14 / libstdc++ 14, which has neither API, so clang (the
+        - compiler `hyprland.sh` prefers) failed with
+        - `no member named 'subview' in 'std::basic_string<char>'` and
+        - `no member named 'visit' in 'std::variant<...>'`
+        - forky/sid default to GCC 16 / libstdc++ 16 and build v0.57 unmodified;
+        - libstdc++ 15 provides the member `visit` but still has no `subview`
+        - Added `assets/0003-fix-hyprland-s1-subview.patch` (`subview` -> `substr`) and
+        - `assets/0004-fix-hyprland-key-visit.patch` (`ev.visit(...)` ->
+        - `std::visit(..., ev)`); both are applied to the pristine clone before
+        - configure and skipped when they no longer apply
+        - `hyprland.sh` no longer passes `-DCMAKE_CXX_STANDARD=23`, which Hyprland's own
+        - `set(CMAKE_CXX_STANDARD 26)` overrode and which wrongly implied a C++23 build
+    - Redundant `-DCMAKE_CXX_STANDARD=23` removed from `hyprpaper.sh`, `hyprwire.sh`,
+        - `hyprtavern.sh` and `hyprpwcenter.sh`
+        - every upstream `CMakeLists.txt` sets `CMAKE_CXX_STANDARD 23` itself, which
+        - shadows the cache value, so the flag never had any effect
     - Addded binary check for waybar
         - Earlier source builds were not ABI compatible
         - Causing waybar to crash

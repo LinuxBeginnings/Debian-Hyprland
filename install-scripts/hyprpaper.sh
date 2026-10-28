@@ -121,7 +121,8 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
   CMAKE_FLAGS=(
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX=/usr/local
-    -DCMAKE_CXX_STANDARD=23
+    # No -DCMAKE_CXX_STANDARD here: upstream's CMakeLists sets CMAKE_CXX_STANDARD 23
+    # itself, which overrides the cache value, so passing it was redundant.
   )
   [ -n "$WL_PROTO_DIR" ]  && CMAKE_FLAGS+=( -DWAYLAND_PROTOCOLS_DIR="$WL_PROTO_DIR" )
   [ -n "$HYP_PROTO_DIR" ] && CMAKE_FLAGS+=( -DHYPRLAND_PROTOCOLS_DIR="$HYP_PROTO_DIR" )

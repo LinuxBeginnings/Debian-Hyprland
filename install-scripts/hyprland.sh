@@ -340,6 +340,33 @@ PY
         fi
     fi
 
+    # Hyprland v0.57.0 uses the C++26 std::string::subview() in src/ipc/s1/S1.cpp
+    # (__cpp_lib_string_subview, implemented in libstdc++ 16). This is not an upstream
+    # typo for substr(): subview() returns a string_view, which is what the LOG() call
+    # wants. Older libstdc++ (14 and 15, e.g. Debian trixie's GCC 14 or clang with
+    # libstdc++ 14) has no such member and fails with "no member named 'subview' in
+    # 'std::basic_string<char>'". Rewriting it as substr() is a safe, equivalent fix for
+    # a std::format() argument. Patched from the pristine clone before configure.
+    if [ -f "$PARENT_DIR/assets/0003-fix-hyprland-s1-subview.patch" ]; then
+        if patch -p1 --dry-run <"$PARENT_DIR/assets/0003-fix-hyprland-s1-subview.patch" >/dev/null 2>&1; then
+            patch -p1 <"$PARENT_DIR/assets/0003-fix-hyprland-s1-subview.patch"
+        else
+            echo "${NOTE} Hyprland S1.cpp subview patch does not apply on $tag; skipping."
+        fi
+    fi
+
+    # Hyprland v0.57.0 calls the C++26 member visit (P2637R3, __cpp_lib_variant >=
+    # 202306L) on std::variant in src/keybinds/Key.cpp. libstdc++ 14 has no
+    # std::variant::visit (libstdc++ 15+ provides it, in C++26 mode only), so rewrite it
+    # to the equivalent std::visit(visitor, variant) form.
+    if [ -f "$PARENT_DIR/assets/0004-fix-hyprland-key-visit.patch" ]; then
+        if patch -p1 --dry-run <"$PARENT_DIR/assets/0004-fix-hyprland-key-visit.patch" >/dev/null 2>&1; then
+            patch -p1 <"$PARENT_DIR/assets/0004-fix-hyprland-key-visit.patch"
+        else
+            echo "${NOTE} Hyprland Key.cpp visit patch does not apply on $tag; skipping."
+        fi
+    fi
+
     # Optionally strip nixGL/Nix helper logic from start-hyprland (Debian does not need it)
     NIXGL_PATCH_APPLIED=0
     if [ -f "$PARENT_DIR/assets/0002-start-hyprland-no-nixgl.patch" ]; then
@@ -502,7 +529,9 @@ CONFIG_FLAGS=(
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_C_COMPILER="${CC}"
     -DCMAKE_CXX_COMPILER="${CXX}"
-    -DCMAKE_CXX_STANDARD=23
+    # No -DCMAKE_CXX_STANDARD here on purpose: Hyprland v0.57 sets CMAKE_CXX_STANDARD 26
+    # in its own CMakeLists, which overrides the cache value, so passing it was dead
+    # config that wrongly implied a C++23 build.
     -DCMAKE_CXX_STANDARD_REQUIRED=ON
     -DCMAKE_CXX_EXTENSIONS=ON
     -DCMAKE_CXX_FLAGS="-Wno-unknown-warning-option -include ${RANGE_HDR}"
