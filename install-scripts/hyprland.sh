@@ -457,8 +457,8 @@ if [ ${#STILL_MISSING[@]} -ne 0 ]; then
 fi
 
 # Preflight: ensure required pkg-config modules are present; try to install missing dev packages
-REQUIRED_PKGCONFIG_MODULES=(libeis-1.0)
-declare -A PKGCONFIG_APT_PACKAGES=([libeis-1.0]=libeis-dev)
+REQUIRED_PKGCONFIG_MODULES=(libeis-1.0 libcanberra)
+declare -A PKGCONFIG_APT_PACKAGES=([libeis-1.0]=libeis-dev [libcanberra]=libcanberra-dev)
 MISSING_PKGCONFIG_MODULES=()
 for mod in "${REQUIRED_PKGCONFIG_MODULES[@]}"; do
     if ! pkg-config --exists "$mod" 2>/dev/null; then

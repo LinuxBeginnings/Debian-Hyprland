@@ -126,6 +126,7 @@ hyprland_dep=(
     binutils
     libc6
     libcairo2-dev
+    libcanberra-dev # Needed for the Hyprland v0.57+ bell backend (Canberra.cpp)
     libdrm2
     libeis-dev
     libjpeg-dev

@@ -3,6 +3,14 @@
 ## Oct 2026
 
 - Fixed:
+    - Hyprland v0.57 failed to build: `libcanberra` was not found
+        - v0.57 adds a libcanberra bell backend (`src/bell/impl/Canberra.cpp`) and
+        - requires the `libcanberra` pkg-config module (`CMakeLists.txt:289`)
+        - Only that module was missing, so CMake configure aborted before compiling
+        - Added `libcanberra-dev` to the `hyprland_dep` array in `00-dependencies.sh`
+        - Added `libcanberra` to `REQUIRED_PKGCONFIG_MODULES` in `hyprland.sh`, so the
+        - module verifies (and installs) the dev package before configure instead of
+        - stopping with a raw `Package 'libcanberra' not found` error
     - Addded binary check for waybar
         - Earlier source builds were not ABI compatible
         - Causing waybar to crash
@@ -42,6 +50,12 @@
         - (prune on install, report on dry-run) and `dry-run-build.sh` (report only)
         - `dry-run-build.sh` now warns when the core Hypr libraries are not installed,
         - because a dry run compiles only and cannot bootstrap them
+- Updated:
+    - `HYPRTOOLKIT_TAG` pinned to `v0.6.0` instead of tracking `main`
+        - `refresh-hypr-tags.sh` no longer forces `HYPRTOOLKIT_TAG=main`, which silently
+        - discarded the pin on every refresh; only `HYPRWIRE_TAG` is still forced to
+        - `main`, because hyprwire publishes no release tags
+        - The default tag template written by `refresh-hypr-tags.sh` now seeds `v0.6.0`
 
 ## Sep 2026
 
