@@ -243,7 +243,7 @@ echo "[INFO] Starting dry-run build at $TS" | tee -a "$SUMMARY_LOG"
 
 for mod in "${MODULES[@]}"; do
   script_path="$REPO_ROOT/install-scripts/$mod.sh"
-  echo "\n=== $mod (DRY RUN) ===" | tee -a "$SUMMARY_LOG"
+  printf '\n=== %s (DRY RUN) ===\n' "$mod" | tee -a "$SUMMARY_LOG"
   if [[ ! -x "$script_path" ]]; then
     # Try to make executable if it exists
     if [[ -f "$script_path" ]]; then

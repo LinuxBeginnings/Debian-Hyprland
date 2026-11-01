@@ -1,5 +1,19 @@
 ## CHANGELOG
 
+## Nov 2026
+
+- Fixed:
+    - Module topic headers printed a literal `\n` instead of a blank line
+        - `update-hyprland.sh` and `dry-run-build.sh` used `echo "\n=== <module> ==="`
+        - bash's builtin `echo` only expands `\n` when given `-e`, so the two characters
+        - `\` and `n` were written to the console and to `Install-Logs/update-hypr-*.log`
+        - Both now use `printf '\n=== %s ===\n' "$mod"` (and the `(DRY RUN)` variant)
+
+- Updated:
+    - Refreshed `hypr-tags.env` to the latest upstream tags
+        - aquamarine v0.16.0, hyprgraphics v0.6.0, hyprlock v0.9.7, hyprpaper v0.8.5,
+        - hyprpicker v0.4.8, hyprshutdown v0.1.2, wayland-protocols 1.50
+
 ## Oct 2026
 
 - Fixed:
