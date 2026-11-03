@@ -111,6 +111,11 @@
     - `install-scripts/00-dependencies.sh` installs the `network-manager` daemon
         - The GNOME applet (`network-manager-gnome`) stays optional, as documented in
         - `README.md`, because restarting NetworkManager mid-install drops connectivity
+    - Documented that `qml6-module-org-hyprland-style` is required, not leftover
+        - `README.md` now states that the package ships the `org.hyprland.style` QML
+        - module the dotfiles load via `QT_QUICK_CONTROLS_STYLE`, and that it is a
+        - separate package rather than a `hyprland-guiutils` dependency, so a future
+        - package cleanup cannot drop it by mistake
 
 ## Oct 2026
 

@@ -142,6 +142,10 @@ sudo apt update
             - You might need to update the login manager if not using SDDM or GDM
 - 🕯️ network-manager-gnome (nm-applet) _has been removed_ from the packages to install. This is because it is known to restart the networkmanager causing issues in the installation process. After you boot up, inorder to get the network-manager applet, install network-manager-gnome. `sudo apt install network-manager-gnome` See below if your network or wifi became unmanaged after installation
     - Only the GNOME applet is left out. The `network-manager` daemon itself **is** installed and verified: `install-scripts/00-dependencies.sh` installs it when missing (run by `install.sh` and `install-scripts/update-deps.sh`), and `install-scripts/03-Final-Check.sh` checks the package plus that the `NetworkManager` service is enabled and active.
+- 💠 `qml6-module-org-hyprland-style` is installed on purpose - please do not remove it
+    - It ships the `org.hyprland.style` QML module (`/usr/lib/x86_64-linux-gnu/qt6/qml/org/hyprland/style/*.qml`) that the Hyprland-Dots Qt/Quickshell configs load through `QT_QUICK_CONTROLS_STYLE`
+    - It is a separate package, **not** a dependency of `hyprland-guiutils`, so leaving it out breaks themed Qt dialogs and menus while the guiutils tools keep working - which makes the failure hard to trace back to a missing package
+    - The package name is referenced consistently in `install-scripts/01-hypr-pkgs.sh` (optional install list), `install.sh` (Debian package mode), `update-hyprland.sh` and `install-scripts/02-pre-cleanup.sh` (purge list), so a cleanup must remove all four to stay coherent
 
 ### 🚩 changing login manager to SDDM
 
