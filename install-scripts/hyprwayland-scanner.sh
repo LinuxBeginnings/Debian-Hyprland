@@ -11,7 +11,7 @@
 
 scan_depend=(
     libpugixml-dev
-    wayland
+    libwayland-dev
     libwayland-bin
     libexpat1-dev
     libffi-dev

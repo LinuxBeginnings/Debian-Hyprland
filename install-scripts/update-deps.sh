@@ -286,7 +286,9 @@ mapfile -t failed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" "$clean_n
 latest_final_log="$(ls -t "$LOG_DIR"/00_CHECK-*_installed.log 2>/dev/null | head -n 1)"
 missing_pkgs=()
 if [ -n "$latest_final_log" ] && [ -f "$latest_final_log" ]; then
-  mapfile -t missing_pkgs < <(strip_ansi < "$latest_final_log" | awk 'NF==1')
+  # Every logged line is a missing entry; keep multi-word ones too ("waybar (source build)",
+  # "NetworkManager (service not enabled)") and drop only the trailing timestamp note.
+  mapfile -t missing_pkgs < <(strip_ansi < "$latest_final_log" | grep -v 'Missing packages logged at' | sed '/^[[:space:]]*$/d')
 fi
 
 rm -f "$clean_dependencies_log" "$clean_packages_log" "$clean_swww_log" "$clean_nwg_dock_log" "$clean_check_log"
@@ -346,4 +348,35 @@ if [ ${#missing_pkgs[@]} -gt 0 ]; then
   echo "Missing packages from final check (${#missing_pkgs[@]}): ${missing_pkgs[*]}"
 else
   echo "Missing packages from final check: none detected"
+fi
+
+# Anything the final check reports is needed for the desktop to work, so a non-empty
+# missing list fails the run instead of scroll-by in the summary. NetworkManager is
+# called out first because it also kills the waybar network module and nmcli.
+network_manager_issue=""
+for entry in "${missing_pkgs[@]}"; do
+  case "$entry" in
+  network-manager | NetworkManager*) network_manager_issue="$entry" ;;
+  esac
+done
+
+if [ -n "$network_manager_issue" ]; then
+  echo
+  echo "NETWORK-MANAGER: FAILED - ${network_manager_issue}"
+  echo
+  echo "  Networking is required by Hyprland, the waybar network module and nmcli."
+  echo "  Fix with:"
+  echo "    sudo apt install -y network-manager"
+  echo "    sudo systemctl enable --now NetworkManager"
+fi
+
+if [ ${#missing_pkgs[@]} -gt 0 ]; then
+  echo
+  echo "FINAL CHECK: FAILED - ${#missing_pkgs[@]} item(s) still missing"
+  printf '  - %s\n' "${missing_pkgs[@]}"
+  echo
+  echo "  Re-run ./install.sh, or the matching script under install-scripts/, to install them."
+  echo "  Entries noting a service need: sudo systemctl enable --now <unit>"
+  echo
+  exit 1
 fi

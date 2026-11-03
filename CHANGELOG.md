@@ -41,6 +41,30 @@
         - Package checks in 15 scripts now pipe into `has_match` (`grep -c`), which
         - drains the input and returns the same 0/1 status; `lspci … | head -n2` and
         - `find … | head -n 1` use draining consumers too
+    - `install-scripts/hyprwayland-scanner.sh` asked for a package that does not exist
+        - Its `scan_depend` listed `wayland`, which `apt-cache policy` cannot resolve, so
+        - every run printed `[ERROR] wayland failed to install` before building anyway
+        - The dependency is `libwayland-dev`
+    - `DRY_RUN=1` still reached apt through the Global_functions helpers
+        - `install_package`, `re_install_package` and `build_dep` now log
+        - `DRY RUN: skipping …` and return 0, so a compile-only run never installs or
+        - reinstalls a package; previously a module dry run could touch the apt database
+    - `dry-run-build.sh` referenced the removed `hyprland-qtutils` module
+        - The default stack now lists `hyprland-guiutils`, detected via the
+        - `/usr/local/bin/hyprland-dialog` it installs, instead of reporting it missing
+    - `update-deps.sh` ignored NetworkManager problems
+        - The missing-package parser dropped multi-word log entries, and a missing
+        - NetworkManager was only a note; it now reports `NETWORK-MANAGER: FAILED` with
+        - the fix commands and exits 1, because Hyprland cannot reach the network without it
+    - `update-deps.sh` only failed for NetworkManager
+        - Any item the final check reports missing now fails the run: the full list is
+        - printed with a pointer to the installer, and the NetworkManager guidance still
+        - comes first when that is the entry
+    - `HYPRLAND_QTUTILS_TAG` outlived the module it tracked
+        - Upstream `hyprland-qtutils` became `hyprland-guiutils`, but the tag stayed in
+        - `hypr-tags.env`, the default-tags block, the `--set` mapping and the repo map of
+        - `update-hyprland.sh`/`refresh-hypr-tags.sh`, plus the tag examples in both
+        - `Debian-Hyprland-Install-Upgrade*.md` guides; removed from all of them
 
 - Updated:
     - Refreshed `hypr-tags.env` to the latest upstream tags
@@ -62,6 +86,18 @@
         - `dpkg -l | grep -c` pipeline the package checks rely on
         - Also fails on `clear`/`tput` calls with no `|| true` guard, with a
         - synthetic negative control, so a new bare call cannot land unnoticed
+    - `install-scripts/03-Final-Check.sh` verifies NetworkManager and the portal stack
+        - Fails when the `network-manager` service is missing, not enabled or not active
+        - (the systemd probes are skipped where `/run/systemd/system` is absent, so
+        - chroots and containers still pass), when `xdg-desktop-portal` or
+        - `xdg-desktop-portal-gtk` is missing, or when no XDPH install ships the
+        - `hyprland.portal` descriptor — a source build without it breaks screen sharing
+        - Accepts a Debian package or a source build under `/usr/lib` or `/usr/local/lib`,
+        - and audits seven core runtime tools (grim, slurp, swappy, brightnessctl,
+        - pavucontrol, polkit-kde-agent-1, xdg-utils)
+    - `install-scripts/00-dependencies.sh` installs the `network-manager` daemon
+        - The GNOME applet (`network-manager-gnome`) stays optional, as documented in
+        - `README.md`, because restarting NetworkManager mid-install drops connectivity
 
 ## Oct 2026
 

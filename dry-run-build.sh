@@ -14,7 +14,7 @@
 #   ./dry-run-build.sh                  # run full stack dry-run
 #   ./dry-run-build.sh --with-deps      # install dependencies first, then dry-run build
 #   ./dry-run-build.sh --only hyprland  # run a subset (comma-separated allowed)
-#   ./dry-run-build.sh --skip qtutils   # skip one or more (comma-separated)
+#   ./dry-run-build.sh --skip hyprpaper  # skip one or more (comma-separated)
 #   ./dry-run-build.sh --check          # detect and report install method per module (no build)
 #   ./dry-run-build.sh --no-self-check   # skip the pipeline self-check that runs first
 #
@@ -43,7 +43,7 @@ DEFAULT_MODULES=(
   wayland-protocols-src
   hyprland-protocols
   hyprland-qt-support
-  hyprland-qtutils
+  hyprland-guiutils
   hyprland
   hyprshutdown
   hyprpaper
@@ -100,10 +100,11 @@ detect_module_method() {
       [ -f /usr/local/share/pkgconfig/hyprland-protocols.pc ] && is_source=1 ;;
     hyprland-qt-support)
       dpkg -l 'hyprland-qt-support' 2>/dev/null | has_match '^ii' && is_apt=1 ;;
-    hyprland-qtutils)
-      dpkg -l 'hyprland-qtutils' 2>/dev/null | has_match '^ii' && is_apt=1
-      { [ -f /usr/local/bin/hyprland-qt-utils ] || \
-        [ -f /usr/local/bin/hyprland-qtutils ]; } && is_source=1 ;;
+    hyprland-guiutils)
+      dpkg -l 'hyprland-guiutils' 2>/dev/null | has_match '^ii' && is_apt=1
+      # The source build installs hyprland-dialog under /usr/local/bin.
+      { [ -f /usr/local/bin/hyprland-guiutils ] || \
+        [ -f /usr/local/bin/hyprland-dialog ]; } && is_source=1 ;;
     hyprland)
       dpkg -l 'hyprland' 2>/dev/null | has_match '^ii' && is_apt=1
       { [ -f /usr/local/bin/hyprland ] || [ -f /usr/local/bin/Hyprland ]; } && is_source=1 ;;

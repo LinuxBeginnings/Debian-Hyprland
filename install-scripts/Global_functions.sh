@@ -149,6 +149,12 @@ version_ge() {
 
 # Function for installing packages with a progress bar
 install_package() { 
+  # A dry run must not touch the package database. Modules that only compile still call
+  # this for their build dependencies, so skip the apt step and report success.
+  if [ "${DRY_RUN:-0}" = "1" ] || [ "${DRY_RUN:-}" = "true" ]; then
+    echo -e "${INFO} DRY RUN: skipping install of ${MAGENTA}$1${RESET}"
+    return 0
+  fi
   if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | has_match "ok installed" ; then
     echo -e "${INFO} ${MAGENTA}$1${RESET} is already installed. Skipping..."
   else 
@@ -200,6 +206,10 @@ install_package_target() {
 
 # Function for build depencies with a progress bar
 build_dep() { 
+  if [ "${DRY_RUN:-0}" = "1" ] || [ "${DRY_RUN:-}" = "true" ]; then
+    echo -e "${INFO} DRY RUN: skipping build-dep for ${MAGENTA}$1${RESET}"
+    return 0
+  fi
   echo -e "${INFO} building dependencies for ${MAGENTA}$1${RESET} "
     (
       stdbuf -oL sudo apt build-dep -y "$1" 2>&1
@@ -220,6 +230,11 @@ cargo_install() {
 
 # Function for re-installing packages with a progress bar
 re_install_package() {
+    # A dry run only compiles, so it must not reinstall anything from apt either.
+    if [ "${DRY_RUN:-0}" = "1" ] || [ "${DRY_RUN:-}" = "true" ]; then
+        echo -e "${INFO} DRY RUN: skipping re-install of ${MAGENTA}$1${RESET}"
+        return 0
+    fi
     (
         stdbuf -oL sudo apt install --reinstall -y "$1" 2>&1
     ) >> "$LOG" 2>&1 &

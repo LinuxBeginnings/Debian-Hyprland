@@ -737,7 +737,6 @@ HYPRCURSOR_TAG=v0.1.13
 HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
-HYPRLAND_QTUTILS_TAG=v0.1.5
 HYPRPAPER_TAG=v0.8.4
 HYPRPOLKITAGENT_TAG=v0.2.0
 HYPRWIRE_TAG=main
@@ -784,7 +783,6 @@ set_tags_from_args() {
         HYPRWAYLAND_SCANNER | hyprwayland-scanner | hyprwayland_scanner) key=HYPRWAYLAND_SCANNER_TAG ;;
         HYPRLAND_PROTOCOLS | hyprland-protocols | hyprland_protocols) key=HYPRLAND_PROTOCOLS_TAG ;;
         HYPRLAND_QT_SUPPORT | hyprland-qt-support | hyprland_qt_support) key=HYPRLAND_QT_SUPPORT_TAG ;;
-        HYPRLAND_QTUTILS | hyprland-qtutils | hyprland_qtutils) key=HYPRLAND_QTUTILS_TAG ;;
         HYPRWIRE | hyprwire) key=HYPRWIRE_TAG ;;
         HYPRWIRE_PROTOCOLS | hyprwire-protocols | hyprwire_protocols) key=HYPRWIRE_PROTOCOLS_TAG ;;
         HYPRIDLE | hypridle) key=HYPRIDLE_TAG ;;
@@ -896,7 +894,6 @@ declare -A repos=(
         [HYPRWAYLAND_SCANNER_TAG]="hyprwm/hyprwayland-scanner"
         [HYPRLAND_PROTOCOLS_TAG]="hyprwm/hyprland-protocols"
         [HYPRLAND_QT_SUPPORT_TAG]="hyprwm/hyprland-qt-support"
-        [HYPRLAND_QTUTILS_TAG]="hyprwm/hyprland-qtutils"
         [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
         # Additional apps/utilities
         [HYPRIDLE_TAG]="hyprwm/hypridle"

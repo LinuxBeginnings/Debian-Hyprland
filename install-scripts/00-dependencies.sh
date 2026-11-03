@@ -98,6 +98,7 @@ dependencies=(
     libxml2-dev
     libxxhash-dev
     meson
+    network-manager # keep the daemon for nmcli/waybar network module (nm-applet GUI is optional, see README)
     ninja-build
     openssl
     psmisc

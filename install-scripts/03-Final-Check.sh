@@ -29,6 +29,17 @@ packages=(
     libglvnd-dev
     libgl-dev
     libglx-dev
+    network-manager
+    # runtime packages installed by 01-hypr-pkgs.sh that keybinds/scripts rely on
+    brightnessctl
+    grim
+    slurp
+    swappy
+    pavucontrol
+    polkit-kde-agent-1
+    xdg-utils
+    xdg-desktop-portal
+    xdg-desktop-portal-gtk
 )
 
 # Essential binaries that should exist in PATH
@@ -90,6 +101,33 @@ is_installed_dpkg() {
     dpkg-query -W -f='${Status}' "$1" 2>/dev/null | has_match "install ok installed"
 }
 
+# xdg-desktop-portal-hyprland arrives either as a Debian package or as a source build
+# (xdph.sh installs the libexec binary to /usr/lib), so accept both shapes.
+is_portal_hyprland_backend_installed() {
+    if is_installed_dpkg "xdg-desktop-portal-hyprland"; then
+        return 0
+    fi
+    local p
+    for p in /usr/lib/xdg-desktop-portal-hyprland \
+        /usr/libexec/xdg-desktop-portal-hyprland \
+        /usr/local/libexec/xdg-desktop-portal-hyprland; do
+        [ -x "$p" ] && return 0
+    done
+    return 1
+}
+
+# xdg-desktop-portal only discovers backends through *.portal descriptor files. Without
+# hyprland.portal the backend binary sits unused and screen sharing/screencopy fails,
+# which is easy to miss because every file above is present.
+is_portal_hyprland_registered() {
+    local p
+    for p in /usr/share/xdg-desktop-portal/portals/hyprland.portal \
+        /usr/local/share/xdg-desktop-portal/portals/hyprland.portal; do
+        [ -f "$p" ] && return 0
+    done
+    return 1
+}
+
 # Loop through each package
 for pkg in "${packages[@]}"; do
     # Check if the package is installed via dpkg
@@ -116,6 +154,25 @@ for pkg1 in "${required_bins[@]}"; do
     fi
 done
 
+# NetworkManager must be installed, enabled and running: without the daemon there is
+# no network/Wi-Fi at all and the waybar network module stays dead. Service state is
+# only meaningful on a host running systemd, so chroots/containers are skipped.
+if [ -d /run/systemd/system ] && command -v systemctl >/dev/null 2>&1; then
+    if ! systemctl is-enabled NetworkManager.service >/dev/null 2>&1; then
+        local_missing+=("NetworkManager (service not enabled)")
+    elif ! systemctl is-active NetworkManager.service >/dev/null 2>&1; then
+        local_missing+=("NetworkManager (service not active)")
+    fi
+fi
+
+# Portal stack: without a registered Hyprland backend, screen sharing in browsers,
+# OBS and screenshot tools that go through the portal silently fail.
+if ! is_portal_hyprland_backend_installed; then
+    local_missing+=("xdg-desktop-portal-hyprland (backend)")
+elif ! is_portal_hyprland_registered; then
+    local_missing+=("xdg-desktop-portal-hyprland (hyprland.portal not installed)")
+fi
+
 # Log missing packages
 if [ ${#missing[@]} -eq 0 ] && [ ${#local_missing[@]} -eq 0 ]; then
     echo "${OK} GREAT! All ${YELLOW}essential packages${RESET} have been successfully installed." | tee -a "$LOG"
@@ -129,9 +186,9 @@ else
     fi
 
     if [ ${#local_missing[@]} -ne 0 ]; then
-        echo "${WARN} The following required binaries are missing from PATH and will be logged:"
+        echo "${WARN} The following required components are missing and will be logged:"
         for pkg1 in "${local_missing[@]}"; do
-            echo "$pkg1 is not installed. can't find it in PATH"
+            echo "$pkg1 is missing or not usable"
             echo "$pkg1" >>"$LOG" # Log the missing local package to the file
         done
     fi
