@@ -145,6 +145,35 @@ is_qml_hyprland_style_loadable() {
     return 1
 }
 
+# Some entries are file-only at the dpkg level: imagemagick is a metapackage, and the
+# polkit agent plus both portal backends install into libexec, outside PATH. For those,
+# "installed" still has to be proven by the tool or backend binary the package exists for.
+check_package_payload() {
+    local candidate
+    for candidate in "$@"; do
+        case "$candidate" in
+        /*)
+            if [[ "$candidate" == *'*'* ]]; then
+                compgen -G "$candidate" >/dev/null && return 0
+            elif [ -x "$candidate" ]; then
+                return 0
+            fi
+            ;;
+        *)
+            command -v "$candidate" >/dev/null 2>&1 && return 0
+            ;;
+        esac
+    done
+    return 1
+}
+
+declare -A package_payloads=(
+    [imagemagick]="magick convert"
+    [polkit-kde-agent-1]="/usr/libexec/polkit-kde-authentication-agent-1 /usr/lib/*/libexec/polkit-kde-authentication-agent-1"
+    [xdg-desktop-portal]="/usr/libexec/xdg-desktop-portal /usr/lib/xdg-desktop-portal"
+    [xdg-desktop-portal-gtk]="/usr/libexec/xdg-desktop-portal-gtk /usr/lib/xdg-desktop-portal-gtk"
+)
+
 # Loop through each package
 for pkg in "${packages[@]}"; do
     # Check if the package is installed via dpkg
@@ -195,6 +224,22 @@ fi
 if ! is_qml_hyprland_style_loadable; then
     local_missing+=("qml6-module-org-hyprland-style (org.hyprland.style not loadable)")
 fi
+
+# hyprland-qtutils is now only a transitional dummy that hyprland-guiutils
+# Breaks/Replaces, so finding it installed means the rename never completed and the
+# guiutils tools (hyprland-dialog) are missing beneath it.
+if is_installed_dpkg "hyprland-qtutils"; then
+    local_missing+=("hyprland-qtutils (obsolete dummy package; install hyprland-guiutils)")
+fi
+
+# File-only packages: confirm the payload each one exists for, not just its dpkg entry.
+for pkg in "${!package_payloads[@]}"; do
+    is_installed_dpkg "$pkg" || continue
+    read -r -a candidates <<< "${package_payloads[$pkg]}"
+    if ! check_package_payload "${candidates[@]}"; then
+        local_missing+=("$pkg (installed but its payload is not usable)")
+    fi
+done
 
 # Log missing packages
 if [ ${#missing[@]} -eq 0 ] && [ ${#local_missing[@]} -eq 0 ]; then

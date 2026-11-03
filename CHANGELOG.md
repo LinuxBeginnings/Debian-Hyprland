@@ -126,6 +126,15 @@
         - `QT_QUICK_CONTROLS_STYLE=org.hyprland.style` actually resolves
         - A removed or half-copied module now fails the check instead of passing because
         - dpkg still lists the package
+    - The final check flags the obsolete `hyprland-qtutils` dummy package
+        - `hyprland-guiutils` Breaks/Replaces it, so finding it installed means the
+        - rename never completed and `hyprland-dialog` is missing underneath
+    - Audited the checked packages for other installed-but-unusable entries
+        - `imagemagick` ships no binary itself (it is a metapackage), and the polkit agent
+        - and both portal backends install into `libexec`, so a dpkg hit proved nothing
+        - They now need `magick`/`convert` or their libexec backend to exist; the GL
+        - `-dev` entries were already content-checked via `/usr/include/GL/gl.h`, and the
+        - QML style module through its loadability test
     - Both install/upgrade guides explain why the module must stay
         - `Debian-Hyprland-Install-Upgrade.md` and its Spanish translation gained a
         - "keep this package" note in the Debian package-mode section
