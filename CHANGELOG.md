@@ -59,6 +59,8 @@
         - commands (`apt-cache`, `dpkg -l`, `find`, `git ls-remote`, …)
         - Adds a second negative control for the `head` shape and probes the
         - `dpkg -l | grep -c` pipeline the package checks rely on
+        - Also fails on `clear`/`tput` calls with no `|| true` guard, with a
+        - synthetic negative control, so a new bare call cannot land unnoticed
 
 ## Oct 2026
 

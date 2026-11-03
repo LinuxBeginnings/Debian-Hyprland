@@ -257,6 +257,8 @@ Keybinds [`CLICK`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Keybind
   consumer exits before the producer finishes (`awk … exit`, `head`, `grep -q`,
   `grep -m1`) and that are fed by a streaming command such as `apt-cache`, `dpkg -l`
   or `find`; it then exercises the live `apt-cache` and `dpkg -l` pipelines 15 times.
+- The same scan fails on `clear`/`tput` calls without a `2>/dev/null || true` guard,
+  which would stop a module under `set -e` when the terminal lacks the capability.
 - `./dry-run-build.sh` runs it first and reports `Pipeline self-check: PASS` (or
   `SKIP`) in its summary; pass `--no-self-check` to skip it.
 - When a run stops, the error now names the failing command and its `file:line`.

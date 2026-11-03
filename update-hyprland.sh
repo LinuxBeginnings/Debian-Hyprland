@@ -88,11 +88,13 @@ report_unexpected_failure() {
 }
 trap 'report_unexpected_failure "$?" "$LINENO" "$BASH_COMMAND" "${FUNCNAME[0]:-main}"' ERR
 
-# Guard the pipelines that could abort this script silently.
+# Guard the constructs that could abort a script silently.
 # A pipeline like `producer | awk '/x/ {print; exit}'` closes the pipe as soon as awk
 # has its match, so the producer dies of SIGPIPE (141) and `set -o pipefail` turns that
 # into a fatal error. `head`, `grep -q` and `grep -m1` end a pipeline the same way. Cold caches lose that race and warm caches win it, which is why a
 # failed run appeared to succeed when it was simply re-run.
+# The same applies to terminal calls: `clear` exits 1 on an unknown TERM and `tput`
+# fails when the capability is missing, which `set -e` turns into an abort.
 run_self_checks() {
     local failures=0
     local tries=15
@@ -122,7 +124,7 @@ run_self_checks() {
     local early_exit_re='\|[[:space:]]*awk[^)]*\{[^)]*exit' # self-check-scan
     early_exit_re+='|(apt-cache|dpkg -l|dpkg-query|git ls-remote|find |grep -R|journalctl|lspci|lsmod|mokutil|groups |nvidia-smi)[^|]*\|[[:space:]]*(head|grep[[:space:]]+-[A-Za-z]*[qv]|grep[[:space:]]+-[A-Za-z]*m[0-9])' # self-check-scan
 
-    printf '\n[INFO] Self-check 1/3: scanning repo scripts for producer-killing pipelines\n'
+    printf '\n[INFO] Self-check 1/3: scanning repo scripts for abort-prone pipelines and unguarded TTY calls\n'
     local found=0
     for f in "${files[@]}"; do
         [[ -f "$f" ]] || continue
@@ -142,6 +144,29 @@ run_self_checks() {
         failures=$((failures + found))
     fi
 
+    # `clear` and `tput` must tolerate a missing capability, otherwise `set -e` stops a
+    # module on a fine machine: `clear` exits 1 on an unknown TERM (dotfiles.sh did).
+    local tty_re='^[[:space:]]*(clear|tput)([[:space:]]|$)' # self-check-scan
+    local tty_found=0
+    for f in "${files[@]}"; do
+        [[ -f "$f" ]] || continue
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            printf '[FAIL] %s line %s: unguarded TTY call: %s\n' "$f" "${line%%:*}" "${line#*:}"
+            tty_found=$((tty_found + 1))
+        done < <(grep -nE "$tty_re" "$f" 2>/dev/null \
+            | grep -vE '^[0-9]+:[[:space:]]*#' \
+            | grep -v 'self-check-control' \
+            | grep -v 'self-check-scan' \
+            | grep -vF '|| true' || true)
+    done
+    if [[ $tty_found -eq 0 ]]; then
+        printf '[OK]   no unguarded clear/tput calls in %s scripts\n' "${#files[@]}"
+    else
+        printf '       guard them with `2>/dev/null || true`\n'
+        failures=$((failures + tty_found))
+    fi
+
     printf '[INFO] Self-check 2/3: negative controls, the harness must detect an abort\n'
     if bash -c 'set -eo pipefail; seq 1 200000 | awk "NR==1 {print; exit}"' >/dev/null 2>&1; then # self-check-control
         printf '[FAIL] negative control did not abort; SIGPIPE detection is broken\n'
@@ -155,6 +180,17 @@ run_self_checks() {
     else
         printf '[OK]   harness detects the SIGPIPE/pipefail abort (head)\n'
     fi
+
+    local tty_control
+    tty_control="$(mktemp)"
+    printf 'set -e\nclear\n' > "$tty_control" # self-check-control
+    if grep -qE "$tty_re" "$tty_control" 2>/dev/null; then
+        printf '[OK]   harness detects an unguarded TTY call (clear)\n'
+    else
+        printf '[FAIL] negative control did not flag an unguarded clear\n'
+        failures=$((failures + 1))
+    fi
+    rm -f "$tty_control"
 
     printf '[INFO] Self-check 3/3: live apt-cache pipelines, %s runs each\n' "$tries"
     while IFS= read -r line; do
