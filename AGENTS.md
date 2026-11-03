@@ -58,6 +58,7 @@ cat hypr-tags.env                        # inspect current pins
 
 ## Contribution workflow reminders
 - Follow `CONTRIBUTING.md`: branch from `development`, keep PRs focused, and update docs when behavior changes.
+- Every fix or behavior change needs an entry in `CHANGELOG.md` under the current month (`Fixed`/`Added`/`Updated`, nested bullets giving cause and fix). A follow-up fix to an earlier entry is its own bullet; nothing ships undocumented.
 - Include dry-run or install logs (`Install-Logs/...`) when fixing installer issues; reviewers expect evidence of successful builds.
 - If you touch module ordering or add a new component, update `install.sh` (sequence + option), `update-hyprland.sh` (`DEFAULT_MODULES` + Hyprland prerequisite ordering), and `dry-run-build.sh` (`DEFAULT_MODULES`) to prevent drift.
 - When documenting new options, cross-link the relevant HOWTO/README sections so end users see the guidance surfaces described above.

@@ -32,6 +32,8 @@ Thank you for your interest in contributing to KooL Hyprland Projects! We welcom
      git commit -m "feat: add a new feature"
      ```
 
+- Record the change in [`CHANGELOG.md`](CHANGELOG.md) under the current month's `Fixed`, `Added` or `Updated` list, with nested bullets explaining the cause and the fix. Follow-up fixes to an earlier entry get their own bullet.
+
 5. Push your changes to your forked repository.
 
   - For example, to push your changes to your forked repository, use the following command.

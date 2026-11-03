@@ -65,6 +65,19 @@
         - `hypr-tags.env`, the default-tags block, the `--set` mapping and the repo map of
         - `update-hyprland.sh`/`refresh-hypr-tags.sh`, plus the tag examples in both
         - `Debian-Hyprland-Install-Upgrade*.md` guides; removed from all of them
+    - `update-deps.sh` counted the final check's success line as a missing package
+        - A clean check logs a single `[OK] GREAT! …` line, and every unprefixed log
+        - line was treated as a missing entry, so a healthy run failed and listed that
+        - success message as the missing package
+        - `[OK]`/`[NOTE]`/`[INFO]`-prefixed lines are now ignored, so neither the success
+        - line nor the trailing timestamp note can inflate the count
+    - `update-hyprland.sh` tripped two shellcheck findings
+        - Both tag-export loops used `export "$_k"`, which exports a variable's *name*
+        - rather than its value (SC2163); they now use `export "${_k?}"`, which behaves
+        - the same but fails loudly on an empty key
+        - `ensure_trixie_backports_repo()` also carried an unused `local desired=…` that
+        - duplicated the line its heredoc already writes (SC2034); the script now passes
+        - `shellcheck -S warning` with no findings
 
 - Updated:
     - Refreshed `hypr-tags.env` to the latest upstream tags
