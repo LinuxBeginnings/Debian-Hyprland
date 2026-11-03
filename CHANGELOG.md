@@ -44,6 +44,7 @@
 
 - Updated:
     - Refreshed `hypr-tags.env` to the latest upstream tags
+        - Hyprland v0.57.1
         - aquamarine v0.16.0, hyprgraphics v0.6.0, hyprlock v0.9.7, hyprpaper v0.8.5,
         - hyprpicker v0.4.8, hyprshutdown v0.1.2, wayland-protocols 1.50
 
