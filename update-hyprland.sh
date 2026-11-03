@@ -293,7 +293,6 @@ ensure_trixie_backports_repo() {
     local suite="$1"
     [[ "$suite" == "trixie" ]] || return 0
     local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
-    local desired="deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
     if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | has_match .; then
         # If we previously created an overlay but backports exists elsewhere, remove overlay to avoid duplicate targets.
         if sudo test -f "$file"; then
@@ -1005,7 +1004,7 @@ export_tags() {
         [[ -z "${_k:-}" || "$_k" =~ ^# ]] && continue
         # Only export keys that look like TAG variables or protocol version
         if [[ "$_k" == *"_TAG" || "$_k" == "WAYLAND_PROTOCOLS_TAG" ]]; then
-            export "$_k"
+            export "${_k?}"
         fi
     done < "$TAGS_FILE"
 }
@@ -1754,7 +1753,7 @@ if [[ $VIA_HELPER -eq 1 ]]; then
     while IFS='=' read -r _k _v; do
         [[ -z "${_k:-}" || "$_k" =~ ^# ]] && continue
         if [[ "$_k" == *"_TAG" || "$_k" == "WAYLAND_PROTOCOLS_TAG" ]]; then
-            export "$_k"
+            export "${_k?}"
         fi
     done < "$TAGS_FILE"
     helper="$REPO_ROOT/dry-run-build.sh"
