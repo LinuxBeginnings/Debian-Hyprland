@@ -120,6 +120,12 @@
         - The package is a separate requirement, not a `hyprland-guiutils` dependency, so
         - a missing module is reported by name at install time instead of surfacing later
         - as unthemed Qt dialogs
+    - The Qt style module check now tests loadability, not just the dpkg entry
+        - The package is file-only, so `03-Final-Check.sh` requires a `qmldir` manifest
+        - and at least one `.qml` file under `org/hyprland/style` - the layout that
+        - `QT_QUICK_CONTROLS_STYLE=org.hyprland.style` actually resolves
+        - A removed or half-copied module now fails the check instead of passing because
+        - dpkg still lists the package
     - Both install/upgrade guides explain why the module must stay
         - `Debian-Hyprland-Install-Upgrade.md` and its Spanish translation gained a
         - "keep this package" note in the Debian package-mode section

@@ -40,11 +40,9 @@ packages=(
     xdg-utils
     xdg-desktop-portal
     xdg-desktop-portal-gtk
-    # Provides the org.hyprland.style QML module the dotfiles load via
-    # QT_QUICK_CONTROLS_STYLE. It is not a dependency of hyprland-guiutils, so losing it
-    # breaks themed Qt dialogs while every guiutils tool keeps working.
-    qml6-module-org-hyprland-style
 )
+# qml6-module-org-hyprland-style is verified separately (see is_qml_hyprland_style_loadable)
+# because it ships no binary and an installed package alone does not mean Qt can import it.
 
 # Essential binaries that should exist in PATH
 # (works for both /usr/local/bin source installs and /usr/bin Debian package installs)
@@ -132,6 +130,21 @@ is_portal_hyprland_registered() {
     return 1
 }
 
+# qml6-module-org-hyprland-style has no binary, so a dpkg hit proves nothing about
+# usability: Qt resolves QT_QUICK_CONTROLS_STYLE=org.hyprland.style from a QML directory
+# that needs a qmldir manifest plus the .qml files. Deleted or half-copied files leave the
+# package installed while every themed dialog silently falls back to the default style.
+is_qml_hyprland_style_loadable() {
+    local dir
+    for dir in /usr/lib/*/qt6/qml/org/hyprland/style \
+        /usr/local/lib/*/qt6/qml/org/hyprland/style; do
+        [ -d "$dir" ] || continue
+        [ -f "$dir/qmldir" ] || continue
+        compgen -G "$dir/*.qml" >/dev/null && return 0
+    done
+    return 1
+}
+
 # Loop through each package
 for pkg in "${packages[@]}"; do
     # Check if the package is installed via dpkg
@@ -175,6 +188,12 @@ if ! is_portal_hyprland_backend_installed; then
     local_missing+=("xdg-desktop-portal-hyprland (backend)")
 elif ! is_portal_hyprland_registered; then
     local_missing+=("xdg-desktop-portal-hyprland (hyprland.portal not installed)")
+fi
+
+# File-only Qt module: check that Qt can import it instead of trusting dpkg, and name the
+# consuming feature so the failure is actionable.
+if ! is_qml_hyprland_style_loadable; then
+    local_missing+=("qml6-module-org-hyprland-style (org.hyprland.style not loadable)")
 fi
 
 # Log missing packages
