@@ -286,9 +286,13 @@ mapfile -t failed_pkgs < <(cat "$clean_packages_log" "$clean_swww_log" "$clean_n
 latest_final_log="$(ls -t "$LOG_DIR"/00_CHECK-*_installed.log 2>/dev/null | head -n 1)"
 missing_pkgs=()
 if [ -n "$latest_final_log" ] && [ -f "$latest_final_log" ]; then
-  # Every logged line is a missing entry; keep multi-word ones too ("waybar (source build)",
-  # "NetworkManager (service not enabled)") and drop only the trailing timestamp note.
-  mapfile -t missing_pkgs < <(strip_ansi < "$latest_final_log" | grep -v 'Missing packages logged at' | sed '/^[[:space:]]*$/d')
+  # Missing entries are logged one per line, so keep multi-word ones ("waybar (source
+  # build)", "NetworkManager (service not enabled)"). A clean run logs a single
+  # "[OK] GREAT! ..." line instead, and the trailing note is tagged [NOTE], so those
+  # prefixed lines must not be mistaken for missing entries.
+  mapfile -t missing_pkgs < <(strip_ansi < "$latest_final_log" \
+    | grep -vE '^[[:space:]]*(\[OK\]|\[NOTE\]|\[INFO\]|Missing packages logged at)' \
+    | sed '/^[[:space:]]*$/d')
 fi
 
 rm -f "$clean_dependencies_log" "$clean_packages_log" "$clean_swww_log" "$clean_nwg_dock_log" "$clean_check_log"
