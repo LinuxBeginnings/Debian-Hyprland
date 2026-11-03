@@ -215,6 +215,10 @@ Switching to source mode automatically purges any Debian-installed Hyprland pack
 ./update-hyprland.sh --debian-remove
 ```
 
+### Qt style module: keep `qml6-module-org-hyprland-style`
+
+The installer pulls in `qml6-module-org-hyprland-style` (from `trixie-backports` on Trixie). It provides the `org.hyprland.style` QML module that the dotfiles' Qt/Quickshell components load through `QT_QUICK_CONTROLS_STYLE`. It is **not** a dependency of `hyprland-guiutils`, so removing it breaks themed Qt dialogs and menus while every guiutils tool keeps working - which makes the breakage hard to trace. `install-scripts/03-Final-Check.sh` reports the package when it is missing.
+
 ## Central Version Management
 
 ### hypr-tags.env

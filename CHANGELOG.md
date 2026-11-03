@@ -116,6 +116,13 @@
         - module the dotfiles load via `QT_QUICK_CONTROLS_STYLE`, and that it is a
         - separate package rather than a `hyprland-guiutils` dependency, so a future
         - package cleanup cannot drop it by mistake
+    - `install-scripts/03-Final-Check.sh` now verifies `qml6-module-org-hyprland-style`
+        - The package is a separate requirement, not a `hyprland-guiutils` dependency, so
+        - a missing module is reported by name at install time instead of surfacing later
+        - as unthemed Qt dialogs
+    - Both install/upgrade guides explain why the module must stay
+        - `Debian-Hyprland-Install-Upgrade.md` and its Spanish translation gained a
+        - "keep this package" note in the Debian package-mode section
 
 ## Oct 2026
 

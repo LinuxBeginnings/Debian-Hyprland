@@ -215,6 +215,10 @@ Cambiar al modo fuente purga automáticamente los paquetes Hyprland de Debian pa
 ./update-hyprland.sh --debian-remove
 ```
 
+### Módulo de estilo Qt: conserva `qml6-module-org-hyprland-style`
+
+El instalador añade `qml6-module-org-hyprland-style` (desde `trixie-backports` en Trixie). Proporciona el módulo QML `org.hyprland.style` que los componentes Qt/Quickshell de los dotfiles cargan mediante `QT_QUICK_CONTROLS_STYLE`. **No** es una dependencia de `hyprland-guiutils`, así que eliminarlo rompe los diálogos y menús Qt con tema mientras todas las herramientas de guiutils siguen funcionando, lo que hace difícil rastrear el fallo. `install-scripts/03-Final-Check.sh` reporta el paquete cuando falta.
+
 ## Gestión Central de Versiones
 
 ### hypr-tags.env

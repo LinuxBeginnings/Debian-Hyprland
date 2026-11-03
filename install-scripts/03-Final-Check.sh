@@ -40,6 +40,10 @@ packages=(
     xdg-utils
     xdg-desktop-portal
     xdg-desktop-portal-gtk
+    # Provides the org.hyprland.style QML module the dotfiles load via
+    # QT_QUICK_CONTROLS_STYLE. It is not a dependency of hyprland-guiutils, so losing it
+    # breaks themed Qt dialogs while every guiutils tool keeps working.
+    qml6-module-org-hyprland-style
 )
 
 # Essential binaries that should exist in PATH
