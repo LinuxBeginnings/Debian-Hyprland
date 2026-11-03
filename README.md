@@ -260,6 +260,10 @@ Keybinds [`CLICK`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Keybind
 - `./dry-run-build.sh` runs it first and reports `Pipeline self-check: PASS` (or
   `SKIP`) in its summary; pass `--no-self-check` to skip it.
 - When a run stops, the error now names the failing command and its `file:line`.
+- Colour escapes are only written when stdout is a terminal, so piped output and
+  `Install-Logs/*.log` stay plain text. Logs captured before this fix still contain
+  stray `^[(B` bytes; strip them in place with
+  `perl -pi -e 's/\x1b\(B//g' Install-Logs/*.log`.
 
 #### 🛣️ Roadmap
 

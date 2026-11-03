@@ -29,10 +29,16 @@
         - They now use a single `\e[0m` reset and only emit escapes when stdout is a
         - terminal (`NO_COLOR` and `TERM=dumb` also disable them), so logs stay plain
         - `tput civis`/`tput cnorm` failures in the spinner no longer abort the run
+    - A failed `clear` could abort `install-scripts/dotfiles.sh`
+        - Module scripts inherit `set -e` from `Global_functions.sh`, and `clear`
+        - exits 1 when `TERM` is unknown, so the module died (ERR trap reporting it)
+        - right after a successful dots download
+        - `dotfiles.sh`, `install.sh` and `uninstall.sh` now call
+        - `clear 2>/dev/null || true`, matching the guarded `tput` calls
     - `dpkg -l | grep -q …` could kill `dpkg` with SIGPIPE (exit 141)
         - `grep -q` exits at the first match while `dpkg -l` is still writing, so any
         - caller running under `set -o pipefail` aborted
-        - Package checks in 13 scripts now pipe into `has_match` (`grep -c`), which
+        - Package checks in 15 scripts now pipe into `has_match` (`grep -c`), which
         - drains the input and returns the same 0/1 status; `lspci … | head -n2` and
         - `find … | head -n 1` use draining consumers too
 
