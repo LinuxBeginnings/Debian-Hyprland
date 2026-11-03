@@ -72,9 +72,9 @@ _detect_cuda_suite() {
 }
 
 detect_variant() {
-  if dpkg -l | grep -q -E '^ii\s+nvidia-open\b'; then echo open; return; fi
-  if dpkg -l | grep -q -E '^ii\s+cuda-drivers\b'; then echo nvidia; return; fi
-  if dpkg -l | grep -q -E '^ii\s+nvidia-driver\b'; then echo debian; return; fi
+  if dpkg -l | has_match -E '^ii\s+nvidia-open\b'; then echo open; return; fi
+  if dpkg -l | has_match -E '^ii\s+cuda-drivers\b'; then echo nvidia; return; fi
+  if dpkg -l | has_match -E '^ii\s+nvidia-driver\b'; then echo debian; return; fi
   echo none
 }
 
@@ -139,7 +139,7 @@ ensure_kernel_headers() {
   echo -e "${INFO} Ensuring kernel headers for ${YELLOW}${kv}${RESET} ..."
   if ! apt_install "$pkg_exact"; then
     # Fallback to common meta packages
-    if dpkg --print-architecture | grep -qE 'amd64|arm64|i386'; then
+    if dpkg --print-architecture | has_match -E 'amd64|arm64|i386'; then
       apt_install linux-headers-$(dpkg --print-architecture 2>/dev/null | sed 's/.*/amd64/') >/dev/null 2>&1 || true
     fi
     # Generic fallback
@@ -156,7 +156,7 @@ preflight_check() {
   ensure_kernel_headers || true
 
   # Secure Boot warning (drivers may fail to load without signing)
-  if _which mokutil && mokutil --sb-state 2>/dev/null | grep -qi enabled; then
+  if _which mokutil && mokutil --sb-state 2>/dev/null | has_match -i enabled; then
     echo -e "${WARN} Secure Boot appears ${YELLOW}ENABLED${RESET}. You may need to enroll a Machine Owner Key (MOK) and sign NVIDIA modules."
   fi
 }
@@ -262,7 +262,7 @@ print_gpu_info() {
   fi
   if _which lspci; then
     local l
-    l=$(lspci -nnk | awk '/VGA|3D|Display/ && /NVIDIA/ {print; getline; print}' | head -n2)
+    l=$(lspci -nnk | awk '/VGA|3D|Display/ && /NVIDIA/ {print; getline; print}' | sed -n '1,2p')
     if [ -n "$l" ]; then
       echo -e "${OK} Detected (lspci):\n${YELLOW}$l${RESET}"
       return
@@ -435,18 +435,18 @@ post_install_verify() {
 
   # Determine installed variant
   local variant="unknown"
-  if dpkg -l | grep -q -E '^ii\s+nvidia-open\b'; then
+  if dpkg -l | has_match -E '^ii\s+nvidia-open\b'; then
     variant="open (NVIDIA CUDA repo)"
-  elif dpkg -l | grep -q -E '^ii\s+cuda-drivers\b'; then
+  elif dpkg -l | has_match -E '^ii\s+cuda-drivers\b'; then
     variant="proprietary (NVIDIA CUDA repo)"
-  elif dpkg -l | grep -q -E '^ii\s+nvidia-driver\b'; then
+  elif dpkg -l | has_match -E '^ii\s+nvidia-driver\b'; then
     variant="debian-packaged"
   fi
   echo -e "${OK} Driver source detected: ${YELLOW}${variant}${RESET}"
 
   # Module load status
   local loaded="no"
-  if lsmod | grep -q '^nvidia\b'; then loaded="yes"; fi
+  if lsmod | has_match '^nvidia\b'; then loaded="yes"; fi
   echo -e "${INFO} Kernel module loaded: ${YELLOW}${loaded}${RESET}"
   if [ "$loaded" != "yes" ]; then
     echo -e "${NOTE} NVIDIA module not loaded. A reboot is often required after driver install."

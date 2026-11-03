@@ -74,4 +74,5 @@ echo -e "${ERROR} Failed to download Hyprland-Dots (${RESOLVED_REF})." 2>&1 | te
     exit 1
 fi
 
-clear
+# A failed `clear` (unknown/lacking TERM) must not abort the module under `set -e`
+clear 2>/dev/null || true

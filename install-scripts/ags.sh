@@ -120,7 +120,7 @@ fi
 
 if [ "$needs_tsc_install" -eq 1 ]; then
   # Purge older apt version if present to avoid conflicts
-  if dpkg -l | grep -q "^ii  node-typescript"; then
+  if dpkg -l | has_match "^ii  node-typescript"; then
     printf "${INFO} Removing old apt package node-typescript...\\n"
     sudo apt-get purge -y node-typescript 2>&1 | tee -a "$LOG"
   fi

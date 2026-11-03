@@ -55,6 +55,11 @@ SKIP_LIST=""
 CHECK_ONLY=0
 SELF_CHECK=1
 
+# `grep -q` exits as soon as it matches, which can kill a streaming producer with SIGPIPE
+# (141) and, under `set -o pipefail`, abort the run. `grep -c` reads its input to EOF and
+# reports the same 0/1 status, so package checks use it and discard the count.
+has_match() { grep -c "$@" >/dev/null; }
+
 usage() {
   grep '^# ' "$0" | sed 's/^# \{0,1\}//'
 }
@@ -66,53 +71,53 @@ detect_module_method() {
   local is_apt=0 is_source=0
   case "$mod" in
     hyprutils)
-      dpkg -l 'libhyprutils*' 2>/dev/null | grep -q '^ii' && is_apt=1
-      ls /usr/local/lib/libhyprutils.so* 2>/dev/null | grep -q . && is_source=1 ;;
+      dpkg -l 'libhyprutils*' 2>/dev/null | has_match '^ii' && is_apt=1
+      ls /usr/local/lib/libhyprutils.so* 2>/dev/null | has_match . && is_source=1 ;;
     hyprlang)
-      dpkg -l 'libhyprlang*' 2>/dev/null | grep -q '^ii' && is_apt=1
-      ls /usr/local/lib/libhyprlang.so* 2>/dev/null | grep -q . && is_source=1 ;;
+      dpkg -l 'libhyprlang*' 2>/dev/null | has_match '^ii' && is_apt=1
+      ls /usr/local/lib/libhyprlang.so* 2>/dev/null | has_match . && is_source=1 ;;
     hyprcursor)
-      dpkg -l 'libhyprcursor*' 2>/dev/null | grep -q '^ii' && is_apt=1
-      ls /usr/local/lib/libhyprcursor.so* 2>/dev/null | grep -q . && is_source=1 ;;
+      dpkg -l 'libhyprcursor*' 2>/dev/null | has_match '^ii' && is_apt=1
+      ls /usr/local/lib/libhyprcursor.so* 2>/dev/null | has_match . && is_source=1 ;;
     aquamarine)
-      dpkg -l 'libaquamarine*' 2>/dev/null | grep -q '^ii' && is_apt=1
-      ls /usr/local/lib/libaquamarine.so* 2>/dev/null | grep -q . && is_source=1 ;;
+      dpkg -l 'libaquamarine*' 2>/dev/null | has_match '^ii' && is_apt=1
+      ls /usr/local/lib/libaquamarine.so* 2>/dev/null | has_match . && is_source=1 ;;
     hyprgraphics)
-      dpkg -l 'libhyprgraphics*' 2>/dev/null | grep -q '^ii' && is_apt=1
-      ls /usr/local/lib/libhyprgraphics.so* 2>/dev/null | grep -q . && is_source=1 ;;
+      dpkg -l 'libhyprgraphics*' 2>/dev/null | has_match '^ii' && is_apt=1
+      ls /usr/local/lib/libhyprgraphics.so* 2>/dev/null | has_match . && is_source=1 ;;
     hyprtoolkit)
-      dpkg -l 'hyprtoolkit' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprtoolkit' 2>/dev/null | has_match '^ii' && is_apt=1
       { [ -f /usr/local/lib/pkgconfig/hyprtoolkit.pc ] || \
         [ -f /usr/local/share/pkgconfig/hyprtoolkit.pc ]; } && is_source=1 ;;
     hyprwayland-scanner)
-      dpkg -l 'hyprwayland-scanner' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprwayland-scanner' 2>/dev/null | has_match '^ii' && is_apt=1
       [ -f /usr/local/bin/hyprwayland-scanner ] && is_source=1 ;;
     wayland-protocols-src)
-      dpkg -l 'wayland-protocols' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'wayland-protocols' 2>/dev/null | has_match '^ii' && is_apt=1
       [ -f /usr/local/share/pkgconfig/wayland-protocols.pc ] && is_source=1 ;;
     hyprland-protocols)
-      dpkg -l 'hyprland-protocols' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprland-protocols' 2>/dev/null | has_match '^ii' && is_apt=1
       [ -f /usr/local/share/pkgconfig/hyprland-protocols.pc ] && is_source=1 ;;
     hyprland-qt-support)
-      dpkg -l 'hyprland-qt-support' 2>/dev/null | grep -q '^ii' && is_apt=1 ;;
+      dpkg -l 'hyprland-qt-support' 2>/dev/null | has_match '^ii' && is_apt=1 ;;
     hyprland-qtutils)
-      dpkg -l 'hyprland-qtutils' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprland-qtutils' 2>/dev/null | has_match '^ii' && is_apt=1
       { [ -f /usr/local/bin/hyprland-qt-utils ] || \
         [ -f /usr/local/bin/hyprland-qtutils ]; } && is_source=1 ;;
     hyprland)
-      dpkg -l 'hyprland' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprland' 2>/dev/null | has_match '^ii' && is_apt=1
       { [ -f /usr/local/bin/hyprland ] || [ -f /usr/local/bin/Hyprland ]; } && is_source=1 ;;
     hyprshutdown)
-      dpkg -l 'hyprshutdown' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprshutdown' 2>/dev/null | has_match '^ii' && is_apt=1
       [ -f /usr/local/bin/hyprshutdown ] && is_source=1 ;;
     hyprpolkitagent)
-      dpkg -l 'hyprpolkitagent' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprpolkitagent' 2>/dev/null | has_match '^ii' && is_apt=1
       { [ -f /usr/local/libexec/hyprpolkitagent ] || [ -f /usr/local/bin/hyprpolkitagent ] || [ -f /usr/libexec/hyprpolkitagent ] || [ -f /usr/bin/hyprpolkitagent ]; } && is_source=1 ;;
     hyprpaper)
-      dpkg -l 'hyprpaper' 2>/dev/null | grep -q '^ii' && is_apt=1
+      dpkg -l 'hyprpaper' 2>/dev/null | has_match '^ii' && is_apt=1
       [ -f /usr/local/bin/hyprpaper ] && is_source=1 ;;
     *)
-      dpkg -l "$mod" 2>/dev/null | grep -q '^ii' && is_apt=1 ;;
+      dpkg -l "$mod" 2>/dev/null | has_match '^ii' && is_apt=1 ;;
   esac
   if [[ $is_apt -eq 1 && $is_source -eq 1 ]]; then echo "both"
   elif [[ $is_apt -eq 1 ]]; then echo "apt"

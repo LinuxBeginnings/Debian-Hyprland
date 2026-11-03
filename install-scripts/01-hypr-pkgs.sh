@@ -127,7 +127,7 @@ get_rofi_version() {
 }
 
 package_has_candidate() {
-    apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+    apt-cache policy "$1" 2>/dev/null | awk '/Candidate:/ {print $2}' | has_match -v "(none)"
 }
 
 detect_suite() {

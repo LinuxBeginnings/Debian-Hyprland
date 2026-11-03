@@ -68,12 +68,12 @@ for PKG1 in "${hyprgraphics[@]}"; do
   # Verify the package directly: the previous $? check inspected tee, not
   # re_install_package, so a wrong or suite-specific package name only surfaced
   # much later as a confusing CMake failure.
-  if dpkg-query -W -f='${Status}' "$PKG1" 2>/dev/null | grep -q "ok installed"; then
+  if dpkg-query -W -f='${Status}' "$PKG1" 2>/dev/null | has_match "ok installed"; then
     continue
   fi
   # Distinguish "not in this suite" from "install failed" so a package rename
   # across trixie/forky/sid reports the real cause.
-  if apt-cache policy "$PKG1" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -qv "(none)"; then
+  if apt-cache policy "$PKG1" 2>/dev/null | awk '/Candidate:/ {print $2}' | has_match -v "(none)"; then
     echo -e "\e[1A\e[K${ERROR} - ${YELLOW}$PKG1${RESET} failed to install, Please check the installation logs"
   else
     echo -e "\e[1A\e[K${ERROR} - ${YELLOW}$PKG1${RESET} is not available for suite '${SUITE_NAME}'"

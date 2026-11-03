@@ -21,6 +21,20 @@
         - bash's builtin `echo` only expands `\n` when given `-e`, so the two characters
         - `\` and `n` were written to the console and to `Install-Logs/update-hypr-*.log`
         - Both now use `printf '\n=== %s ===\n' "$mod"` (and the `(DRY RUN)` variant)
+    - Log lines carried a literal `ESC(B` (`^[(B`) after the `[ERROR]` prefix
+        - The colour variables in `install.sh`, `auto-install.sh`, `uninstall.sh` and
+        - `install-scripts/Global_functions.sh` ended with `tput sgr0`, which emits a
+        - charset switch (`ESC(B`) before the real reset (`ESC[m`). A terminal hides it,
+        - but every log file and captured pipe printed it
+        - They now use a single `\e[0m` reset and only emit escapes when stdout is a
+        - terminal (`NO_COLOR` and `TERM=dumb` also disable them), so logs stay plain
+        - `tput civis`/`tput cnorm` failures in the spinner no longer abort the run
+    - `dpkg -l | grep -q …` could kill `dpkg` with SIGPIPE (exit 141)
+        - `grep -q` exits at the first match while `dpkg -l` is still writing, so any
+        - caller running under `set -o pipefail` aborted
+        - Package checks in 13 scripts now pipe into `has_match` (`grep -c`), which
+        - drains the input and returns the same 0/1 status; `lspci … | head -n2` and
+        - `find … | head -n 1` use draining consumers too
 
 - Updated:
     - Refreshed `hypr-tags.env` to the latest upstream tags
@@ -34,6 +48,11 @@
         - every live `apt-cache | awk` pipeline 15 times
     - `dry-run-build.sh` runs that self-check first and prints
         - `Pipeline self-check: PASS|SKIP` in its summary; `--no-self-check` skips it
+    - The self-check now covers early-exit consumers beyond `awk … exit`
+        - It also scans `head`, `grep -q` and `grep -m1` pipelines fed by streaming
+        - commands (`apt-cache`, `dpkg -l`, `find`, `git ls-remote`, …)
+        - Adds a second negative control for the `head` shape and probes the
+        - `dpkg -l | grep -c` pipeline the package checks rely on
 
 ## Oct 2026
 

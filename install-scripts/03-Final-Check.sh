@@ -87,7 +87,7 @@ local_missing=()
 
 # Function to check if a package is installed using dpkg
 is_installed_dpkg() {
-    dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "install ok installed"
+    dpkg-query -W -f='${Status}' "$1" 2>/dev/null | has_match "install ok installed"
 }
 
 # Loop through each package

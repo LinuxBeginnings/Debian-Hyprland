@@ -91,7 +91,7 @@ if command -v waybar &>/dev/null; then
     _wb_bin="$(command -v waybar)"
     if waybar_binary_runs "$_wb_bin"; then
         WAYBAR_VER_LINE="$(waybar --version 2>&1 | grep -i 'waybar v' || true)"
-        if echo "$WAYBAR_VER_LINE" | grep -q -E "branch|g[0-9a-f]{7}"; then
+        if echo "$WAYBAR_VER_LINE" | has_match -E "branch|g[0-9a-f]{7}"; then
             echo "${INFO} Waybar is already source-built at $_wb_bin. Skipping build."
             exit 0
         fi
@@ -106,7 +106,7 @@ fi
 printf "\n%s - Checking for APT-provided ${YELLOW}waybar${RESET} package(s)...\n" "${NOTE}"
 _purged=0
 for _wpkg in waybar waybar-experimental; do
-    if dpkg-query -W -f='${Status}' "$_wpkg" 2>/dev/null | grep -q "ok installed"; then
+    if dpkg-query -W -f='${Status}' "$_wpkg" 2>/dev/null | has_match "ok installed"; then
         printf "%s - Purging ${YELLOW}%s${RESET} (replaced by source build)...\n" "${NOTE}" "$_wpkg"
         sudo apt-get purge -y "$_wpkg" 2>&1 | tee -a "$LOG" || true
         _purged=1

@@ -261,8 +261,8 @@ print(f"{tag}\t{deb_name}\t{deb_url}\t{zip_name}\t{zip_url}")
 
         local yazi_bin=""
         local ya_bin=""
-        yazi_bin="$(find "$extract_dir" -type f -name "yazi" -perm -111 -o -type f -name "yazi" | head -n 1)"
-        ya_bin="$(find "$extract_dir" -type f -name "ya" -perm -111 -o -type f -name "ya" | head -n 1)"
+        yazi_bin="$(find "$extract_dir" -type f -name "yazi" -perm -111 -o -type f -name "yazi" | sed -n '1p')"
+        ya_bin="$(find "$extract_dir" -type f -name "ya" -perm -111 -o -type f -name "ya" | sed -n '1p')"
 
         if [ -z "$yazi_bin" ] || [ ! -f "$yazi_bin" ]; then
             echo "${ERROR} Extracted archive does not contain 'yazi' binary." | tee -a "$LOG"
@@ -276,7 +276,7 @@ print(f"{tag}\t{deb_name}\t{deb_url}\t{zip_name}\t{zip_url}")
         fi
 
         local comp_dir=""
-        comp_dir="$(find "$extract_dir" -type d -name "completions" | head -n 1)"
+        comp_dir="$(find "$extract_dir" -type d -name "completions" | sed -n '1p')"
         if [ -n "$comp_dir" ]; then
             install_completions_from_dir "$comp_dir"
         fi

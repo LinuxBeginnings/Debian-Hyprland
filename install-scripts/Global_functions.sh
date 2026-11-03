@@ -42,26 +42,35 @@ report_unexpected_failure() {
 }
 trap 'report_unexpected_failure "$?" "$LINENO" "$BASH_COMMAND" "${FUNCNAME[0]:-main}"' ERR
 
-# Set some colors for output messages (be resilient in non-interactive shells)
-if tput sgr0 >/dev/null 2>&1; then
-  OK="$(tput setaf 2)[OK]$(tput sgr0)"
-  ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-  NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
-  INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-  WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-  CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-  MAGENTA="$(tput setaf 5)"
-  ORANGE="$(tput setaf 214)"
-  WARNING="$(tput setaf 1)"
-  YELLOW="$(tput setaf 3)"
-  GREEN="$(tput setaf 2)"
-  BLUE="$(tput setaf 4)"
-  SKY_BLUE="$(tput setaf 6)"
-  RESET="$(tput sgr0)"
+# Set some colors for output messages.
+# - Escapes are only emitted when stdout is a terminal, so piped output and log files
+#   stay plain text.
+# - A single reset (`\e[0m`) replaces `tput sgr0`, which also emits ESC(B, a charset
+#   switch that survives as a literal "^[(B" in logs and captured output.
+if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" ]]; then
+  OK=$'\e[32m[OK]\e[0m'
+  ERROR=$'\e[31m[ERROR]\e[0m'
+  NOTE=$'\e[33m[NOTE]\e[0m'
+  INFO=$'\e[34m[INFO]\e[0m'
+  WARN=$'\e[31m[WARN]\e[0m'
+  CAT=$'\e[36m[ACTION]\e[0m'
+  MAGENTA=$'\e[35m'
+  ORANGE=$'\e[38;5;214m'
+  WARNING=$'\e[31m'
+  YELLOW=$'\e[33m'
+  GREEN=$'\e[32m'
+  BLUE=$'\e[34m'
+  SKY_BLUE=$'\e[36m'
+  RESET=$'\e[0m'
 else
   OK="[OK]"; ERROR="[ERROR]"; NOTE="[NOTE]"; INFO="[INFO]"; WARN="[WARN]"; CAT="[ACTION]"
   MAGENTA=""; ORANGE=""; WARNING=""; YELLOW=""; GREEN=""; BLUE=""; SKY_BLUE=""; RESET=""
 fi
+
+# `grep -q` exits as soon as it matches, which can kill a streaming producer with SIGPIPE
+# (141) and, under `set -o pipefail`, abort the run. `grep -c` reads its input to EOF and
+# reports the same 0/1 status, so package checks use it and discard the count.
+has_match() { grep -c "$@" >/dev/null; }
 
 # Create Directory for Install Logs
 if [ ! -d Install-Logs ]; then
@@ -113,7 +122,7 @@ show_progress() {
                       "○○○○○●○○○○" "○○○○○○●○○○" "○○○○○○○●○○" "○○○○○○○○●○" "○○○○○○○○○●") 
     local i=0
 
-    tput civis 
+    tput civis 2>/dev/null || true
     printf "\r${INFO} Installing ${YELLOW}%s${RESET} ..." "$package_name"
 
     while ps -p $pid &> /dev/null; do
@@ -123,7 +132,7 @@ show_progress() {
     done
 
     printf "\r${INFO} Installing ${YELLOW}%s${RESET} ... Done!%-20s \n\n" "$package_name" ""
-    tput cnorm  
+    tput cnorm 2>/dev/null || true
 }
 
 
@@ -140,7 +149,7 @@ version_ge() {
 
 # Function for installing packages with a progress bar
 install_package() { 
-  if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed" ; then
+  if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | has_match "ok installed" ; then
     echo -e "${INFO} ${MAGENTA}$1${RESET} is already installed. Skipping..."
   else 
     (
@@ -150,7 +159,7 @@ install_package() {
     show_progress $PID "$1" 
     
     # Double check if the package successfully installed
-    if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed"; then
+    if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | has_match "ok installed"; then
         echo -e "\e[1A\e[K${OK} Package ${YELLOW}$1${RESET} has been successfully installed!"
     else
         echo -e "\e[1A\e[K${ERROR} ${YELLOW}$1${RESET} failed to install. Please check the install.log. You may need to install it manually. Sorry, I have tried :("
@@ -161,12 +170,12 @@ install_package() {
 target_release_available_for_pkg() {
   local pkg="$1"
   local target="$2"
-  apt-cache policy "$pkg" 2>/dev/null | grep -Eq "[[:space:]]${target}/"
+  apt-cache policy "$pkg" 2>/dev/null | has_match -E "[[:space:]]${target}/"
 }
 install_package_target() {
   local pkg="$1"
   local target="$2"
-  if dpkg -l | grep -q -w "$pkg" ; then
+  if dpkg -l | has_match -w "$pkg" ; then
     echo -e "${INFO} ${MAGENTA}$pkg${RESET} is already installed. Skipping..."
   else
     if ! target_release_available_for_pkg "$pkg" "$target"; then
@@ -181,7 +190,7 @@ install_package_target() {
     show_progress $PID "$pkg"
 
     # Double check if the package successfully installed
-    if dpkg -l | grep -q -w "$pkg"; then
+    if dpkg -l | has_match -w "$pkg"; then
       echo -e "\e[1A\e[K${OK} Package ${YELLOW}$pkg${RESET} has been successfully installed!"
     else
       echo -e "\e[1A\e[K${ERROR} ${YELLOW}$pkg${RESET} failed to install. Please check the install.log. You may need to install it manually. Sorry, I have tried :("
@@ -218,7 +227,7 @@ re_install_package() {
     PID=$!
     show_progress $PID "$1" 
     
-    if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q "ok installed"; then
+    if dpkg-query -W -f='${Status}' "$1" 2>/dev/null | has_match "ok installed"; then
         echo -e "\e[1A\e[K${OK} Package ${YELLOW}$1${RESET} has been successfully re-installed!"
     else
         # Package not found, reinstallation failed
@@ -231,11 +240,11 @@ uninstall_package() {
   local pkg="$1"
 
   # Checking if package is installed
-  if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" ; then
+  if dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | has_match "ok installed" ; then
     echo -e "${NOTE} removing $pkg ..."
     sudo apt autoremove -y "$1" >> "$LOG" 2>&1 | grep -v "error: target not found"
     
-    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "ok installed" ; then
+    if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | has_match "ok installed" ; then
       echo -e "\e[1A\e[K${OK} ${MAGENTA}$1${RESET} removed."
     else
       echo -e "\e[1A\e[K${ERROR} $pkg Removal failed. No actions required."

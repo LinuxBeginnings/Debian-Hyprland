@@ -132,14 +132,14 @@ EOF
 install_murrine_engine() {
   local pkg="gtk2-engines-murrine"
 
-  if dpkg -l | grep -q -w "$pkg"; then
+  if dpkg -l | has_match -w "$pkg"; then
     echo -e "${INFO} ${MAGENTA}$pkg${RESET} is already installed. Skipping..." | tee -a "$LOG"
     return 0
   fi
 
   if has_apt_candidate "$pkg"; then
     install_package "$pkg" "$LOG"
-    if dpkg -l | grep -q -w "$pkg"; then return 0; fi
+    if dpkg -l | has_match -w "$pkg"; then return 0; fi
   fi
 
   # Try building from source

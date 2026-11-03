@@ -49,6 +49,11 @@ BLUE=$'\e[34m'
 BOLD=$'\e[1m'
 RESET=$'\e[0m'
 
+# `grep -q` exits as soon as it matches, which can kill a streaming producer with SIGPIPE
+# (141) and, under `set -o pipefail`, abort the run. `grep -c` reads its input to EOF and
+# reports the same 0/1 status, so package checks use it and discard the count.
+has_match() { grep -c "$@" >/dev/null; }
+
 REPO_ROOT=$(pwd)
 TAGS_FILE="$REPO_ROOT/hypr-tags.env"
 LOG_DIR="$REPO_ROOT/Install-Logs"
@@ -86,7 +91,7 @@ trap 'report_unexpected_failure "$?" "$LINENO" "$BASH_COMMAND" "${FUNCNAME[0]:-m
 # Guard the pipelines that could abort this script silently.
 # A pipeline like `producer | awk '/x/ {print; exit}'` closes the pipe as soon as awk
 # has its match, so the producer dies of SIGPIPE (141) and `set -o pipefail` turns that
-# into a fatal error. Cold caches lose that race and warm caches win it, which is why a
+# into a fatal error. `head`, `grep -q` and `grep -m1` end a pipeline the same way. Cold caches lose that race and warm caches win it, which is why a
 # failed run appeared to succeed when it was simply re-run.
 run_self_checks() {
     local failures=0
@@ -111,6 +116,12 @@ run_self_checks() {
         files+=("$f")
     done
 
+    # Consumers that stop before their producer finishes: `head`, `grep -q`, `grep -m1`
+    # and `awk ... exit`. Only pipelines fed by a command that can stream more than a
+    # pipe buffer are reported, so bounded printf/sort one-liners stay quiet.
+    local early_exit_re='\|[[:space:]]*awk[^)]*\{[^)]*exit' # self-check-scan
+    early_exit_re+='|(apt-cache|dpkg -l|dpkg-query|git ls-remote|find |grep -R|journalctl|lspci|lsmod|mokutil|groups |nvidia-smi)[^|]*\|[[:space:]]*(head|grep[[:space:]]+-[A-Za-z]*[qv]|grep[[:space:]]+-[A-Za-z]*m[0-9])' # self-check-scan
+
     printf '\n[INFO] Self-check 1/3: scanning repo scripts for producer-killing pipelines\n'
     local found=0
     for f in "${files[@]}"; do
@@ -119,7 +130,11 @@ run_self_checks() {
             [[ -z "$line" ]] && continue
             printf '[FAIL] %s line %s: %s\n' "$f" "${line%%:*}" "${line#*:}"
             found=$((found + 1))
-        done < <(grep -nE '\|[[:space:]]*awk[^)]*\{[^)]*exit' "$f" 2>/dev/null | grep -vE '^[0-9]+:[[:space:]]*#' | grep -v 'self-check-control' | grep -v '|| true' || true)
+        done < <(grep -nE "$early_exit_re" "$f" 2>/dev/null \
+            | grep -vE '^[0-9]+:[[:space:]]*#' \
+            | grep -v 'self-check-control' \
+            | grep -v 'self-check-scan' \
+            | grep -v '|| true' || true)
     done
     if [[ $found -eq 0 ]]; then
         printf '[OK]   no early-exit pipelines left in %s scripts\n' "${#files[@]}"
@@ -127,12 +142,18 @@ run_self_checks() {
         failures=$((failures + found))
     fi
 
-    printf '[INFO] Self-check 2/3: negative control, the harness must detect an abort\n'
+    printf '[INFO] Self-check 2/3: negative controls, the harness must detect an abort\n'
     if bash -c 'set -eo pipefail; seq 1 200000 | awk "NR==1 {print; exit}"' >/dev/null 2>&1; then # self-check-control
         printf '[FAIL] negative control did not abort; SIGPIPE detection is broken\n'
         failures=$((failures + 1))
     else
-        printf '[OK]   harness detects the SIGPIPE/pipefail abort\n'
+        printf '[OK]   harness detects the SIGPIPE/pipefail abort (awk exit)\n'
+    fi
+    if bash -c 'set -eo pipefail; seq 1 200000 | head -n1' >/dev/null 2>&1; then # self-check-control
+        printf '[FAIL] negative control did not abort for a head consumer\n'
+        failures=$((failures + 1))
+    else
+        printf '[OK]   harness detects the SIGPIPE/pipefail abort (head)\n'
     fi
 
     printf '[INFO] Self-check 3/3: live apt-cache pipelines, %s runs each\n' "$tries"
@@ -140,6 +161,9 @@ run_self_checks() {
         [[ -z "$line" ]] && continue
         probes+=("$line")
     done < <(grep -hE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=.*apt-cache[^|]*\|[[:space:]]*awk' "${files[@]}" 2>/dev/null | grep -E 'hyprland|libre2-11|libabsl-dev' | sed 's/^[[:space:]]*//' | sort -u || true)
+
+    # The drain fix must hold for the biggest local producer too, not just apt-cache.
+    probes+=("dpkg -l | grep -c '^ii' >/dev/null")
 
     if [[ ${#probes[@]} -eq 0 ]]; then
         printf '[SKIP] no apt-cache pipelines found to probe\n'
@@ -234,14 +258,14 @@ ensure_trixie_backports_repo() {
     [[ "$suite" == "trixie" ]] || return 0
     local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
     local desired="deb http://deb.debian.org/debian trixie-backports main contrib non-free non-free-firmware"
-    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+    if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+http://deb\.debian\.org/debian/?[[:space:]]+trixie-backports([[:space:]]|$)' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | has_match .; then
         # If we previously created an overlay but backports exists elsewhere, remove overlay to avoid duplicate targets.
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi
         return 0
     fi
-    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+    if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | has_match .; then
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi
@@ -279,10 +303,10 @@ package_available_for_suite() {
     local pkg="$1"
     local suite="$2"
     if [[ "$suite" == "trixie" ]]; then
-        apt-cache madison "$pkg" 2>/dev/null | grep -q "trixie-backports" \
-            || apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"
+        apt-cache madison "$pkg" 2>/dev/null | has_match "trixie-backports" \
+            || apt-cache policy "$pkg" 2>/dev/null | has_match "trixie-backports"
     else
-        apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+        apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | has_match -v "(none)"
     fi
 }
 

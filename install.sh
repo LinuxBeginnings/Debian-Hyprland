@@ -7,21 +7,35 @@
 # ==================================================
 # https://github.com/LinuxBeginnings
 
-# Set some colors for output messages
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
-YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
-RESET="$(tput sgr0)"
+# Set some colors for output messages.
+# - Escapes are only emitted when stdout is a terminal, so piped output and log files
+#   stay plain text.
+# - A single reset (`\e[0m`) replaces `tput sgr0`, which also emits ESC(B, a charset
+#   switch that survives as a literal "^[(B" in logs and captured output.
+if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" ]]; then
+    OK=$'\e[32m[OK]\e[0m'
+    ERROR=$'\e[31m[ERROR]\e[0m'
+    NOTE=$'\e[33m[NOTE]\e[0m'
+    INFO=$'\e[34m[INFO]\e[0m'
+    WARN=$'\e[31m[WARN]\e[0m'
+    CAT=$'\e[36m[ACTION]\e[0m'
+    MAGENTA=$'\e[35m'
+    ORANGE=$'\e[38;5;214m'
+    WARNING=$'\e[31m'
+    YELLOW=$'\e[33m'
+    GREEN=$'\e[32m'
+    BLUE=$'\e[34m'
+    SKY_BLUE=$'\e[36m'
+    RESET=$'\e[0m'
+else
+    OK="[OK]"; ERROR="[ERROR]"; NOTE="[NOTE]"; INFO="[INFO]"; WARN="[WARN]"; CAT="[ACTION]"
+    MAGENTA=""; ORANGE=""; WARNING=""; YELLOW=""; GREEN=""; BLUE=""; SKY_BLUE=""; RESET=""
+fi
+
+# `grep -q` exits as soon as it matches, which can kill a streaming producer with SIGPIPE
+# (141) and, under `set -o pipefail`, abort the run. `grep -c` reads its input to EOF and
+# reports the same 0/1 status, so package checks use it and discard the count.
+has_match() { grep -c "$@" >/dev/null; }
 # Set a high-contrast whiptail theme unless the user already provided one
 if [ -z "${NEWT_COLORS:-}" ]; then
     export NEWT_COLORS='
@@ -96,10 +110,10 @@ _detect_codename() {
 }
 
 _has_deb_src_enabled() {
-    if sudo grep -RhsE '^[[:space:]]*deb-src[[:space:]]' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+    if sudo grep -RhsE '^[[:space:]]*deb-src[[:space:]]' /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | has_match .; then
         return 0
     fi
-    if sudo grep -RhsE '^[[:space:]]*Types:[[:space:]].*\bdeb-src\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+    if sudo grep -RhsE '^[[:space:]]*Types:[[:space:]].*\bdeb-src\b' /etc/apt/sources.list.d/*.sources 2>/dev/null | has_match .; then
         return 0
     fi
     return 1
@@ -108,10 +122,10 @@ _has_deb_src_enabled() {
 _has_component_enabled() {
     # $1: component (e.g., non-free, non-free-firmware)
     local comp="$1"
-    if sudo grep -RhsE "^[[:space:]]*deb(-src)?[[:space:]].*\b${comp}(\s|$)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+    if sudo grep -RhsE "^[[:space:]]*deb(-src)?[[:space:]].*\b${comp}(\s|$)" /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | has_match .; then
         return 0
     fi
-    if sudo grep -RhsE "^[[:space:]]*Components:[[:space:]].*\b${comp}(\s|$)" /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+    if sudo grep -RhsE "^[[:space:]]*Components:[[:space:]].*\b${comp}(\s|$)" /etc/apt/sources.list.d/*.sources 2>/dev/null | has_match .; then
         return 0
     fi
     return 1
@@ -324,7 +338,7 @@ ensure_trixie_backports_repo() {
     local file="/etc/apt/sources.list.d/99-debian-trixie-backports.list"
     # Check old-style .list format: match trixie-backports as the suite regardless of URL or mirror
     if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+\S+[[:space:]]+trixie-backports([[:space:]]|$)' \
-        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | has_match .; then
         # Backports found elsewhere — remove our overlay if previously created
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
@@ -333,7 +347,7 @@ ensure_trixie_backports_repo() {
     fi
     # Check DEB822 .sources format: match trixie-backports in the Suites: field
     if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' \
-        /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        /etc/apt/sources.list.d/*.sources 2>/dev/null | has_match .; then
         if sudo test -f "$file"; then
             sudo rm -f "$file" 2>/dev/null || true
         fi
@@ -371,10 +385,10 @@ package_available_for_suite() {
     local pkg="$1"
     local suite="$2"
     if [ "$suite" = "trixie" ]; then
-        apt-cache madison "$pkg" 2>/dev/null | grep -q "trixie-backports" ||
-            apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"
+        apt-cache madison "$pkg" 2>/dev/null | has_match "trixie-backports" ||
+            apt-cache policy "$pkg" 2>/dev/null | has_match "trixie-backports"
     else
-        apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+        apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | has_match -v "(none)"
     fi
 }
 
@@ -1134,7 +1148,7 @@ fi
 
 # Check if user is already in the 'input' group
 input_group_detected=false
-if ! groups "$(whoami)" | grep -q '\binput\b'; then
+if ! groups "$(whoami)" | has_match '\binput\b'; then
     input_group_detected=true
     whiptail --title "Input Group" --msgbox "You are not currently in the input group.\n\nAdding you to the input group might be necessary for the Waybar keyboard-state functionality." 12 60
 fi
@@ -1544,7 +1558,7 @@ for file in "${files_to_delete[@]}"; do
     fi
 done
 
-clear
+clear 2>/dev/null || true
 
 printf "\n%.0s" {1..2}
 # final check essential packages if it is installed

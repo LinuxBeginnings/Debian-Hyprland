@@ -253,8 +253,10 @@ Keybinds [`CLICK`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Keybind
 
 #### 🧪 Self-check before building the Hyprland stack
 
-- `./update-hyprland.sh --self-check` scans the repo scripts for pipelines that can
-  abort a run silently, then exercises the live `apt-cache` pipelines.
+- `./update-hyprland.sh --self-check` scans the repo scripts for pipelines whose
+  consumer exits before the producer finishes (`awk … exit`, `head`, `grep -q`,
+  `grep -m1`) and that are fed by a streaming command such as `apt-cache`, `dpkg -l`
+  or `find`; it then exercises the live `apt-cache` and `dpkg -l` pipelines 15 times.
 - `./dry-run-build.sh` runs it first and reports `Pipeline self-check: PASS` (or
   `SKIP`) in its summary; pass `--no-self-check` to skip it.
 - When a run stops, the error now names the failing command and its `file:line`.

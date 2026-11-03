@@ -62,7 +62,7 @@ done
 
 # Check if other login managers are installed and disable their service before enabling SDDM
 for login_manager in "${login[@]}"; do
-  if dpkg -l | grep -q "^ii  $login_manager"; then
+  if dpkg -l | has_match "^ii  $login_manager"; then
     echo "Disabling $login_manager..."
     sudo systemctl disable "$login_manager.service" >> "$LOG" 2>&1 || echo "Failed to disable $login_manager" >> "$LOG"
     echo "$login_manager disabled."

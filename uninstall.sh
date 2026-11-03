@@ -8,23 +8,37 @@
 # 💫 https://github.com/LinuxBeginnings 💫 #
 # KooL Debian-Hyprland uninstall script #
 
-clear
+clear 2>/dev/null || true
 
-# Set some colors for output messages
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
-YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
-RESET="$(tput sgr0)"
+# Set some colors for output messages.
+# - Escapes are only emitted when stdout is a terminal, so piped output and log files
+#   stay plain text.
+# - A single reset (`\e[0m`) replaces `tput sgr0`, which also emits ESC(B, a charset
+#   switch that survives as a literal "^[(B" in logs and captured output.
+if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" ]]; then
+    OK=$'\e[32m[OK]\e[0m'
+    ERROR=$'\e[31m[ERROR]\e[0m'
+    NOTE=$'\e[33m[NOTE]\e[0m'
+    INFO=$'\e[34m[INFO]\e[0m'
+    WARN=$'\e[31m[WARN]\e[0m'
+    CAT=$'\e[36m[ACTION]\e[0m'
+    MAGENTA=$'\e[35m'
+    ORANGE=$'\e[38;5;214m'
+    WARNING=$'\e[31m'
+    YELLOW=$'\e[33m'
+    GREEN=$'\e[32m'
+    BLUE=$'\e[34m'
+    SKY_BLUE=$'\e[36m'
+    RESET=$'\e[0m'
+else
+    OK="[OK]"; ERROR="[ERROR]"; NOTE="[NOTE]"; INFO="[INFO]"; WARN="[WARN]"; CAT="[ACTION]"
+    MAGENTA=""; ORANGE=""; WARNING=""; YELLOW=""; GREEN=""; BLUE=""; SKY_BLUE=""; RESET=""
+fi
+
+# `grep -q` exits as soon as it matches, which can kill a streaming producer with SIGPIPE
+# (141) and, under `set -o pipefail`, abort the run. `grep -c` reads its input to EOF and
+# reports the same 0/1 status, so package checks use it and discard the count.
+has_match() { grep -c "$@" >/dev/null; }
 # Set a high-contrast whiptail theme unless the user already provided one
 if [ -z "${NEWT_COLORS:-}" ]; then
     export NEWT_COLORS='
@@ -77,7 +91,7 @@ detect_pkg_install_method() {
     local pkg="$1"
     local is_apt=0 is_source=0
 
-    dpkg -l "$pkg" 2>/dev/null | grep -q '^ii' && is_apt=1
+    dpkg -l "$pkg" 2>/dev/null | has_match '^ii' && is_apt=1
 
     case "$pkg" in
         hyprland)
@@ -560,7 +574,7 @@ while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
     # Check if any packages still need to be removed, retry if needed
     MISSING_PACKAGE_COUNT=0
     while read -r package; do
-        if dpkg -l | grep -q "^ii  $package "; then
+        if dpkg -l | has_match "^ii  $package "; then
             MISSING_PACKAGE_COUNT=$((MISSING_PACKAGE_COUNT + 1))
         fi
     done < /tmp/selected_packages.txt

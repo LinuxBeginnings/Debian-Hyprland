@@ -93,16 +93,16 @@ cleanup_legacy_quickshell() {
 # ------------------------------------------------------------------
 ensure_trixie_backports() {
     [ "$SUITE" = "trixie" ] || return 0
-    if apt-cache policy quickshell 2>/dev/null | grep -q "trixie-backports"; then
+    if apt-cache policy quickshell 2>/dev/null | has_match "trixie-backports"; then
         return 0
     fi
     # Already configured elsewhere?
     if sudo grep -RhsE '^[[:space:]]*deb[[:space:]]+\S+[[:space:]]+trixie-backports([[:space:]]|$)' \
-        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q .; then
+        /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | has_match .; then
         return 0
     fi
     if sudo grep -RhsE '^[[:space:]]*Suites:[[:space:]].*\btrixie-backports\b' \
-        /etc/apt/sources.list.d/*.sources 2>/dev/null | grep -q .; then
+        /etc/apt/sources.list.d/*.sources 2>/dev/null | has_match .; then
         return 0
     fi
     info "Enabling Debian trixie-backports repository for Quickshell..."
@@ -120,7 +120,7 @@ pkg_candidate() {
 
 pkg_available_in_target() {
     local target="$1"
-    apt-cache policy quickshell 2>/dev/null | grep -Eq "[[:space:]]${target}/"
+    apt-cache policy quickshell 2>/dev/null | has_match -E "[[:space:]]${target}/"
 }
 
 # ------------------------------------------------------------------

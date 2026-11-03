@@ -7,21 +7,30 @@
 # ==================================================
 # https://github.com/LinuxBeginnings
 
-# Set some colors for output messages
-OK="$(tput setaf 2)[OK]$(tput sgr0)"
-ERROR="$(tput setaf 1)[ERROR]$(tput sgr0)"
-NOTE="$(tput setaf 3)[NOTE]$(tput sgr0)"
-INFO="$(tput setaf 4)[INFO]$(tput sgr0)"
-WARN="$(tput setaf 1)[WARN]$(tput sgr0)"
-CAT="$(tput setaf 6)[ACTION]$(tput sgr0)"
-MAGENTA="$(tput setaf 5)"
-ORANGE="$(tput setaf 214)"
-WARNING="$(tput setaf 1)"
-YELLOW="$(tput setaf 3)"
-GREEN="$(tput setaf 2)"
-BLUE="$(tput setaf 4)"
-SKY_BLUE="$(tput setaf 6)"
-RESET="$(tput sgr0)"
+# Set some colors for output messages.
+# - Escapes are only emitted when stdout is a terminal, so piped output and log files
+#   stay plain text.
+# - A single reset (`\e[0m`) replaces `tput sgr0`, which also emits ESC(B, a charset
+#   switch that survives as a literal "^[(B" in logs and captured output.
+if [[ -t 1 && -z "${NO_COLOR:-}" && "${TERM:-dumb}" != "dumb" ]]; then
+    OK=$'\e[32m[OK]\e[0m'
+    ERROR=$'\e[31m[ERROR]\e[0m'
+    NOTE=$'\e[33m[NOTE]\e[0m'
+    INFO=$'\e[34m[INFO]\e[0m'
+    WARN=$'\e[31m[WARN]\e[0m'
+    CAT=$'\e[36m[ACTION]\e[0m'
+    MAGENTA=$'\e[35m'
+    ORANGE=$'\e[38;5;214m'
+    WARNING=$'\e[31m'
+    YELLOW=$'\e[33m'
+    GREEN=$'\e[32m'
+    BLUE=$'\e[34m'
+    SKY_BLUE=$'\e[36m'
+    RESET=$'\e[0m'
+else
+    OK="[OK]"; ERROR="[ERROR]"; NOTE="[NOTE]"; INFO="[INFO]"; WARN="[WARN]"; CAT="[ACTION]"
+    MAGENTA=""; ORANGE=""; WARNING=""; YELLOW=""; GREEN=""; BLUE=""; SKY_BLUE=""; RESET=""
+fi
 
 # Variables
 Distro="Debian-Hyprland"

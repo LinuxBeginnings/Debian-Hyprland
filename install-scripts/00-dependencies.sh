@@ -332,7 +332,7 @@ install_dep() {
     # Keep re2/abseil ABI consistent with the active Debian suite to avoid link conflicts
     case "$pkg" in
     libabsl-dev | libabsl20240722 | libabsl20260107 | libre2-dev | libre2-11)
-        if [ -n "${DEBIAN_SUITE:-}" ] && apt-cache policy "$pkg" 2>/dev/null | grep -q " ${DEBIAN_SUITE}/"; then
+        if [ -n "${DEBIAN_SUITE:-}" ] && apt-cache policy "$pkg" 2>/dev/null | has_match " ${DEBIAN_SUITE}/"; then
             install_package_target "$pkg" "${DEBIAN_SUITE}"
             return
         fi
@@ -342,13 +342,13 @@ install_dep() {
 }
 package_available() {
     local pkg="$1"
-    apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | grep -vq "(none)"
+    apt-cache policy "$pkg" 2>/dev/null | awk '/Candidate:/ {print $2}' | has_match -v "(none)"
 }
 
 install_if_available() {
     local pkg="$1"
     if package_available "$pkg"; then
-        if [ "${DEBIAN_SUITE:-}" = "trixie" ] && apt-cache policy "$pkg" 2>/dev/null | grep -q "trixie-backports"; then
+        if [ "${DEBIAN_SUITE:-}" = "trixie" ] && apt-cache policy "$pkg" 2>/dev/null | has_match "trixie-backports"; then
             install_package_target "$pkg" "trixie-backports"
         else
             install_dep "$pkg"
@@ -366,7 +366,7 @@ install_first_available() {
     for pkg in "$@"; do
         if package_available "$pkg"; then
             install_if_available "$pkg"
-            if dpkg -l | grep -q -w "$pkg"; then
+            if dpkg -l | has_match -w "$pkg"; then
                 echo "${INFO} Using ${pkg} for ${label}." | tee -a "$LOG"
                 return 0
             fi
