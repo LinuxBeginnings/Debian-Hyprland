@@ -398,7 +398,9 @@ printf "\n%.0s" {1..1}
 # Ensure libre2 and libabsl-dev ABIs match to prevent hyprctl link failures
 ensure_re2_absl_consistent() {
     local dep abi expected installed candidate
-    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ {print $2; exit}')"
+    # Drain apt-cache's output instead of exiting early: an early awk exit kills the
+    # producer with SIGPIPE (141) and pipefail would make that fatal.
+    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ && !found {print $2; found=1}' || true)"
     [ -z "$dep" ] && return 0
     abi="${dep#libabsl}"
     candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1 || true)"

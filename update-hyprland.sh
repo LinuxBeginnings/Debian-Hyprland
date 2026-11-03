@@ -31,6 +31,7 @@
 #   ./update-hyprland.sh --source --install            # force source mode (non-interactive)
 #   ./update-hyprland.sh --deb-pkg --install           # force Debian package mode (non-interactive)
 #   ./update-hyprland.sh --show-versions               # query Debian/local/upstream Hyprland versions
+#   ./update-hyprland.sh --self-check                  # verify no pipeline can abort this script silently
 #   ./update-hyprland.sh --debian-remove               # remove Debian Hyprland packages
 #   ./update-hyprland.sh --help                        # show this help
 #
@@ -38,7 +39,9 @@
 # - Requires curl; for --fetch-latest, jq is recommended (installed by 00-dependencies.sh)
 # - Works from repo root; do not cd into install-scripts/
 
-set -euo pipefail
+# -E (errtrace) is required: without it the ERR trap below is not inherited by
+# shell functions, and almost all of this script's work happens inside functions.
+set -Eeuo pipefail
 GREEN=$'\e[32m'
 RED=$'\e[31m'
 YELLOW=$'\e[33m'
@@ -53,10 +56,118 @@ mkdir -p "$LOG_DIR"
 TS=$(date +%F-%H%M%S)
 SUMMARY_LOG="$LOG_DIR/update-hypr-$TS.log"
 MODE="auto"
+
+# `set -e` aborts on the first failing command; without a trap the run stops with no
+# hint about which command died. That is how an early `awk exit` used to kill the
+# script silently: apt-cache died of SIGPIPE (141) and pipefail made it fatal.
+UNEXPECTED_FAILURE_REPORTED=0
+report_unexpected_failure() {
+    local rc="$1" line="$2" cmd="$3" fn="${4:-main}" where
+    # With errtrace the trap also fires inside command substitutions and again for the
+    # enclosing function call. The parent shell reports the full command that aborted,
+    # so skip the subshell copy rather than printing the same failure twice.
+    if [[ ${BASH_SUBSHELL:-0} -gt 0 || ${UNEXPECTED_FAILURE_REPORTED:-0} -eq 1 ]]; then
+        return 0
+    fi
+    UNEXPECTED_FAILURE_REPORTED=1
+    where="${BASH_SOURCE[0]:-$0}:$line"
+    if [[ -n "$fn" && "$fn" != "main" ]]; then
+        where="$where (in $fn)"
+    fi
+    {
+        printf '\n[ERROR] Aborting: command exited with status %s\n' "$rc"
+        printf '[ERROR]   command : %s\n' "$cmd"
+        printf '[ERROR]   location: %s\n' "$where"
+        printf '[INFO]    log file: %s\n' "$SUMMARY_LOG"
+    } | tee -a "$SUMMARY_LOG" >&2 || true
+}
+trap 'report_unexpected_failure "$?" "$LINENO" "$BASH_COMMAND" "${FUNCNAME[0]:-main}"' ERR
+
+# Guard the pipelines that could abort this script silently.
+# A pipeline like `producer | awk '/x/ {print; exit}'` closes the pipe as soon as awk
+# has its match, so the producer dies of SIGPIPE (141) and `set -o pipefail` turns that
+# into a fatal error. Cold caches lose that race and warm caches win it, which is why a
+# failed run appeared to succeed when it was simply re-run.
+run_self_checks() {
+    local failures=0
+    local tries=15
+    local f i key
+    local line=""
+    local -a raw=()
+    local -a files=()
+    local -a probes=()
+    local -A seen=()
+
+    # Include the script that is actually running, so a modified copy is checked too.
+    raw+=("${BASH_SOURCE[0]:-$0}" "$REPO_ROOT/update-hyprland.sh" "$REPO_ROOT/install.sh" "$REPO_ROOT/refresh-hypr-tags.sh")
+    for f in "$REPO_ROOT"/install-scripts/*.sh; do
+        [[ -f "$f" ]] && raw+=("$f")
+    done
+    for f in "${raw[@]}"; do
+        [[ -f "$f" ]] || continue
+        key="$(readlink -f "$f" 2>/dev/null || printf '%s' "$f")"
+        [[ -n "${seen[$key]:-}" ]] && continue
+        seen[$key]=1
+        files+=("$f")
+    done
+
+    printf '\n[INFO] Self-check 1/3: scanning repo scripts for producer-killing pipelines\n'
+    local found=0
+    for f in "${files[@]}"; do
+        [[ -f "$f" ]] || continue
+        while IFS= read -r line; do
+            [[ -z "$line" ]] && continue
+            printf '[FAIL] %s line %s: %s\n' "$f" "${line%%:*}" "${line#*:}"
+            found=$((found + 1))
+        done < <(grep -nE '\|[[:space:]]*awk[^)]*\{[^)]*exit' "$f" 2>/dev/null | grep -vE '^[0-9]+:[[:space:]]*#' | grep -v 'self-check-control' | grep -v '|| true' || true)
+    done
+    if [[ $found -eq 0 ]]; then
+        printf '[OK]   no early-exit pipelines left in %s scripts\n' "${#files[@]}"
+    else
+        failures=$((failures + found))
+    fi
+
+    printf '[INFO] Self-check 2/3: negative control, the harness must detect an abort\n'
+    if bash -c 'set -eo pipefail; seq 1 200000 | awk "NR==1 {print; exit}"' >/dev/null 2>&1; then # self-check-control
+        printf '[FAIL] negative control did not abort; SIGPIPE detection is broken\n'
+        failures=$((failures + 1))
+    else
+        printf '[OK]   harness detects the SIGPIPE/pipefail abort\n'
+    fi
+
+    printf '[INFO] Self-check 3/3: live apt-cache pipelines, %s runs each\n' "$tries"
+    while IFS= read -r line; do
+        [[ -z "$line" ]] && continue
+        probes+=("$line")
+    done < <(grep -hE '^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=.*apt-cache[^|]*\|[[:space:]]*awk' "${files[@]}" 2>/dev/null | grep -E 'hyprland|libre2-11|libabsl-dev' | sed 's/^[[:space:]]*//' | sort -u || true)
+
+    if [[ ${#probes[@]} -eq 0 ]]; then
+        printf '[SKIP] no apt-cache pipelines found to probe\n'
+    else
+        for line in "${probes[@]}"; do
+            printf '       probing: %s\n' "$line"
+            for ((i = 1; i <= tries; i++)); do
+                if ! bash -c 'set -eo pipefail; eval "$1"' _ "$line" >/dev/null 2>&1; then
+                    printf '[FAIL] pipeline aborted on run %s: %s\n' "$i" "$line"
+                    failures=$((failures + 1))
+                    break
+                fi
+            done
+        done
+    fi
+
+    if [[ $failures -eq 0 ]]; then
+        printf '\n[OK] Self-check passed (%s live pipelines x %s runs each).\n' "${#probes[@]}" "$tries"
+        return 0
+    fi
+    printf '\n[ERROR] Self-check failed: %s problem(s) found.\n' "$failures" | tee -a "$SUMMARY_LOG" >&2
+    return 1
+}
 HYPR_AUTO_MODE_POLICY="${HYPR_AUTO_MODE_POLICY:-source-default}"
 DEBIAN_REMOVE=0
 DEBIAN_INSTALL=0
 SHOW_VERSIONS=0
+SELF_CHECK=0
 HYPR_REFRESH_ALL_TAGS=0
 APT_VERSION_PREP_DONE=0
 HYPR_VERSIONS_COLLECTED=0
@@ -83,7 +194,10 @@ detect_suite() {
 
 ensure_re2_absl_consistent() {
     local dep abi expected installed candidate
-    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ {print $2; exit}')"
+    # apt-cache writes to the pipe in chunks: letting awk exit early closes the pipe,
+    # apt-cache dies with SIGPIPE (141) and `set -o pipefail` aborts this whole script.
+    # Read apt-cache's output through to EOF and tolerate its own exit status instead.
+    dep="$(apt-cache depends libre2-11 2>/dev/null | awk '/Depends: libabsl[0-9]+/ && !found {print $2; found=1}' || true)"
     [[ -z "$dep" ]] && return 0
     abi="${dep#libabsl}"
     candidate="$(apt-cache policy libabsl-dev 2>/dev/null | awk '/^[[:space:]]+[0-9]/{print $1}' | grep -E "^${abi}\\." | head -n1 || true)"
@@ -203,9 +317,10 @@ prepare_debian_version_metadata() {
 
 get_debian_hyprland_candidate_version() {
     local version
-    version=$(apt-cache policy hyprland 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
+    # Same SIGPIPE/PIPEFAIL trap as above: drain apt-cache's output instead of exiting early.
+    version=$(apt-cache policy hyprland 2>/dev/null | awk '/Candidate:/ && !found {print $2; found=1}' || true)
     if [[ -z "$version" || "$version" == "(none)" ]]; then
-        version=$(apt-cache madison hyprland 2>/dev/null | awk 'NR==1 {print $3; exit}')
+        version=$(apt-cache madison hyprland 2>/dev/null | awk 'NR==1 {print $3}' || true)
     fi
     if [[ -z "$version" || "$version" == "(none)" ]]; then
         version="unavailable"
@@ -537,6 +652,7 @@ Options:
       --packages        Alias for --mode debian (skip interactive mode selection)
       --show-versions   Query Debian/local/upstream Hyprland versions and print them
       --versions        Alias for --show-versions
+      --self-check      Verify no pipeline can abort this script silently, then exit
       --debian-install  Install Hyprland stack from Debian repos and skip source build
       --debian-remove   Remove Debian Hyprland stack packages and exit
       --no-fetch        Do not auto-fetch tags on install
@@ -1298,6 +1414,10 @@ while [[ $# -gt 0 ]]; do
         SHOW_VERSIONS=1
         shift
         ;;
+    --self-check)
+        SELF_CHECK=1
+        shift
+        ;;
     --debian-install)
         MODE="debian"
         DEBIAN_INSTALL=1
@@ -1366,6 +1486,14 @@ fi
 if [[ "$MODE" != "source" && "$MODE" != "debian" && "$MODE" != "auto" ]]; then
     echo "[ERROR] Invalid mode '$MODE'. Use --mode auto|source|debian." | tee -a "$SUMMARY_LOG"
     exit 2
+fi
+
+if [[ $SELF_CHECK -eq 1 ]]; then
+    if run_self_checks; then
+        exit 0
+    else
+        exit 1
+    fi
 fi
 
 ensure_tags_file

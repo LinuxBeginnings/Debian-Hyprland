@@ -251,6 +251,14 @@ Keybinds [`CLICK`](https://github.com/LinuxBeginnings/Hyprland-Dots/wiki/Keybind
 > The scripts are designed to ran outside `install-scripts` directory.
 > If you do the scripts will fail.
 
+#### 🧪 Self-check before building the Hyprland stack
+
+- `./update-hyprland.sh --self-check` scans the repo scripts for pipelines that can
+  abort a run silently, then exercises the live `apt-cache` pipelines.
+- `./dry-run-build.sh` runs it first and reports `Pipeline self-check: PASS` (or
+  `SKIP`) in its summary; pass `--no-self-check` to skip it.
+- When a run stops, the error now names the failing command and its `file:line`.
+
 #### 🛣️ Roadmap
 
 - [ ] possibly adding gruvbox themes, cursors, icons

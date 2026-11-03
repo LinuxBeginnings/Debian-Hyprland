@@ -9,6 +9,38 @@
 # Global Functions for Scripts #
 
 set -e
+# errtrace: without it the ERR trap below is not inherited by shell functions, and all
+# of a module script's work happens inside functions.
+set -E
+
+# `set -e` stops a module at the first failing command; without a trap the log simply
+# ends, with no hint about which command died. Print the failing command and its line
+# so a silent abort (e.g. a producer killed by SIGPIPE) can be diagnosed.
+report_unexpected_failure() {
+  local rc="$1" line="$2" cmd="$3" fn="${4:-main}" where
+  # With errtrace the trap also fires inside command substitutions and again for the
+  # enclosing function call; the parent shell reports the full command, so skip the
+  # subshell copy to avoid printing the same failure twice.
+  if [ "${BASH_SUBSHELL:-0}" -gt 0 ]; then
+    return 0
+  fi
+  where="$0:$line"
+  if [ -n "$fn" ] && [ "$fn" != "main" ]; then
+    where="$where (in $fn)"
+  fi
+  printf '\n%s Aborting: command exited with status %s\n' "${ERROR:-[ERROR]}" "$rc" >&2
+  printf '%s   command : %s\n' "${ERROR:-[ERROR]}" "$cmd" >&2
+  printf '%s   location: %s\n' "${ERROR:-[ERROR]}" "$where" >&2
+  if [ -n "${LOG:-}" ]; then
+    # Grouped so a shell error from the redirect itself (unwritable LOG) stays quiet.
+    {
+      printf '\n[ERROR] Aborting: command exited with status %s\n[ERROR]   command : %s\n[ERROR]   location: %s\n' \
+        "$rc" "$cmd" "$where" >>"$LOG"
+    } 2>/dev/null || true
+  fi
+  return 0
+}
+trap 'report_unexpected_failure "$?" "$LINENO" "$BASH_COMMAND" "${FUNCNAME[0]:-main}"' ERR
 
 # Set some colors for output messages (be resilient in non-interactive shells)
 if tput sgr0 >/dev/null 2>&1; then

@@ -16,6 +16,7 @@
 #   ./dry-run-build.sh --only hyprland  # run a subset (comma-separated allowed)
 #   ./dry-run-build.sh --skip qtutils   # skip one or more (comma-separated)
 #   ./dry-run-build.sh --check          # detect and report install method per module (no build)
+#   ./dry-run-build.sh --no-self-check   # skip the pipeline self-check that runs first
 #
 # Notes:
 # - Run from the repository root. Do not cd into install-scripts/.
@@ -52,6 +53,7 @@ WITH_DEPS=0
 ONLY_LIST=""
 SKIP_LIST=""
 CHECK_ONLY=0
+SELF_CHECK=1
 
 usage() {
   grep '^# ' "$0" | sed 's/^# \{0,1\}//'
@@ -142,6 +144,14 @@ while [[ $# -gt 0 ]]; do
       CHECK_ONLY=1
       shift
       ;;
+    --self-check)
+      SELF_CHECK=1
+      shift
+      ;;
+    --no-self-check)
+      SELF_CHECK=0
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
       exit 2
@@ -190,6 +200,24 @@ if [[ $CHECK_ONLY -eq 1 ]]; then
     printf "%-28s %s\n" "$_m" "${METHODS[$_m]}"
   done
   exit 0
+fi
+
+# Pipeline self-check: a producer killed by SIGPIPE (exit 141) makes `set -e` abort a
+# module, so check for it before spending build time. --no-self-check skips this.
+SELF_CHECK_RESULT="SKIP"
+if [[ $SELF_CHECK -eq 1 ]]; then
+  SELF_CHECK_SCRIPT="$REPO_ROOT/update-hyprland.sh"
+  printf '\n[INFO] Running pipeline self-check\n' | tee -a "$SUMMARY_LOG"
+  if [[ ! -x "$SELF_CHECK_SCRIPT" ]]; then
+    echo "[WARN] $SELF_CHECK_SCRIPT not executable; skipping pipeline self-check." | tee -a "$SUMMARY_LOG"
+  elif "$SELF_CHECK_SCRIPT" --self-check; then
+    SELF_CHECK_RESULT="PASS"
+  else
+    SELF_CHECK_RESULT="FAIL"
+    echo "[ERROR] Pipeline self-check failed: a module could abort silently mid-build." | tee -a "$SUMMARY_LOG"
+    echo "        Re-run with --no-self-check only if you accept that risk." | tee -a "$SUMMARY_LOG"
+    exit 1
+  fi
 fi
 
 # Pre-flight: warn about modules that are already apt-installed.
@@ -269,6 +297,7 @@ done
   for mod in "${MODULES[@]}"; do
     printf "%-28s %-10s %s\n" "$mod" "${RESULTS[$mod]:-SKIPPED}" "${METHODS[$mod]:-unknown}"
   done
+  printf "\nPipeline self-check: %s\n" "$SELF_CHECK_RESULT"
   # Show current tag values to make changes visible during dry-runs
   if [[ -f "$REPO_ROOT/hypr-tags.env" ]]; then
     printf "\nCurrent versions (from %s):\n" "$REPO_ROOT/hypr-tags.env"

@@ -3,6 +3,19 @@
 ## Nov 2026
 
 - Fixed:
+    - `update-hyprland.sh` exited silently right after the libinput version check
+        - `ensure_re2_absl_consistent()` ended `apt-cache depends` early with
+        - `awk '{print $2; exit}'`, so apt-cache died of SIGPIPE (exit 141) and
+        - `set -o pipefail` aborted the run; a warm page cache usually wins that
+        - race, which is why re-running the script appeared to fix it
+        - The pipeline now drains apt-cache's output (`&& !found {print $2; found=1}`)
+        - and tolerates its exit status (`|| true`); the same fix was applied in
+        - `install.sh`, `install-scripts/hyprland.sh` and `00-dependencies.sh`
+    - A `set -e` abort gave no clue about which command failed
+        - `update-hyprland.sh` and `install-scripts/Global_functions.sh` (sourced by
+        - every module script) now install an `ERR` trap that names the failing
+        - command, its `file:line` and the function it ran in, and appends the same
+        - to the run log
     - Module topic headers printed a literal `\n` instead of a blank line
         - `update-hyprland.sh` and `dry-run-build.sh` used `echo "\n=== <module> ==="`
         - bash's builtin `echo` only expands `\n` when given `-e`, so the two characters
@@ -13,6 +26,14 @@
     - Refreshed `hypr-tags.env` to the latest upstream tags
         - aquamarine v0.16.0, hyprgraphics v0.6.0, hyprlock v0.9.7, hyprpaper v0.8.5,
         - hyprpicker v0.4.8, hyprshutdown v0.1.2, wayland-protocols 1.50
+
+- Added:
+    - `update-hyprland.sh --self-check`
+        - Scans the repo scripts for `| awk … exit` pipelines that can kill their
+        - producer, proves the detector works with a negative control, then runs
+        - every live `apt-cache | awk` pipeline 15 times
+    - `dry-run-build.sh` runs that self-check first and prints
+        - `Pipeline self-check: PASS|SKIP` in its summary; `--no-self-check` skips it
 
 ## Oct 2026
 

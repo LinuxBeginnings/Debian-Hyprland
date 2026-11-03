@@ -153,9 +153,11 @@ _enable_deb_src_conservatively() {
 
 get_debian_hyprland_candidate_version() {
     local version
-    version=$(apt-cache policy hyprland 2>/dev/null | awk '/Candidate:/ {print $2; exit}')
+    # No early `exit` in awk: closing the pipe early makes apt-cache die of SIGPIPE
+    # (141), which `set -o pipefail` turns into an aborted run.
+    version=$(apt-cache policy hyprland 2>/dev/null | awk '/Candidate:/ && !found {print $2; found=1}' || true)
     if [ -z "$version" ] || [ "$version" = "(none)" ]; then
-        version=$(apt-cache madison hyprland 2>/dev/null | awk 'NR==1 {print $3; exit}')
+        version=$(apt-cache madison hyprland 2>/dev/null | awk 'NR==1 {print $3}' || true)
     fi
     if [ -z "$version" ] || [ "$version" = "(none)" ]; then
         version="unavailable"
