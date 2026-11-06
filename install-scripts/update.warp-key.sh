@@ -6,6 +6,8 @@
 # Version History:
 #   Version | Date       | Comments
 #   --------+------------+------------------------------------------------------
+#   v0.3    | 2026-11-06 | Added DEB822 (.sources) format support, duplicate
+#           |            | repository conflict cleanup, and keyring path alignment.
 #   v0.2    | 2026-11-06 | Added Ubuntu and derivative distro support (Mint,
 #           |            | Zorin, Pop!_OS, etc.), dry-run mode (-d/--dry-run),
 #           |            | dynamic arch detection, and edge case fixes.
@@ -15,7 +17,7 @@
 
 set -euo pipefail
 
-SCRIPT_VERSION="v0.2"
+SCRIPT_VERSION="v0.3"
 
 # ------------------------------------------------------------------------------
 # Output formatting, colors, and icons
@@ -78,6 +80,8 @@ ${BOLD}update.warp-key.sh${RESET} version ${GREEN}${SCRIPT_VERSION}${RESET}
 ${BOLD}Version History:${RESET}
   Version | Date       | Comments
   --------+------------+--------------------------------------------------------
+  v0.3    | 2026-11-06 | Added DEB822 (.sources) format support, duplicate
+          |            | repository conflict cleanup, and keyring path alignment.
   v0.2    | 2026-11-06 | Added Ubuntu & derivatives support (Mint, Zorin, etc.),
           |            | dry-run mode (-d/--dry-run), dynamic arch, and edge fixes.
   v0.1    | 2026-11-06 | Initial release with Debian OS check, error handling,
@@ -109,7 +113,8 @@ ${BOLD}Actions performed:${RESET}
   6. Installs the verified key with 0644 permissions to:
      • /etc/apt/keyrings/warpdotdev.gpg (modern standard)
      • /etc/apt/trusted.gpg.d/warpdotdev.gpg (installer compatibility)
-  7. Ensures /etc/apt/sources.list.d/warpdotdev.list exists and uses signed-by
+  7. Ensures Warp APT repository configuration exists (.sources or .list)
+     and resolves duplicate repository conflicts
   8. Refreshes the APT package cache (apt update)
   9. Upgrades warp-terminal if installed (unless --skip-upgrade is specified)
 
@@ -276,7 +281,8 @@ main() {
     local keyrings_dir="/etc/apt/keyrings"
     local trusted_dir="/etc/apt/trusted.gpg.d"
     local key_filename="warpdotdev.gpg"
-    local sources_file="/etc/apt/sources.list.d/warpdotdev.list"
+    local sources_legacy="/etc/apt/sources.list.d/warpdotdev.list"
+    local sources_deb822="/etc/apt/sources.list.d/warpdotdev.sources"
 
     # Detect package architecture (fallback to amd64)
     local deb_arch
@@ -322,9 +328,20 @@ main() {
     printf "\n"
     log_step "Installing key to APT keyring directories..."
 
+    # Detect any custom Signed-By path specified in existing configuration
+    local custom_key_path=""
+    if [[ -f "$sources_deb822" ]]; then
+        custom_key_path=$(awk -F': *' '/^[Ss]igned-[Bb]y:/ {print $2; exit}' "$sources_deb822" 2>/dev/null || true)
+    elif [[ -f "$sources_legacy" ]]; then
+        custom_key_path=$(grep -o 'signed-by=[^ ]*' "$sources_legacy" 2>/dev/null | head -n1 | cut -d= -f2 | tr -d ']' || true)
+    fi
+
     if [[ $dry_run -eq 1 ]]; then
         log_info "[DRY-RUN] Would install: ${keyrings_dir}/${key_filename} (mode: 0644)"
         log_info "[DRY-RUN] Would install: ${trusted_dir}/${key_filename} (mode: 0644)"
+        if [[ -n "$custom_key_path" && "$custom_key_path" != "${keyrings_dir}/${key_filename}" && "$custom_key_path" != "${trusted_dir}/${key_filename}" ]]; then
+            log_info "[DRY-RUN] Would install to custom path from existing config: ${custom_key_path} (mode: 0644)"
+        fi
     else
         # 3a. Modern standard Debian directory: /etc/apt/keyrings
         $SUDO_CMD install -d -m 0755 "$keyrings_dir"
@@ -335,22 +352,53 @@ main() {
         $SUDO_CMD install -d -m 0755 "$trusted_dir"
         $SUDO_CMD install -m 0644 "$dearmored_gpg" "${trusted_dir}/${key_filename}"
         log_success "${ICON_KEY} Installed: ${trusted_dir}/${key_filename} (mode: 0644)"
+
+        # 3c. If existing config specifies another custom path, update that as well
+        if [[ -n "$custom_key_path" && "$custom_key_path" != "${keyrings_dir}/${key_filename}" && "$custom_key_path" != "${trusted_dir}/${key_filename}" ]]; then
+            $SUDO_CMD install -d -m 0755 "$(dirname "$custom_key_path")"
+            $SUDO_CMD install -m 0644 "$dearmored_gpg" "$custom_key_path"
+            log_success "${ICON_KEY} Installed (custom path): ${custom_key_path} (mode: 0644)"
+        fi
     fi
 
     # Step 4: Verify repository source list
     printf "\n"
     log_step "Checking Warp APT repository configuration..."
-    if [[ -f "$sources_file" ]]; then
-        log_success "Repository configuration found at ${sources_file}."
+
+    # Detect and resolve conflicting duplicate source configurations (.sources vs .list)
+    if [[ -f "$sources_deb822" && -f "$sources_legacy" ]]; then
+        log_warn "Duplicate repository definitions detected ($sources_deb822 and $sources_legacy)."
+        if [[ $dry_run -eq 1 ]]; then
+            log_info "[DRY-RUN] Would remove redundant legacy source list: $sources_legacy"
+        else
+            log_info "Removing redundant legacy source list to prevent APT conflicts..."
+            $SUDO_CMD rm -f "$sources_legacy"
+            log_success "Cleaned up $sources_legacy (retaining modern $sources_deb822)."
+        fi
+    fi
+
+    if [[ -f "$sources_deb822" ]]; then
+        log_success "Repository configuration found at ${sources_deb822} (DEB822 format)."
+    elif [[ -f "$sources_legacy" ]]; then
+        log_success "Repository configuration found at ${sources_legacy} (legacy format)."
     else
         if [[ $dry_run -eq 1 ]]; then
-            log_info "[DRY-RUN] Would create: ${sources_file} [arch=${deb_arch}] pointing to ${keyrings_dir}/${key_filename}"
+            log_info "[DRY-RUN] Would create: ${sources_deb822} [arch=${deb_arch}] pointing to ${trusted_dir}/${key_filename}"
         else
-            log_warn "Repository configuration not found. Creating ${sources_file}..."
+            log_warn "Repository configuration not found. Creating ${sources_deb822}..."
             $SUDO_CMD install -d -m 0755 "/etc/apt/sources.list.d"
-            echo "deb [arch=${deb_arch} signed-by=${keyrings_dir}/${key_filename}] https://releases.warp.dev/linux/deb stable main" | \
-                $SUDO_CMD tee "$sources_file" >/dev/null
-            log_success "Configured ${sources_file} with modern signed-by keyrings."
+            cat <<EOF | $SUDO_CMD tee "$sources_deb822" >/dev/null
+### THIS FILE IS AUTOMATICALLY CONFIGURED ###
+# You may comment out this entry, but other modifications to the file may be lost.
+
+Types: deb
+URIs: https://releases.warp.dev/linux/deb
+Suites: stable
+Components: main
+Architectures: ${deb_arch}
+Signed-By: ${trusted_dir}/${key_filename}
+EOF
+            log_success "Configured ${sources_deb822} with modern DEB822 format."
         fi
     fi
 
