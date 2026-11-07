@@ -25,7 +25,7 @@ PARENT_DIR="$SCRIPT_DIR/.."
 cd "$PARENT_DIR" || exit 1
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprsysteminfo.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprsysteminfo.log"
 MLOG="install-$(date +%d-%H%M%S)_hyprsysteminfo2.log"
 # Build-time dependencies for hyprsysteminfo
 DEPS=(

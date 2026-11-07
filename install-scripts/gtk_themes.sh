@@ -27,7 +27,7 @@ if ! source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"; then
 fi
 
 # Set the name of the log file to include the current date and time
-LOG="Install-Logs/install-$(date +%d-%H%M%S)_themes.log"
+LOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_themes.log"
 
 # Helper: check if apt has a candidate for a package
 has_apt_candidate() {

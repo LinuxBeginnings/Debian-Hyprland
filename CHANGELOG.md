@@ -3,6 +3,10 @@
 ## Nov 2026
 
 - Fixed:
+    - `zsh_pokemon.sh`, `hyprsysteminfo.sh` and `gtk_themes.sh` lost their log writes after entering a source tree
+        - `LOG` was relative to the repo root, but each of these scripts `cd`s into a source or build directory before writing it
+        - The redirect then failed and `set -e` aborted the module: the `.zshrc` lines were never written, `hyprsysteminfo` stopped when `xxd` was missing, and the murrine fallback in `gtk_themes.sh` always returned 1
+        - `LOG` is now anchored to `$PARENT_DIR/Install-Logs`
     - `update-hyprland.sh` exited silently right after the libinput version check
         - `ensure_re2_absl_consistent()` ended `apt-cache depends` early with
         - `awk '{print $2; exit}'`, so apt-cache died of SIGPIPE (exit 141) and
