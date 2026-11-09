@@ -192,6 +192,7 @@ declare -A repos=(
   [HYPRUTILS_TAG]="hyprwm/hyprutils"
   [HYPRLANG_TAG]="hyprwm/hyprlang"
   [HYPRGRAPHICS_TAG]="hyprwm/hyprgraphics"
+  [HYPRCURSOR_TAG]="hyprwm/hyprcursor"
   [HYPRTOOLKIT_TAG]="hyprwm/hyprtoolkit"
   [HYPRWAYLAND_SCANNER_TAG]="hyprwm/hyprwayland-scanner"
   [HYPRLAND_PROTOCOLS_TAG]="hyprwm/hyprland-protocols"
