@@ -88,6 +88,12 @@
         - Hyprland v0.57.2
 
 - Added:
+    - `qalculate-gtk` is a required package instead of an optional extra
+        - The `SUPER ALT C` keybind now opens the Qalculate! window (class
+        - `qalculate`) instead of the `RofiCalc.sh` prompt backed by `qalc`
+        - `00-dependencies.sh` installs it, `03-Final-Check.sh` verifies it, and
+        - `update-deps.sh` installs it when a partial or older run left it out
+        - A missing calculator now fails the run instead of leaving a dead keybind
     - `update-hyprland.sh --self-check`
         - Scans the repo scripts for `| awk … exit` pipelines that can kill their
         - producer, proves the detector works with a negative control, then runs

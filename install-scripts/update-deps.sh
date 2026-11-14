@@ -200,6 +200,16 @@ if [ -n "$PACKAGES_SCRIPT" ]; then
   packages_status=${PIPESTATUS[0]}
 fi
 
+# qalculate-gtk backs the SUPER ALT C calculator keybind and hypr-pkgs installs it, so this
+# only repairs a partial or older run. Without it the keybind silently does nothing.
+if ! command -v qalculate-gtk >/dev/null 2>&1; then
+  echo
+  echo "qalculate-gtk not found. Installing it for the SUPER ALT C calculator keybind."
+  if ! sudo apt-get install -y qalculate-gtk 2>&1 | tee -a "$PACKAGES_LOG"; then
+    echo "qalculate-gtk install failed; the SUPER ALT C calculator keybind will not work."
+  fi
+fi
+
 if [ "$INCLUDE_PRE_CLEANUP" -eq 1 ] && [ -n "$PRE_CLEANUP_SCRIPT" ]; then
   echo
   echo "Running pre-cleanup script: $(basename "$PRE_CLEANUP_SCRIPT")"

@@ -37,6 +37,7 @@ packages=(
     swappy
     pavucontrol
     polkit-kde-agent-1
+    qalculate-gtk # calculator keybind (SUPER ALT C)
     xdg-utils
     xdg-desktop-portal
     xdg-desktop-portal-gtk

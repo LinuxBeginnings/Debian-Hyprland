@@ -107,6 +107,7 @@ dependencies=(
     python3-markupsafe
     python3-pyquery
     python3-yaml
+    qalculate-gtk # Needed for the SUPER ALT C calculator keybind
     qt6-base-dev
     rsync
     scdoc
