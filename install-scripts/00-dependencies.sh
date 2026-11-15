@@ -125,6 +125,7 @@ dependencies=(
 # hyprland dependencies
 hyprland_dep=(
     bc
+    lnav
     binutils
     libc6
     libcairo2-dev
