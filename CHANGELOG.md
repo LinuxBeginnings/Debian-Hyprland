@@ -3,6 +3,33 @@
 ## Nov 2026
 
 - Fixed:
+    - hyprpaper and hyprtavern failures left no usable build log
+        - both scripts only sent the install step to `Install-Logs`, so `cmake` configure/build
+        - output (where the compiler errors actually appear) was discarded, and a failed
+        - hyprtavern run produced no log file at all
+        - configure/build now append to an `Install-Logs/install-*_<module>2.log` file anchored to
+        - `$PARENT_DIR`, failures print that path and exit non-zero, and the fragile
+        - relative `mv "$MLOG"` of an in-source log is gone
+    - `update-hyprland.sh` reported FAIL for hyprtoolkit on Debian 13
+        - hyprtoolkit v0.7.0's layout elements call `std::optional<Vector2D>::value_or({ 0, 0 })`;
+        - a braced-init-list cannot deduce libstdc++ 14's `_Up` template parameter, so
+        - `ColumnLayout.cpp` and `RowLayout.cpp` failed to compile with GCC 14 / clang + libstdc++ 14
+        - `hyprtoolkit.sh` now spells the type out (`value_or(Vector2D{ 0, 0 })`) as part of its
+        - existing source fixes, which run before configure
+    - Hyprland v0.57.2 and hyprpaper v0.8.5 failed while generating the hyprpaper protocol
+        - both tags vendor `hw-protocols/hyprpaper_core.xml` with the `failed` argument pointing
+        - at `hyprpaper_wallpaper_application_error`, an enum the file never declares (it defines
+        - `applying_error`), so hyprwayland-scanner/hyprwire-scanner abort with
+        - `references unknown enum` and the build stops
+        - `hyprland.sh` and `hyprpaper.sh` now rename the reference to `applying_error`, matching
+        - the fix already present on upstream main
+    - hyprtavern did not compile against hyprwire main
+        - hyprwire's scanner now types enum arguments as the generated C++ enums, while hyprtavern
+        - still converts them through `uint32_t` (`toWire()`, `sc<uint32_t>`), and GCC rejects the
+        - implicit integer->enum conversions in `BusObject.cpp`, `ConnectionPrincipal.cpp`,
+        - `KvProtocol.cpp` and the other protocol units
+        - `hyprtavern.sh` now passes `-fpermissive` when compiling with GCC, and merges it with the
+        - existing `append_range` shim instead of overwriting `CMAKE_CXX_FLAGS`
     - `zsh_pokemon.sh`, `hyprsysteminfo.sh` and `gtk_themes.sh` lost their log writes after entering a source tree
         - `LOG` was relative to the repo root, but each of these scripts `cd`s into a source or build directory before writing it
         - The redirect then failed and `set -e` aborted the module: the `.zshrc` lines were never written, `hyprsysteminfo` stopped when `xxd` was missing, and the murrine fallback in `gtk_themes.sh` always returned 1
@@ -84,6 +111,15 @@
         - `shellcheck -S warning` with no findings
 
 - Updated:
+    - `HYPRTOOLKIT_TAG` pin survives refreshes, and hyprwire stays on `main` on purpose
+        - `refresh-hypr-tags.sh` forced `HYPRWIRE_TAG=main` unconditionally and
+        - `update-hyprland.sh --fetch-latest` forced both hyprwire and hyprtoolkit back to
+        - `main`, so a pinned hyprtoolkit tag was silently discarded on every refresh
+        - Both forced overrides are gone, hyprwire is now in both repo maps, and
+        - `HYPRTOOLKIT_TAG=v0.7.0` is kept (verified with hyprpaper and Hyprland builds)
+        - hyprwire is deliberately left at `main`: v0.3.1 is the newest release but lacks
+        - `setNewClientHandler`, `bindProtocolAsync`, `setDisconnectHandler` and
+        - `setProtocolFilter`, so pinning it fails the hyprtavern build (tested)
     - Refreshed `hypr-tags.env` to the latest upstream tags
         - Hyprland v0.57.2
 

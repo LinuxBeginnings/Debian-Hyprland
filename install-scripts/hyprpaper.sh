@@ -26,7 +26,7 @@ cd "$PARENT_DIR" || exit 1
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprpaper.log"
-MLOG="install-$(date +%d-%H%M%S)_hyprpaper2.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprpaper2.log"
 
 # Ensure toolchain & common deps for hypr* projects
 COMMON_DEPS=(
@@ -114,6 +114,16 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
     sed -i 's/m_settings\.append_range(std::move(s));/for (auto\& ss : s) m_settings.emplace_back(std::move(ss));/g' "$MATCHER_CPP"
   fi
 
+  # Compatibility: hyprpaper v0.8.5 ships hw-protocols/hyprpaper_core.xml with its
+  # "failed" argument referencing hyprpaper_wallpaper_application_error, an enum the
+  # file never declares (it defines applying_error). hyprwire-scanner refuses to
+  # generate the protocol, which breaks the build.
+  HYPRPAPER_PROTO_XML="hw-protocols/hyprpaper_core.xml"
+  if [ -f "$HYPRPAPER_PROTO_XML" ] && grep -q 'hyprpaper_wallpaper_application_error' "$HYPRPAPER_PROTO_XML"; then
+    echo "${NOTE} Applying hyprpaper protocol enum fix to $HYPRPAPER_PROTO_XML."
+    sed -i 's/hyprpaper_wallpaper_application_error/applying_error/g' "$HYPRPAPER_PROTO_XML"
+  fi
+
   BUILD_DIR="$BUILD_ROOT/hyprpaper"
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"
 
@@ -127,8 +137,14 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
   [ -n "$WL_PROTO_DIR" ]  && CMAKE_FLAGS+=( -DWAYLAND_PROTOCOLS_DIR="$WL_PROTO_DIR" )
   [ -n "$HYP_PROTO_DIR" ] && CMAKE_FLAGS+=( -DHYPRLAND_PROTOCOLS_DIR="$HYP_PROTO_DIR" )
 
-  cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}"
-  cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
+  if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" >> "$MLOG" 2>&1; then
+    echo -e "${ERROR} CMake configure failed for hyprpaper. See: $MLOG" | tee -a "$MLOG"
+    exit 1
+  fi
+  if ! cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" >> "$MLOG" 2>&1; then
+    echo -e "${ERROR} Build failed for hyprpaper. See: $MLOG" | tee -a "$MLOG"
+    exit 1
+  fi
   if [ $DO_INSTALL -eq 1 ]; then
     if sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG" ; then
       printf "${OK} hyprpaper installed successfully.\n" 2>&1 | tee -a "$MLOG"
@@ -138,7 +154,6 @@ if git clone --recursive ${git_ref:+-b "$git_ref"} https://github.com/hyprwm/hyp
   else
     echo "${NOTE} DRY RUN: Skipping installation of hyprpaper ${git_ref:-default-branch}." | tee -a "$MLOG"
   fi
-  [ -f "$MLOG" ] && mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
 else
   echo -e "${ERROR} Download failed for ${YELLOW}hyprpaper${RESET}" 2>&1 | tee -a "$LOG"
 fi

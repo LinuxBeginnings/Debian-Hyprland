@@ -26,7 +26,7 @@ cd "$PARENT_DIR" || exit 1
 source "$(dirname "$(readlink -f "$0")")/Global_functions.sh"
 
 LOG="Install-Logs/install-$(date +%d-%H%M%S)_hyprtavern.log"
-MLOG="install-$(date +%d-%H%M%S)_hyprtavern2.log"
+MLOG="$PARENT_DIR/Install-Logs/install-$(date +%d-%H%M%S)_hyprtavern2.log"
 
 SRC_DIR="$SRC_ROOT/hyprtavern"
 rm -rf "$SRC_DIR" 2>/dev/null || true
@@ -199,6 +199,7 @@ EOF
     rm -rf "$TMPD"
 
     EXTRA_FLAGS=()
+    EXTRA_CXX_FLAGS=""
     if [ "$NEED_SHIM" -eq 1 ]; then
         echo "${NOTE} Applying append_range compatibility shim for hyprtavern."
         APPEND_HDR="$(pwd)/append_range_compat.hpp"
@@ -214,7 +215,20 @@ EOF
         if [ -n "$PATCH_FILES" ]; then
             echo "$PATCH_FILES" | xargs -r sed -ri 's/([A-Za-z_][A-Za-z0-9_:>.\-]*)\s*\.\s*append_range\s*\(/APPEND_RANGE(\1, /g'
         fi
-        EXTRA_FLAGS+=( -DCMAKE_CXX_FLAGS="-include ${APPEND_HDR}" )
+        EXTRA_CXX_FLAGS="-include ${APPEND_HDR}"
+    fi
+
+    # hyprwire main's scanner now types enum arguments as the generated C++ enums
+    # ("scanner: parse enum args in s2c methods"), but hyprtavern's protocol code still
+    # converts them through uint32_t helpers (toWire(), sc<uint32_t>). GCC rejects the
+    # implicit integer->enum conversions, so every protocol translation unit fails.
+    # Keep the previous lenient behaviour for this module only.
+    if "${CXX:-c++}" --version 2>/dev/null | grep -qiE 'gcc|g\+\+|free software foundation'; then
+        echo "${NOTE} Allowing legacy integer->enum protocol arguments for hyprtavern (GCC)."
+        EXTRA_CXX_FLAGS="${EXTRA_CXX_FLAGS:+$EXTRA_CXX_FLAGS }-fpermissive"
+    fi
+    if [ -n "$EXTRA_CXX_FLAGS" ]; then
+        EXTRA_FLAGS+=( -DCMAKE_CXX_FLAGS="$EXTRA_CXX_FLAGS" )
     fi
 
     if [ -f CMakeLists.txt ]; then
@@ -240,16 +254,22 @@ EOF
         [ -n "$HYP_PROTO_DIR" ]       && CMAKE_FLAGS+=( -DHYPRLAND_PROTOCOLS_DIR="$HYP_PROTO_DIR" )
         [ -n "$WLR_PROTO_DIR" ]       && CMAKE_FLAGS+=( -DWLR_PROTOCOLS_DIR="$WLR_PROTO_DIR" )
         [ -n "$HYPRWIRE_PROTO_DIR" ]  && CMAKE_FLAGS+=( -DHYPRWIRE_PROTOCOLS_DIR="$HYPRWIRE_PROTO_DIR" )
-        cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" "${EXTRA_FLAGS[@]}"
-        cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)"
+        if ! cmake -S . -B "$BUILD_DIR" "${CMAKE_FLAGS[@]}" "${EXTRA_FLAGS[@]}" >> "$MLOG" 2>&1; then
+            echo -e "${ERROR} CMake configure failed for hyprtavern. See: $MLOG" | tee -a "$MLOG"
+            exit 1
+        fi
+        if ! cmake --build "$BUILD_DIR" -j "$(nproc 2>/dev/null || getconf _NPROCESSORS_CONF)" >> "$MLOG" 2>&1; then
+            echo -e "${ERROR} Build failed for hyprtavern. See: $MLOG" | tee -a "$MLOG"
+            exit 1
+        fi
         if [ $DO_INSTALL -eq 1 ]; then sudo cmake --install "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
     elif [ -f meson.build ]; then
         meson setup "$BUILD_DIR" --buildtype=release \
             ${WL_PROTO_DIR:+-Dwayland_protocols_dir="$WL_PROTO_DIR"} \
             ${HYP_PROTO_DIR:+-Dhyprland_protocols_dir="$HYP_PROTO_DIR"} \
             ${WLR_PROTO_DIR:+-Dwlr_protocols_dir="$WLR_PROTO_DIR"} \
-            ${HYPRWIRE_PROTO_DIR:+-Dhyprwire_protocols_dir="$HYPRWIRE_PROTO_DIR"}
-        meson compile -C "$BUILD_DIR"
+            ${HYPRWIRE_PROTO_DIR:+-Dhyprwire_protocols_dir="$HYPRWIRE_PROTO_DIR"} 2>&1 | tee -a "$MLOG"
+        meson compile -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"
         if [ $DO_INSTALL -eq 1 ]; then sudo meson install -C "$BUILD_DIR" 2>&1 | tee -a "$MLOG"; else echo "${NOTE} DRY RUN: skip install" | tee -a "$MLOG"; fi
     elif [ -f Cargo.toml ]; then
         cargo build --release 2>&1 | tee -a "$MLOG"
@@ -260,7 +280,6 @@ EOF
     else
         echo "${ERROR} Unknown build system for hyprtavern" | tee -a "$MLOG"
     fi
-    mv "$MLOG" "$PARENT_DIR/Install-Logs/" || true
 else
     echo -e "${ERROR} Download failed for ${YELLOW}hyprtavern${RESET}" 2>&1 | tee -a "$LOG"
 fi

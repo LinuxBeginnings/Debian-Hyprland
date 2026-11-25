@@ -130,7 +130,7 @@ AQUAMARINE_TAG=v0.10.0
 HYPRUTILS_TAG=v0.11.0
 HYPRLANG_TAG=v0.6.8
 HYPRGRAPHICS_TAG=v0.5.0
-HYPRTOOLKIT_TAG=v0.6.0
+HYPRTOOLKIT_TAG=v0.7.0
 HYPRWAYLAND_SCANNER_TAG=v0.4.5
 HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
@@ -199,6 +199,7 @@ declare -A repos=(
   [HYPRLAND_QT_SUPPORT_TAG]="hyprwm/hyprland-qt-support"
   [HYPRLAND_GUIUTILS_TAG]="hyprwm/hyprland-guiutils"
   [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
+  [HYPRWIRE_TAG]="hyprwm/hyprwire"
   [WAYLAND_PROTOCOLS_TAG]="wayland-project/wayland-protocols"
   # Additional apps/utilities
   [HYPRIDLE_TAG]="hyprwm/hypridle"
@@ -305,10 +306,10 @@ if [[ -t 0 && ${#changes[@]} -gt 0 ]]; then
   esac
 fi
 
-# hyprwire has no release tags, so it stays on main.
-# hyprtoolkit is pinned to a release tag (HYPRTOOLKIT_TAG in hypr-tags.env) and
-# must not be forced back to main here, otherwise the pin is silently dropped.
-cur[HYPRWIRE_TAG]="main"
+# hyprtoolkit is pinned to a release tag (HYPRTOOLKIT_TAG in hypr-tags.env) and must
+# not be forced back to main here, otherwise the pin is silently dropped. hyprwire
+# stays on main on purpose: its newest release (v0.3.1) lacks the socket handler and
+# bindProtocolAsync APIs hyprtavern uses, so a pinned value there would break it.
 
 # Write back
 {

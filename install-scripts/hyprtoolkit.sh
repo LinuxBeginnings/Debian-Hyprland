@@ -76,7 +76,7 @@ if [ -d "$SRC_DIR" ]; then
 fi
 if git clone --recursive ${git_ref:+-b "$git_ref"} "https://github.com/hyprwm/hyprtoolkit.git" "$SRC_DIR" >> "$LOG" 2>&1; then
   cd "$SRC_DIR" || exit 1
-  printf "${NOTE} Applying hyprtoolkit format fix...\n"
+  printf "${NOTE} Applying hyprtoolkit compatibility fixes...\n"
   python3 - <<'PY' >> "$LOG" 2>&1
 import re, pathlib
 path = pathlib.Path("src/system/Icons.cpp")
@@ -93,6 +93,16 @@ if path.is_file():
         text,
     )
     path.write_text(text)
+
+# std::optional<T>::value_or({ 0, 0 }) does not compile with libstdc++ 14 (GCC 14 or
+# clang using it): a braced-init-list has no type for the _Up template parameter, so
+# deduction fails. Upstream hyprtoolkit v0.7.0 still ships this form in the layout
+# elements; spell the type out instead.
+for cpp in pathlib.Path("src").rglob("*.cpp"):
+    text = cpp.read_text()
+    fixed = re.sub(r"\.value_or\(\{\s*0\s*,\s*0\s*\}\)", ".value_or(Vector2D{ 0, 0 })", text)
+    if fixed != text:
+        cpp.write_text(fixed)
 PY
   BUILD_DIR="$BUILD_ROOT/hyprtoolkit"
   rm -rf "$BUILD_DIR" && mkdir -p "$BUILD_DIR"

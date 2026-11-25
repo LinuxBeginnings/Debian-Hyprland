@@ -192,6 +192,17 @@ EOF
         sed -ri 's/std::string\{"0x"\}\s*\+\s*value/std::string{"0x"} + std::string(value)/g' "$PARSER_UTILS" || true
     fi
 
+    # Compatibility: Hyprland v0.57.2 ships hyprctl/hw-protocols/hyprpaper_core.xml with
+    # its "failed" argument pointing at the enum name hyprpaper_wallpaper_application_error,
+    # which that file never declares (it defines applying_error). hyprwayland-scanner
+    # aborts with 'references unknown enum', failing the hyprctl target and the whole
+    # build. Upstream renamed the reference on main; apply the same rename to pinned tags.
+    HYPRPAPER_PROTO_XML="hyprctl/hw-protocols/hyprpaper_core.xml"
+    if [ -f "$HYPRPAPER_PROTO_XML" ] && grep -q 'hyprpaper_wallpaper_application_error' "$HYPRPAPER_PROTO_XML"; then
+        echo "${NOTE} Applying hyprpaper protocol enum fix to $HYPRPAPER_PROTO_XML." | tee -a "$LOG"
+        sed -i 's/hyprpaper_wallpaper_application_error/applying_error/g' "$HYPRPAPER_PROTO_XML" || true
+    fi
+
     # Compatibility: Python < 3.12 does not support "type Alias = ..." syntax (PEP 695).
     # Some Hyprland tags ship this in meta/generateLuaStubs.py; rewrite to legacy alias form.
     LUA_STUB_GEN="meta/generateLuaStubs.py"

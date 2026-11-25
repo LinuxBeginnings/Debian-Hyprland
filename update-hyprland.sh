@@ -738,6 +738,7 @@ HYPRLAND_PROTOCOLS_TAG=v0.7.0
 HYPRLAND_QT_SUPPORT_TAG=v0.1.0
 HYPRPAPER_TAG=v0.8.4
 HYPRPOLKITAGENT_TAG=v0.2.0
+HYPRTOOLKIT_TAG=v0.7.0
 HYPRWIRE_TAG=main
 XDPH_TAG=v1.3.12
 EOF
@@ -893,7 +894,9 @@ declare -A repos=(
         [HYPRWAYLAND_SCANNER_TAG]="hyprwm/hyprwayland-scanner"
         [HYPRLAND_PROTOCOLS_TAG]="hyprwm/hyprland-protocols"
         [HYPRLAND_QT_SUPPORT_TAG]="hyprwm/hyprland-qt-support"
+        [HYPRTOOLKIT_TAG]="hyprwm/hyprtoolkit"
         [HYPRWIRE_PROTOCOLS_TAG]="hyprwm/hyprwire-protocols"
+        [HYPRWIRE_TAG]="hyprwm/hyprwire"
         # Additional apps/utilities
         [HYPRIDLE_TAG]="hyprwm/hypridle"
         [HYPRLOCK_TAG]="hyprwm/hyprlock"
@@ -939,9 +942,9 @@ declare -A repos=(
         map[$k]="$v"
     done <"$TAGS_FILE"
 
-    # Ensure hyprwire and hyprtoolkit are always pinned to main
-    map[HYPRWIRE_TAG]="main"
-    map[HYPRTOOLKIT_TAG]="main"
+    # hyprwire and hyprtoolkit publish release tags now, so they follow the same
+    # pinned/auto rules as the rest of the stack instead of being forced to main.
+    # Forcing them here silently discarded the pins in hypr-tags.env.
 
     # Build a list of changes (old -> new) according to override rules
     changes=()
