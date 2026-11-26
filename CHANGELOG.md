@@ -3,6 +3,14 @@
 
 ## Nov 2026
 
+- Added:
+    - design document for building, testing and publishing `.deb` packages
+        - new `assets/Build-Deb-Pkgs-Pla.md` describes a per-suite build in a
+        - `debian:trixie|forky|sid` container, a clean-container install gate, and
+        - publishing to GitHub Releases (`debs-<suite>` rolling tag plus dated tags)
+        - documents the full Debian build/runtime dependency sets, package naming,
+        - version scheme, suggested repository/artifact layouts, and the planned
+        - `update-hyprland.sh --mode prebuilt` consumer
 - Fixed:
     - hyprpaper and hyprtavern failures left no usable build log
         - both scripts only sent the install step to `Install-Logs`, so `cmake` configure/build
