@@ -3,6 +3,14 @@
 
 ## Nov 2026
 
+- Removed:
+    - the unused `install-hyprmod.sh` module from `install-scripts/`
+        - The script only piped the upstream `BlueManCZ/hyprmod` remote installer into `sh`,
+        - and nothing invoked it: `install.sh`, `update-hyprland.sh` and `dry-run-build.sh`
+        - all name their modules explicitly, and no menu, tag, doc or `preset.sh` entry
+        - referred to it, so it was dead weight in the module directory
+        - Removing it leaves the installed module set unchanged
+
 - Added:
     - design document for building, testing and publishing `.deb` packages
         - new `assets/Build-Deb-Pkgs-Pla.md` describes a per-suite build in a
